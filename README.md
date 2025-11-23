@@ -58,6 +58,8 @@ Ech0 是一款专为轻量级分享而设计的开源自托管平台，支持快
 <summary><h2>✅ 更新状况【点击查看】</h2></summary>
 
 
+- 完善前后端分离部署
+
 - 增加用户注册选项开关，可在后台页面网站配置中设置
 
   ![1745801297411](https://s2.loli.net/2025/04/28/WpXsncYZLKR7U1C.png)
@@ -173,6 +175,54 @@ Ech0 是一款专为轻量级分享而设计的开源自托管平台，支持快
 ------
 
 ## 安装部署
+
+### 前后端分离
+
+- 构建并部署静态资源
+- 在仓库根目录执行： bash scripts/build.sh
+- 构建产物复制到根目录 public ，后端静态服务读取该目录，映射见 internal/routers/routers.go:61
+- 启动后端服务
+- 构建二进制： go build -o server ./cmd/server/main.go
+- 运行： ./server
+- 服务地址由配置决定： config/config.yaml:1-4 （ host 、 port 、 mode ），后端监听设置见 cmd/server/main.go:70-76
+- 验证
+- 页面： curl http://localhost:1314/ | head -n 20 应返回 HTML
+- 接口： curl http://localhost:1314/api/status 、 curl http://localhost:1314/api/messages/page
+- 前端脚本内的 baseApi 为 "/api" ：可在首页 HTML 中看到 window.__NUXT__.config.public.baseApi
+
+说明
+
+- 生产静态模式访问地址： http://localhost:1314/
+- 前端静态资源目录： ./public （构建产物）
+- 后端接口：同域下的 /api/* ，例如：
+  - 配置： /api/frontend/config
+  - 列表分页： /api/messages/page
+  - 状态： /api/status
+
+`.env.prod.example`模版环境变量说明
+
+- 当 DB_TYPE=sqlite 时，后端只使用 DB_PATH 指向 noise.db 文件；环境变量中的 DB_USER 、 DB_PASSWORD 、 DB_HOST 等不会用于连接，也不会影响应用用户登录。
+- DB_USER / DB_PASSWORD 等仅在 postgres 或 mysql 作为数据库类型时用于构建连接串。
+
+- 基础
+  - LOG_LEVEL 控制日志级别
+  - TZ 设置时区
+- 数据库
+  - DB_TYPE 支持 sqlite 、 postgres 、 mysql
+  - DB_PATH 仅在 sqlite 时生效，默认 ./data/noise.db
+  - DB_HOST 、 DB_PORT 、 DB_USER 、 DB_PASSWORD 、 DB_NAME 对应远程数据库连接
+  - DB_SSL_MODE （PostgreSQL）：常用 disable 或云服务要求的 require
+  - DB_TIMEZONE （PostgreSQL）：建议 Asia/Shanghai
+  - DB_CHARSET （MySQL）：建议 utf8mb4
+- 跨域
+  - CORS_ORIGINS 留空表示使用默认同源；如需分离前后端或反向代理到不同域，设置逗号分隔来源列表，例如 http://note.example.com
+  
+  ### 后端依赖
+
+- 运行依赖升级： go get -u ./...
+- 整理模块文件： go mod tidy
+
+
 
 > 💡 部署完成后访问 ip:1314 即可使用
 > 
