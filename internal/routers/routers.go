@@ -21,6 +21,7 @@ func SetupRouter() *gin.Engine {
 	pkg.InitSession(r)
 	// 配置 CORS
 	corsConfig := cors.DefaultConfig()
+	corsConfig.AllowOriginFunc = func(origin string) bool { return true }
 	corsConfig.AllowHeaders = []string{
 		"Origin",
 		"Content-Type",
@@ -76,7 +77,9 @@ func SetupRouter() *gin.Engine {
 	r.GET("/manifest.webmanifest", controllers.GetWebManifest)
 
 	// 公共路由
+	api.GET("", controllers.GetStatus)
 	api.GET("/frontend/config", controllers.GetFrontendConfig)
+	api.GET("/settings", controllers.GetFrontendConfig)
 	api.POST("/login", controllers.Login)
 	api.POST("/register", controllers.Register)
 	api.GET("/status", controllers.GetStatus)

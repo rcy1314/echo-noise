@@ -18,8 +18,7 @@ RUN cp -r .output/public /app/public/
 # 后端构建阶段
 FROM golang:1.24.1-alpine AS backend-build
 
-# 设置 Go 代理
-ENV GOPROXY=https://proxy.golang.org,direct
+ENV GOPROXY=https://goproxy.cn,direct
 
 # 设置工作目录
 WORKDIR /app
@@ -60,6 +59,9 @@ COPY --from=backend-build /app/noise /app/noise
 
 # 从前端构建阶段复制静态文件
 COPY --from=frontend-build /app/public /app/public
+
+# 复制独立的 htmlwidgets 到公开目录，确保 /htmlwidgets/note.html 可访问
+COPY ./htmlwidgets /app/public/htmlwidgets
 
 # 安装运行时所需的工具
 RUN apk update && \

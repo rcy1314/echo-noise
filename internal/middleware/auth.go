@@ -20,10 +20,15 @@ func SessionAuthMiddleware() gin.HandlerFunc {
             publicPaths := []string{
                 "/api/messages/page",
                 "/api/messages/",
+                "/api/messages",
+                "/api/messages/search",
                 "/api/messages/tags",
                 "/api/messages/tags/",
                 "/api/messages/images",
+                "/api/messages/calendar",
                 "/api/frontend/config",
+                "/api/status",
+                "/api/version/check",
             }
 
             // 检查是否是公共路由

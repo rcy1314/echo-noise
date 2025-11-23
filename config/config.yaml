@@ -5,7 +5,7 @@ server:
 
 database:
   type: "sqlite"
-  path: "./data/noise.db"
+  path: "/app/data/noise.db"
 
 upload:
   maxsize: 5242880
