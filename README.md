@@ -58,6 +58,7 @@ Ech0 是一款专为轻量级分享而设计的开源自托管平台，支持快
 <summary><h2>✅ 更新状况【点击查看】</h2></summary>
 
 
+- 统一内容卡片颜色模式切换
 - 新增公开接口： /api/messages/search 、 /api/messages 、 /api/messages/calendar 、 /api/status 、 /api/version/check
 - 增加内容列表的颜色模式开关，默认暗黑模式
 
@@ -1080,6 +1081,18 @@ curl -X POST http://localhost:8080/api/notify/send \
 ```
 docker buildx build --platform linux/amd64,linux/arm64 -t noise233/echo-noise:latest --push --no-cache .
 ```
+
+Podman（替代Docker）
+
+```
+podman build --manifest docker.io/noise233/echo-noise:latest --platform linux/amd64,linux/arm64 --no-cache .
+```
+
+```
+podman manifest push --all docker.io/noise233/echo-noise:latest docker://docker.io/noise233/echo-noise:latest
+```
+
+
 
 # Memos数据库迁移示例
 

@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch, onBeforeUnmount } from 'vue';
+import { onMounted, ref, watch, onBeforeUnmount, inject } from 'vue';
 import Vditor from 'vditor';
 
 // 定义正则表达式
@@ -32,6 +32,15 @@ const props = defineProps({
     required: true,
   },
 });
+
+const contentTheme = inject('contentTheme') as any
+
+const applyThemeClass = () => {
+  if (!previewElement.value) return
+  const isDark = contentTheme && contentTheme.value === 'dark'
+  previewElement.value.classList.toggle('theme-dark', !!isDark)
+  previewElement.value.classList.toggle('theme-light', !isDark)
+}
 
 const initializeZoom = () => {
   if (window.mediumZoom) {
@@ -127,15 +136,17 @@ const renderMarkdown = async (markdown: string) => {
         '<span class="clickable-tag" onclick="window.handleTagClick(\'$1\')" style="cursor: pointer;">#$1</span>'
       );
 
-    // 使用处理后的内容
-    Vditor.preview(previewElement.value, finalContent, {
+  // 使用处理后的内容
+  const currentTheme = contentTheme && contentTheme.value === 'dark' ? 'dark' : 'light'
+  const hljsStyle = currentTheme === 'dark' ? 'github-dark' : 'github'
+  Vditor.preview(previewElement.value, finalContent, {
       mode: 'light',
       lang: 'zh_CN',
       theme: {
-        current: 'dark'
+        current: currentTheme
       },
       hljs: {
-        style: 'github-dark',
+        style: hljsStyle,
         lineNumber: true,
         enable: true
       },
@@ -153,6 +164,7 @@ const renderMarkdown = async (markdown: string) => {
         // 初始化图片缩放
         initializeZoom();
         console.log('Rendering complete.');
+        applyThemeClass();
         
         // 绑定标签点击事件
         const tags = previewElement.value?.querySelectorAll('.clickable-tag');
@@ -198,6 +210,7 @@ onMounted(() => {
   } else {
     console.error('MetingJS or APlayer is not loaded properly');
   }
+  applyThemeClass();
 });
 
 
@@ -206,6 +219,11 @@ onBeforeUnmount(() => {
     zoom.detach();
     zoom = null;
   }
+});
+
+watch(() => contentTheme && contentTheme.value, () => {
+  applyThemeClass();
+  renderMarkdown(props.content);
 });
 </script>
 
@@ -286,23 +304,30 @@ onBeforeUnmount(() => {
 
 .markdown-preview :deep(pre) {
   overflow-x: auto;
-  background-color: #0d1117;
   border-radius: 6px;
   padding: 16px;
   margin: 1em 0;
-  border: 1px solid #30363d;
   max-width: 100%;
   white-space: pre-wrap;
   word-wrap: break-word;
   box-sizing: border-box;
 }
+.theme-dark .markdown-preview :deep(pre) {
+  background-color: #0d1117;
+  border: 1px solid #30363d;
+}
+.theme-light .markdown-preview :deep(pre) {
+  background-color: #f5f5f5;
+  border: 1px solid #e5e7eb;
+}
 
 
 .markdown-preview :deep(.hljs) {
   background-color: transparent;
-  color: #c9d1d9;
   padding: 0;
 }
+.theme-dark .markdown-preview :deep(.hljs) { color: #c9d1d9; }
+.theme-light .markdown-preview :deep(.hljs) { color: #1f2937; }
 
 .markdown-preview :deep(.hljs-keyword) {
   color: #ff7b72;
@@ -398,6 +423,15 @@ onBeforeUnmount(() => {
   border-radius: 4px;
   margin: 1em 0 !important;
 }
+.theme-dark .aplayer {
+  background: rgba(22,27,34,0.85);
+  color: #c9d1d9;
+}
+.theme-light .aplayer {
+  background: rgba(255,255,255,0.85);
+  color: #111827;
+  border: 1px solid #e5e7eb;
+}
 /* 添加 medium-zoom 相关样式 */
 .medium-zoom-overlay {
   z-index: 999;
@@ -412,10 +446,7 @@ onBeforeUnmount(() => {
   z-index: 1000;
 }
 .github-card {
-  border: 1px solid #30363d;
   border-radius: 8px;
-  background: #161b22;
-  color: #c9d1d9;
   margin: 1em 0;
   padding: 16px;
   width: 100%;
@@ -424,6 +455,16 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
   min-width: 0;
   overflow: hidden;
+}
+.theme-dark .github-card {
+  border: 1px solid #30363d;
+  background: #161b22;
+  color: #c9d1d9;
+}
+.theme-light .github-card {
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #111827;
 }
 .github-card-header {
   display: flex;
@@ -449,33 +490,37 @@ onBeforeUnmount(() => {
 }
 .github-card-title {
   font-weight: bold;
-  color: #58a6ff;
   text-decoration: none;
   font-size: 17px;
   word-break: break-all;
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
+.theme-dark .github-card-title { color: #58a6ff; }
+.theme-light .github-card-title { color: #0366d6; }
 .github-card-desc {
-  color: #8b949e;
   margin-top: 4px;
   font-size: 14px;
   word-break: break-all;
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
+.theme-dark .github-card-desc { color: #8b949e; }
+.theme-light .github-card-desc { color: #6b7280; }
 .github-card-footer {
   margin-top: 12px;
   display: flex;
   gap: 16px;
-  color: #8b949e;
   font-size: 13px;
   flex-wrap: wrap;
 }
+.theme-dark .github-card-footer { color: #8b949e; }
+.theme-light .github-card-footer { color: #6b7280; }
 .github-card-loading {
-  color: #8b949e;
   font-style: italic;
 }
+.theme-dark .github-card-loading { color: #8b949e; }
+.theme-light .github-card-loading { color: #6b7280; }
 @media (max-width: 520px) {
   .github-card {
     padding: 10px;
