@@ -5,6 +5,8 @@ export default defineNuxtConfig({
         { rel: 'stylesheet', href: 'https://www.noisework.cn/css/APlayer.min.css' },
         { rel: 'stylesheet', href: 'https://unpkg.com/@waline/client@v3/dist/waline.css' },
         { rel: 'stylesheet', href: 'https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css' },
+        { rel: 'icon', href: '/favicon.ico' },
+        { rel: 'manifest', href: '/manifest.webmanifest' },
       ],
       script: [
         { src: 'https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js', body: true },

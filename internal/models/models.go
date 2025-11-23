@@ -77,6 +77,11 @@ type SiteConfig struct {
     RSSAuthorName    string `gorm:"type:varchar(50)"`
     RSSFaviconURL    string `gorm:"type:varchar(191)"`
     WalineServerURL  string `gorm:"type:varchar(191)"`
+    // PWA 配置
+    PwaEnabled       bool   `gorm:"default:true"`
+    PwaTitle         string `gorm:"type:varchar(100)"`
+    PwaDescription   string `gorm:"type:varchar(191)"`
+    PwaIconURL       string `gorm:"type:varchar(191)"`
     Version          int    `json:"version"`
 }
 

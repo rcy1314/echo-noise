@@ -43,6 +43,11 @@ func GetFrontendConfig() (map[string]interface{}, error) {
             "rssAuthorName":     config.RSSAuthorName,
             "rssFaviconURL":     config.RSSFaviconURL,
             "walineServerURL":   config.WalineServerURL,
+            // PWA 设置
+            "pwaEnabled":        config.PwaEnabled,
+            "pwaTitle":          choose(config.PwaTitle, config.SiteTitle),
+            "pwaDescription":    choose(config.PwaDescription, config.Description),
+            "pwaIconURL":        choose(config.PwaIconURL, config.RSSFaviconURL),
         },
     }
     return configMap, nil
@@ -113,6 +118,19 @@ func UpdateFrontendSetting(userID uint, settingMap map[string]interface{}) error
     }
     if v, ok := frontendSettings["walineServerURL"].(string); ok {
         config.WalineServerURL = v
+    }
+    // PWA 设置
+    if v, ok := frontendSettings["pwaEnabled"].(bool); ok {
+        config.PwaEnabled = v
+    }
+    if v, ok := frontendSettings["pwaTitle"].(string); ok {
+        config.PwaTitle = v
+    }
+    if v, ok := frontendSettings["pwaDescription"].(string); ok {
+        config.PwaDescription = v
+    }
+    if v, ok := frontendSettings["pwaIconURL"].(string); ok {
+        config.PwaIconURL = v
     }
 
     // 处理背景图片列表
@@ -201,6 +219,21 @@ func getDefaultConfig() map[string]interface{} {
             "rssAuthorName":     "Noise",
             "rssFaviconURL":     "/favicon.ico",
             "walineServerURL":   "请前往waline官网https://waline.js.org查看部署配置",
+            // PWA 设置默认值
+            "pwaEnabled":        true,
+            "pwaTitle":          "",
+            "pwaDescription":    "",
+            "pwaIconURL":        "",
         },
     }
+}
+
+// 选择第一个非空字符串
+func choose(values ...string) string {
+    for _, v := range values {
+        if v != "" {
+            return v
+        }
+    }
+    return ""
 }

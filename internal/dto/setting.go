@@ -18,5 +18,10 @@ type SettingDto struct {
         RSSAuthorName     string   `json:"rssAuthorName"`
         RSSFaviconURL     string   `json:"rssFaviconURL"`
         WalineServerURL   string   `json:"walineServerURL"`
+        // PWA 设置
+        PwaEnabled        bool     `json:"pwaEnabled"`
+        PwaTitle          string   `json:"pwaTitle"`
+        PwaDescription    string   `json:"pwaDescription"`
+        PwaIconURL        string   `json:"pwaIconURL"`
     } `json:"frontendSettings"`
 }

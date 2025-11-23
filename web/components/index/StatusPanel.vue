@@ -177,6 +177,31 @@
                         </div>
                     </div>
 
+                    <!-- PWA 配置区域 -->
+                    <div class="bg-gray-800 rounded p-4 mb-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-white">PWA 模式</span>
+                        <div class="flex items-center gap-4">
+                                <UToggle v-model="frontendConfig.pwaEnabled" />
+                                <UButton color="green" @click="savePWAConfig">保存</UButton>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-gray-300 text-sm mb-1 block">PWA 标题</label>
+                                <UInput v-model="frontendConfig.pwaTitle" :placeholder="frontendConfig.siteTitle || '说说笔记'" />
+                            </div>
+                            <div>
+                                <label class="text-gray-300 text-sm mb-1 block">PWA 图标</label>
+                                <UInput :model-value="'/favicon.ico'" disabled />
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="text-gray-300 text-sm mb-1 block">PWA 描述</label>
+                                <UTextarea v-model="frontendConfig.pwaDescription" :placeholder="frontendConfig.description || ''" />
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- 配置展示/编辑表单 -->
                     <div class="space-y-4">
                         <div v-for="(label, key) in configLabels" :key="key" class="bg-gray-800 rounded p-3">
@@ -777,6 +802,11 @@ const frontendConfig = reactive({
     rssAuthorName: '',
     rssFaviconURL: '',
     walineServerURL: '',
+    // PWA 设置
+    pwaEnabled: true,
+    pwaTitle: '',
+    pwaDescription: '',
+    pwaIconURL: '',
 })
 
 const authForm = reactive<UserToLogin | UserToRegister>({
@@ -830,7 +860,12 @@ const defaultConfig = {
     rssDescription: '一个说说笔记~',
     rssAuthorName: 'Noise',
     rssFaviconURL: '/favicon.ico',
-    walineServerURL: '请前往waline官网https://waline.js.org查看部署配置' 
+    walineServerURL: '请前往waline官网https://waline.js.org查看部署配置',
+    // PWA 设置默认值（为空时回退到站点设置）
+    pwaEnabled: true,
+    pwaTitle: '',
+    pwaDescription: '',
+    pwaIconURL: ''
 }
 // 添加单个配置项保存方法
 
@@ -865,9 +900,26 @@ const fetchConfig = async () => {
                         frontendConfig[key] = [...serverBackgrounds];
                     }
                 } else {
-                    frontendConfig[key] = settings[key] ?? defaultConfig[key];
+                    const v = settings[key] ?? defaultConfig[key]
+                    frontendConfig[key] = typeof v === 'string' ? v.trim() : v
                 }
             });
+
+            // 自动应用到页面 Head（标题、描述、图标）
+            const title = (frontendConfig.pwaTitle || frontendConfig.siteTitle || '说说笔记').trim()
+            const icon = (frontendConfig.pwaIconURL || frontendConfig.rssFaviconURL || '/favicon.ico').trim()
+            const description = (frontendConfig.pwaDescription || frontendConfig.description || '').trim()
+            useHead({
+                title,
+                meta: [
+                    { name: 'description', content: description },
+                    { name: 'theme-color', content: '#000000' }
+                ],
+                link: [
+                    { rel: 'manifest', href: '/manifest.webmanifest' },
+                    { rel: 'icon', href: icon }
+                ]
+            })
         }
     } catch (error) {
         console.error('获取配置失败:', error);
@@ -902,16 +954,12 @@ const saveConfigItem = async (key: string) => {
         const data = await response.json();
         if (data.code === 1) {
             editItem[key] = false;
-            
-            // 触发配置更新事件
-            window.dispatchEvent(new CustomEvent('frontend-config-updated'));
-            
             // 重新获取配置
             await fetchConfig();
-            
+            const label = configLabels[key] || (key === 'pwa' ? 'PWA 设置' : key)
             useToast().add({
                 title: '成功',
-                description: `${configLabels[key]}已更新`,
+                description: `${label}已更新`,
                 color: 'green'
             });
         } else {
@@ -926,6 +974,62 @@ const saveConfigItem = async (key: string) => {
         });
     }
 };
+
+const savePWAConfig = async () => {
+    try {
+        const settingsToSave = {
+            frontendSettings: frontendConfig
+        }
+        const response = await fetch('/api/settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(settingsToSave)
+        })
+        const data = await response.json()
+        if (response.ok && data.code === 1) {
+            await fetchConfig()
+            useToast().add({ title: '成功', description: 'PWA 设置已更新', color: 'green' })
+
+            // 立即切换 Service Worker 状态
+            if ('serviceWorker' in navigator) {
+                const regs = await navigator.serviceWorker.getRegistrations()
+                if (frontendConfig.pwaEnabled) {
+                    await navigator.serviceWorker.register('/sw.js')
+                } else {
+                    for (const r of regs) await r.unregister()
+                    const keys = await caches.keys()
+                    await Promise.all(keys.map(k => caches.delete(k)))
+                }
+            }
+
+            // 通知全局插件重新应用 Head 与 SW 状态
+            window.dispatchEvent(new Event('frontend-config-updated'))
+        } else {
+            throw new Error(data.msg || '保存失败')
+        }
+    } catch (error: any) {
+        useToast().add({ title: '错误', description: error.message || '保存失败', color: 'red' })
+    }
+}
+
+const applyPWAConfig = () => {
+    const title = (frontendConfig.pwaTitle || frontendConfig.siteTitle || '说说笔记')
+    const icon = (frontendConfig.pwaIconURL || frontendConfig.rssFaviconURL || '/favicon.ico')
+    const description = (frontendConfig.pwaDescription || frontendConfig.description || '')
+
+    useHead({
+        title,
+        meta: [
+            { name: 'description', content: description },
+            { name: 'theme-color', content: '#000000' }
+        ],
+        link: [
+            { rel: 'manifest', href: '/manifest.webmanifest' },
+            { rel: 'icon', href: icon }
+        ]
+    })
+}
 
 // 修改文件上传处理
 const handleFileUpload = async (event: Event) => {

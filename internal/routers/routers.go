@@ -72,6 +72,9 @@ func SetupRouter() *gin.Engine {
 	r.GET("/rss", controllers.GenerateRSS)                                               // 保持原有的 RSS 订阅链接
 	api.POST("/rss/refresh", middleware.SessionAuthMiddleware(), controllers.RefreshRSS) // 添加刷新 RSS 的路由
 
+	// PWA Manifest 路由
+	r.GET("/manifest.webmanifest", controllers.GetWebManifest)
+
 	// 公共路由
 	api.GET("/frontend/config", controllers.GetFrontendConfig)
 	api.POST("/login", controllers.Login)

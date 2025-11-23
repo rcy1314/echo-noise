@@ -157,6 +157,19 @@ https://s2.loli.net/2025/03/27/y67m2k5xcSdTsHN.jpg`
             if config.WalineServerURL == "" {
                 updates["waline_server_url"] = defaultConfig.WalineServerURL
             }
+            // PWA 字段默认值（保持与站点设置一致，开关默认打开）
+            if !config.PwaEnabled {
+                updates["pwa_enabled"] = true
+            }
+            if config.PwaTitle == "" {
+                updates["pwa_title"] = config.SiteTitle
+            }
+            if config.PwaDescription == "" {
+                updates["pwa_description"] = config.Description
+            }
+            if config.PwaIconURL == "" {
+                updates["pwa_icon_url"] = config.RSSFaviconURL
+            }
             
             if len(updates) > 0 {
                 if err := tx.Model(&config).Updates(updates).Error; err != nil {

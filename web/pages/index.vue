@@ -104,7 +104,12 @@ const frontendConfig = ref({
     rssTitle: '',
     rssDescription: '',
     rssAuthorName: '',
-    rssFaviconURL: ''
+    rssFaviconURL: '',
+    // PWA
+    pwaEnabled: true,
+    pwaTitle: '',
+    pwaDescription: '',
+    pwaIconURL: ''
 })
 
 const backgroundStyle = computed(() => ({
@@ -147,6 +152,11 @@ const defaultConfig = {
     rssDescription: '一个说说笔记~',
     rssAuthorName: 'Noise',
     rssFaviconURL: '/favicon.ico',
+    // PWA 默认（为空时回退到站点设置）
+    pwaEnabled: true,
+    pwaTitle: '',
+    pwaDescription: '',
+    pwaIconURL: '',
     walineServerURL: 'https://s9cewscb.lc-cn-n1-shared.com'
 };
 
@@ -180,7 +190,8 @@ const fetchConfig = async () => {
                         // 特殊处理背景图片数组
                         frontendConfig.value.backgrounds = [...settings[key]];
                     } else {
-                        frontendConfig.value[key] = settings[key];
+                        const v = settings[key]
+                        frontendConfig.value[key] = typeof v === 'string' ? v.trim() : v
                     }
                 }
             });
@@ -282,13 +293,24 @@ definePageMeta({
 
 // 设置动态标题
 const updateTitle = () => {
+  const title = (frontendConfig.value.pwaTitle || frontendConfig.value.siteTitle || '说说笔记').trim()
+  const icon = '/favicon.ico'
+  const description = (frontendConfig.value.pwaDescription || frontendConfig.value.description || '').trim()
   useHead({
-    title: frontendConfig.value.siteTitle || '说说笔记'
+    title,
+    meta: [
+      { name: 'description', content: description },
+      { name: 'theme-color', content: '#000000' }
+    ],
+    link: [
+      { rel: 'icon', href: icon },
+      ...(frontendConfig.value.pwaEnabled ? [{ rel: 'manifest', href: '/manifest.webmanifest' }] : [])
+    ]
   })
 }
 
 // 监听配置变化
-watch(() => frontendConfig.value.siteTitle, () => {
+watch(() => [frontendConfig.value.pwaEnabled, frontendConfig.value.pwaTitle, frontendConfig.value.pwaIconURL, frontendConfig.value.pwaDescription, frontendConfig.value.siteTitle, frontendConfig.value.rssFaviconURL, frontendConfig.value.description], () => {
   updateTitle()
 }, { immediate: true })
 const subtitleEl = ref<HTMLElement | null>(null)

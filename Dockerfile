@@ -19,7 +19,7 @@ RUN cp -r .output/public /app/public/
 FROM golang:1.24.1-alpine AS backend-build
 
 # 设置 Go 代理
-ENV GOPROXY=https://goproxy.cn,direct
+ENV GOPROXY=https://proxy.golang.org,direct
 
 # 设置工作目录
 WORKDIR /app
