@@ -124,7 +124,7 @@ const renderMarkdown = async (markdown: string) => {
       .replace(/<a /g, '<a target="_blank" ')
       .replace(
         /(?<!<[^>]*)#([^\s#<>]+)(?![^<]*>)/g,
-        '<span class="clickable-tag" onclick="window.handleTagClick(\'$1\')" style="cursor: pointer; color: #fb923c;">#$1</span>'
+        '<span class="clickable-tag" onclick="window.handleTagClick(\'$1\')" style="cursor: pointer;">#$1</span>'
       );
 
     // 使用处理后的内容
@@ -228,14 +228,14 @@ onBeforeUnmount(() => {
   color: rgb(227, 220, 220);
 }
 .clickable-tag {
-  color: #fb923c !important; /* 修改为橙色，匹配暗色主题 */
+  color: #fb923c !important;
   cursor: pointer;
   transition: color 0.2s ease;
   padding: 0 2px;
 }
 
 .clickable-tag:hover {
-  color: #f97316 !important; /* 修改悬停颜色 */
+  color: #f97316 !important;
   text-decoration: underline;
 }
 .markdown-preview table thead tr {

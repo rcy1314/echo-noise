@@ -68,7 +68,7 @@
           </div>
 
           <div class="border-l-2 border-gray-300 p-4 ml-1">
-            <div class="content-container" v-if="msg.image_url || msg.content" :data-msg-id="msg.id">
+            <div class="content-container" :class="listThemeClass" v-if="msg.image_url || msg.content" :data-msg-id="msg.id">
               <!-- 图片内容 -->
               <img 
   v-if="msg.image_url" 
@@ -81,10 +81,10 @@
               <!-- 分隔线 -->
               <div v-if="msg.image_url && msg.content" class="border-t border-gray-600 my-4"></div>
               <!-- 文本内容区域 -->
-              <div class="overflow-y-hidden relative" :class="{ 'max-h-[700px]': !isExpanded[msg.id] }">
+              <div class="overflow-y-hidden relative" :class="[{ 'max-h-[700px]': !isExpanded[msg.id] }, listThemeTextClass]">
                 <MarkdownRenderer :content="msg.content" @tagClick="handleTagClick" link-target="_blank"/>
                 <div v-if="shouldShowExpandButton[msg.id] && !isExpanded[msg.id]"
-    class="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[rgba(36,43,50,1)] via-[rgba(36,43,50,0.8)] to-transparent">
+    :class="['absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t', gradientClass]">
   </div>
               </div>
               <!-- 展开/折叠按钮 -->
@@ -214,6 +214,10 @@
 import { useMessageStore } from "~/store/message";
 import { useUserStore } from "~/store/user";
 import MarkdownRenderer from "~/components/index/MarkdownRenderer.vue";
+const contentTheme = inject('contentTheme', ref<string>(typeof window !== 'undefined' ? (localStorage.getItem('contentTheme') || 'dark') : 'dark'))
+const listThemeClass = computed(() => contentTheme.value === 'dark' ? 'bg-[rgba(36,43,50,0.95)] text-white' : 'bg-white text-black')
+const listThemeTextClass = computed(() => contentTheme.value === 'dark' ? 'text-white' : 'text-black')
+const gradientClass = computed(() => contentTheme.value === 'dark' ? 'from-[rgba(36,43,50,1)] via-[rgba(36,43,50,0.8)] to-transparent' : 'from-[rgba(255,255,255,1)] via-[rgba(255,255,255,0.8)] to-transparent')
 
 const targetPage = ref('');
 const totalPages = computed(() => Math.ceil(message.total / 15));
@@ -1234,7 +1238,6 @@ const footerConfig = computed(() => ({
 /* 修改内容卡片样式 */
 .content-container {
   padding: 12px;
-  background: rgba(36, 43, 50, 0.95);
   border-radius: 12px;
   transition: all 0.3s ease;
   margin: 4px 0 0.2rem 0; /* 调整外边距 */
@@ -1298,7 +1301,6 @@ const footerConfig = computed(() => ({
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(36, 43, 50, 0.95);
   z-index: -1;
   border-radius: inherit;
 }
@@ -1562,5 +1564,31 @@ button:hover {
 
 .highlight-message {
   animation: highlight 2s ease-out;
+}
+
+/* 轻模式覆盖 Markdown 颜色 */
+.content-container.text-black :deep(.markdown-preview h1),
+.content-container.text-black :deep(.markdown-preview h2),
+.content-container.text-black :deep(.markdown-preview h3),
+.content-container.text-black :deep(.markdown-preview h4),
+.content-container.text-black :deep(.markdown-preview h5),
+.content-container.text-black :deep(.markdown-preview h6) {
+  color: #111 !important;
+}
+
+.content-container.text-black :deep(.markdown-preview p),
+.content-container.text-black :deep(.markdown-preview li),
+.content-container.text-black :deep(.markdown-preview span:not(.clickable-tag)) {
+  color: #333 !important;
+}
+
+.content-container.text-black :deep(pre) {
+  background-color: #f5f5f5 !important;
+  border: 1px solid #e5e7eb !important;
+  color: #1f2937 !important;
+}
+
+.content-container.text-black :deep(.hljs) {
+  color: #1f2937 !important;
 }
 </style>

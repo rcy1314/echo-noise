@@ -12,10 +12,10 @@
         />
         <div class="flex justify-end gap-2">
           <UButton
-            variant="ghost"
+            variant="solid"
             color="gray"
             @click="closeModal"
-            class="text-white hover:text-white"
+            class="bg-gray-700 hover:bg-gray-700 text-white hover:text-white border border-gray-600"
           >
             取消
           </UButton>

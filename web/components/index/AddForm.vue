@@ -16,6 +16,12 @@
           <button @click="toggleHeatmap">
             <UIcon name="i-mdi-calendar-month" class="w-5 h-5 text-gray-200" />
           </button>
+          <button @click="toggleContentTheme && toggleContentTheme()" title="切换暗黑/白天模式">
+            <UIcon 
+              :name="(contentTheme === 'dark' ? 'i-mdi-weather-night' : 'i-mdi-white-balance-sunny')"
+              class="w-5 h-5 text-gray-200"
+            />
+          </button>
           <a href="/rss" target="_blank">
             <UIcon name="i-mdi-rss" class="w-5 h-5 text-gray-200" />
           </a>
@@ -224,6 +230,8 @@ const Username = ref("");
 const MessageContent = ref("");
 const MessageContentHtml = ref("");
 const Private = ref<boolean>(typeof window !== 'undefined' && localStorage.getItem('postPrivate') === 'true');
+const contentTheme = inject('contentTheme') as Ref<string>
+const toggleContentTheme = inject('toggleContentTheme') as (() => void) | undefined
 const fileInput = ref<HTMLInputElement | null>(null);
 const vditorEditor = ref<any>(null); // 需要支持 insertValue
 
@@ -378,6 +386,7 @@ onMounted(async () => {
     }
   }
   Private.value = localStorage.getItem('postPrivate') === 'true'
+  contentTheme.value = localStorage.getItem('contentTheme') || contentTheme.value
 });
 
 onBeforeUnmount(() => {
@@ -392,6 +401,7 @@ const togglePrivate = () => {
   Private.value = !Private.value
   localStorage.setItem('postPrivate', Private.value ? 'true' : 'false')
 }
+
 
 const checkVideoLogin = (e: Event) => {
   if (!userStore.isLogin) {

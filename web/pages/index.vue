@@ -73,8 +73,14 @@ const handleSearchResult = (result: any) => {
 }
 // 注入从AddForm组件提供的showHeatmap变量
 const showHeatmap = ref(false);
+const contentTheme = ref<string>(typeof window !== 'undefined' ? (localStorage.getItem('contentTheme') || 'dark') : 'dark')
 // 提供给子组件
 provide('showHeatmap', showHeatmap);
+provide('contentTheme', contentTheme)
+provide('toggleContentTheme', () => {
+  contentTheme.value = contentTheme.value === 'dark' ? 'light' : 'dark'
+  if (typeof window !== 'undefined') localStorage.setItem('contentTheme', contentTheme.value)
+})
 
 // 添加监听，查看状态变化
 watch(showHeatmap, (newVal) => {
@@ -304,7 +310,7 @@ const updateTitle = () => {
     ],
     link: [
       { rel: 'icon', href: icon },
-      ...(frontendConfig.value.pwaEnabled ? [{ rel: 'manifest', href: '/manifest.webmanifest' }] : [])
+      ...(frontendConfig.value.pwaEnabled ? [{ rel: 'manifest', href: '/site.webmanifest' }] : [])
     ]
   })
 }
