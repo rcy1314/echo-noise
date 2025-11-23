@@ -56,6 +56,8 @@ Ech0 是一款专为轻量级分享而设计的开源自托管平台，支持快
 
 <details>
 <summary><h2>✅ 更新状况【点击查看】</h2></summary>
+
+
 - 新增公开接口： /api/messages/search 、 /api/messages 、 /api/messages/calendar 、 /api/status 、 /api/version/check
 - 增加内容列表的颜色模式开关，默认暗黑模式
 
@@ -239,6 +241,7 @@ Ech0 是一款专为轻量级分享而设计的开源自托管平台，支持快
 ```
 docker run -d \
   --name Ech0-Noise \
+  --platform linux/amd64 \
   -p 1314:1314 \
   -v /opt/data:/app/data \
   noise233/echo-noise
