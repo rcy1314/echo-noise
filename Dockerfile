@@ -1,4 +1,4 @@
-# 前端构建阶段
+# 构建阶段：前端
 FROM node:22.14.0-alpine AS frontend-build
 
 # 设置工作目录
@@ -13,11 +13,12 @@ COPY ./web/ .
 RUN npm run generate
 
 # 将构建结果复制到公共目录
-RUN cp -r .output/public /app/public/
+RUN mkdir -p /app/public && cp -r .output/public/* /app/public/
 
-# 后端构建阶段
+# 构建阶段：后端
 FROM golang:1.24.1-alpine AS backend-build
 
+# 设置环境变量
 ENV GOPROXY=https://goproxy.cn,direct
 
 # 设置工作目录
@@ -32,8 +33,7 @@ RUN go mod download
 
 # 添加数据库驱动依赖
 RUN go get -u gorm.io/driver/mysql && \
-    go get -u gorm.io/driver/postgres && \
-    go mod download
+    go get -u gorm.io/driver/postgres
 
 # 复制项目文件
 COPY ./cmd ./cmd
@@ -60,8 +60,10 @@ COPY --from=backend-build /app/noise /app/noise
 # 从前端构建阶段复制静态文件
 COPY --from=frontend-build /app/public /app/public
 
-# 复制独立的 htmlwidgets 到公开目录，确保 /htmlwidgets/note.html 可访问
-COPY ./htmlwidgets /app/public/htmlwidgets
+
+# 更换 Alpine 镜像源
+RUN echo "https://mirrors.aliyun.com/alpine/v3.22/main" > /etc/apk/repositories && \
+    echo "https://mirrors.aliyun.com/alpine/v3.22/community" >> /etc/apk/repositories
 
 # 安装运行时所需的工具
 RUN apk update && \
