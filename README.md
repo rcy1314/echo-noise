@@ -184,51 +184,61 @@ Ech0 是一款专为轻量级分享而设计的开源自托管平台，支持快
 
 ## 安装部署
 
-### 前后端分离
+## 前后端分离
 
-- 构建并部署静态资源
-- 在仓库根目录执行： bash scripts/build.sh
-- 构建产物复制到根目录 public ，后端静态服务读取该目录，映射见 internal/routers/routers.go:61
-- 启动后端服务
-- 构建二进制： go build -o server ./cmd/server/main.go
-- 运行： ./server
-- 服务地址由配置决定： config/config.yaml:1-4 （ host 、 port 、 mode ），后端监听设置见 cmd/server/main.go:70-76
-- 验证
-- 页面： curl http://localhost:1314/ | head -n 20 应返回 HTML
-- 接口： curl http://localhost:1314/api/status 、 curl http://localhost:1314/api/messages/page
-- 前端脚本内的 baseApi 为 "/api" ：可在首页 HTML 中看到 window.__NUXT__.config.public.baseApi
+<details>
+<summary>✅ 部署步骤【点击展开】</summary>
+
+- 同域部署（推荐）
+  - 构建前端：在仓库根目录执行 `bash scripts/build.sh`
+  - 构建产物输出到根目录 `./public`，后端静态服务读取该目录，映射见 `internal/routers/routers.go:62`
+  - 构建后端：`go build -o server ./cmd/server/main.go`
+  - 启动后端：`./server`
+  - 服务地址由配置决定：`config/config.yaml:1-4`（`host`、`port`、`mode`），后端监听设置见 `cmd/server/main.go:70-76`
+  - 验证：
+    - 页面：`curl http://localhost:1314/ | head -n 20` 应返回 HTML
+    - 接口：`curl http://localhost:1314/api/status`、`curl http://localhost:1314/api/messages/page`
+    - 前端脚本内的 `baseApi` 为 `"/api"`：可在首页 HTML 中看到 `window.__NUXT__.config.public.baseApi`
+
+- 真正前后端分离（跨域/反向代理）
+  - 前端：按上文生成的 `./public` 部署到前端域（例如 `https://note.example.com`）或由反向代理托管
+  - 后端：在独立主机或容器构建并运行 `./server`，提供接口域（例如 `https://api.example.com`）
+  - 后端跨域：设置环境变量 `CORS_ORIGINS="https://note.example.com"`（支持逗号分隔多个来源），来源解析与应用见 `internal/routers/routers.go:37-55`
+  - 前端与接口对接：保持前端 `baseApi` 为 `"/api"`，通过前端服务器或反向代理将 `"/api"` 路径转发到后端接口域
 
 说明
 
-- 生产静态模式访问地址： http://localhost:1314/
-- 前端静态资源目录： ./public （构建产物）
-- 后端接口：同域下的 /api/* ，例如：
-  - 配置： /api/frontend/config
-  - 列表分页： /api/messages/page
-  - 状态： /api/status
+- 生产静态模式访问地址：`http://localhost:1314/`
+- 前端静态资源目录：`./public`（构建产物）
+- 后端接口：同域下的 `/api/*`，例如：
+  - 配置：`/api/frontend/config`
+  - 列表分页：`/api/messages/page`
+  - 状态：`/api/status`
 
-`.env.prod.example`模版环境变量说明
+`.env.prod.example` 模版环境变量说明
 
-- 当 DB_TYPE=sqlite 时，后端只使用 DB_PATH 指向 noise.db 文件；环境变量中的 DB_USER 、 DB_PASSWORD 、 DB_HOST 等不会用于连接，也不会影响应用用户登录。
-- DB_USER / DB_PASSWORD 等仅在 postgres 或 mysql 作为数据库类型时用于构建连接串。
+- 当 `DB_TYPE=sqlite` 时，后端只使用 `DB_PATH` 指向 `noise.db` 文件；环境变量中的 `DB_USER`、`DB_PASSWORD`、`DB_HOST` 等不会用于连接。
+- `DB_USER` / `DB_PASSWORD` 等仅在 `postgres` 或 `mysql` 作为数据库类型时用于构建连接串。
 
 - 基础
-  - LOG_LEVEL 控制日志级别
-  - TZ 设置时区
+  - `LOG_LEVEL` 控制日志级别
+  - `TZ` 设置时区
 - 数据库
-  - DB_TYPE 支持 sqlite 、 postgres 、 mysql
-  - DB_PATH 仅在 sqlite 时生效，默认 ./data/noise.db
-  - DB_HOST 、 DB_PORT 、 DB_USER 、 DB_PASSWORD 、 DB_NAME 对应远程数据库连接
-  - DB_SSL_MODE （PostgreSQL）：常用 disable 或云服务要求的 require
-  - DB_TIMEZONE （PostgreSQL）：建议 Asia/Shanghai
-  - DB_CHARSET （MySQL）：建议 utf8mb4
+  - `DB_TYPE` 支持 `sqlite`、`postgres`、`mysql`
+  - `DB_PATH` 仅在 `sqlite` 时生效；仓库默认配置文件为 `/app/data/noise.db`（`config/config.yaml:6-9`），本地二进制运行建议设置为 `./data/noise.db`
+  - `DB_HOST`、`DB_PORT`、`DB_USER`、`DB_PASSWORD`、`DB_NAME` 对应远程数据库连接
+  - `DB_SSL_MODE`（PostgreSQL）：常用 `disable` 或云服务要求的 `require`
+  - `DB_TIMEZONE`（PostgreSQL）：建议 `Asia/Shanghai`
+  - `DB_CHARSET`（MySQL）：建议 `utf8mb4`
 - 跨域
-  - CORS_ORIGINS 留空表示使用默认同源；如需分离前后端或反向代理到不同域，设置逗号分隔来源列表，例如 http://note.example.com
-  
-  ### 后端依赖
+  - `CORS_ORIGINS` 留空表示使用默认同源；如需分离前后端或反向代理到不同域，设置逗号分隔来源列表，例如 `http://note.example.com`
 
-- 运行依赖升级： go get -u ./...
-- 整理模块文件： go mod tidy
+### 后端依赖
+
+- 运行依赖升级：`go get -u ./...`
+- 整理模块文件：`go mod tidy`
+
+</details>
 
 
 
