@@ -82,7 +82,7 @@
               <div v-if="msg.image_url && msg.content" class="border-t border-gray-600 my-4"></div>
               <!-- 文本内容区域 -->
               <div class="overflow-y-hidden relative" :class="[{ 'max-h-[700px]': !isExpanded[msg.id] }, listThemeTextClass]">
-                <MarkdownRenderer :content="msg.content" @tagClick="handleTagClick" link-target="_blank"/>
+                <MarkdownRenderer :content="msg.content" :enableGithubCard="siteConfig?.enableGithubCard === true" @tagClick="handleTagClick" link-target="_blank"/>
                 <div v-if="shouldShowExpandButton[msg.id] && !isExpanded[msg.id]"
     :class="['absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t', gradientClass]">
   </div>
@@ -191,7 +191,7 @@
           <!-- 修改预览区域样式 -->
           <div class="p-4 rounded-lg overflow-auto max-h-[300px] bg-[rgba(36,43,50,0.95)]">
             <div class="text-white">
-              <MarkdownRenderer :content="editingContent" />
+              <MarkdownRenderer :content="editingContent" :enableGithubCard="siteConfig?.enableGithubCard === true" />
             </div>
           </div>
         </div>
@@ -1587,6 +1587,16 @@ button:hover {
 .content-container.text-black :deep(.markdown-preview li),
 .content-container.text-black :deep(.markdown-preview span:not(.clickable-tag)) {
   color: #333 !important;
+}
+
+/* 白天模式下链接颜色与悬停颜色 */
+.content-container.text-black :deep(.markdown-preview a) {
+  color: #0366d6 !important;
+  text-decoration: none;
+}
+.content-container.text-black :deep(.markdown-preview a:hover) {
+  color: #1d4ed8 !important;
+  text-decoration: underline;
 }
 
 .content-container.text-black :deep(pre) {

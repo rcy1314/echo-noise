@@ -56,8 +56,9 @@ Ech0 是一款专为轻量级分享而设计的开源自托管平台，支持快
 
 <details>
 <summary><h2>✅ 更新状况【点击查看】</h2></summary>
+### 2025更新状态
 
-
+- 增加github卡片解析后台开关，优化pwa模式页面加载
 - 统一内容卡片颜色模式切换
 - 新增公开接口： /api/messages/search 、 /api/messages 、 /api/messages/calendar 、 /api/status 、 /api/version/check
 - 增加内容列表的颜色模式开关，默认暗黑模式
@@ -252,13 +253,14 @@ Ech0 是一款专为轻量级分享而设计的开源自托管平台，支持快
 ```
 docker run -d \
   --name Ech0-Noise \
-  --platform linux/amd64 \
   -p 1314:1314 \
   -v /opt/data:/app/data \
   noise233/echo-noise
 ```
 
 其中请确保/opt/data文件夹中包含你原有的数据库文件noise.db，如果没有，可以去掉这个挂载命令，它也会自动创建
+
+ --platform linux/amd64 命令可选择不同平台
 
 你也可以使用-v /opt/data/noise.db:/app/data/noise.db 来只挂载原有数据库，
 
@@ -1087,6 +1089,15 @@ curl -X POST http://localhost:8080/api/notify/send \
 实验版：last镜像
 
 如果你需要构建自己的镜像发布-示例：
+
+删除现有的 `mybuilder` 实例，然后重新创建一个新的实例（如没有现有实例可忽略）
+
+```
+docker buildx rm mybuilder
+docker buildx create --use --name mybuilder
+```
+
+然后发布
 
 ```
 docker buildx build --platform linux/amd64,linux/arm64 -t noise233/echo-noise:latest --push --no-cache .

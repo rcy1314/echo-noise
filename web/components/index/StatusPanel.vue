@@ -202,6 +202,22 @@
                         </div>
                     </div>
 
+                    <!-- GitHub 链接卡片解析（独立设置） -->
+                    <div class="flex items-center bg-gray-800 rounded p-3 mb-4 justify-between">
+                        <span class="text-white">GitHub 链接卡片解析</span>
+                        <div class="flex items-center gap-4">
+                            <div class="flex items-center">
+                                <URadio v-model="githubCardEnabled" :value="true" class="mr-2" />
+                                <span :class="githubCardEnabled ? 'text-white' : 'text-gray-400'">开启</span>
+                            </div>
+                            <div class="flex items-center">
+                                <URadio v-model="githubCardEnabled" :value="false" class="mr-2" />
+                                <span :class="!githubCardEnabled ? 'text-white' : 'text-gray-400'">关闭</span>
+                            </div>
+                            <UButton color="green" @click="saveGithubCardConfig">保存</UButton>
+                        </div>
+                    </div>
+
                     <!-- 配置展示/编辑表单 -->
                     <div class="space-y-4">
                         <div v-for="(label, key) in configLabels" :key="key" class="bg-gray-800 rounded p-3">
@@ -323,7 +339,7 @@
             </UButton>
         </div>
         <div class="text-yellow-400 text-sm max-h-16 overflow-y-auto bg-gray-800/50 rounded p-2">
-            🔔：SQLite一键备份恢复，因兼容问题，如果你在使用云端的PostgreSQL/MySQL数据库，可以尝试，但最好前往云服务端来备份和恢复
+            🔔：SQLite一键备份恢复，因兼容问题，不支持云端的PostgreSQL/MySQL数据库，如有使用云端数据库，请前往云服务端来备份和恢复
         </div>
         <input
             type="file"
@@ -802,11 +818,21 @@ const frontendConfig = reactive({
     rssAuthorName: '',
     rssFaviconURL: '',
     walineServerURL: '',
+    enableGithubCard: false,
     // PWA 设置
     pwaEnabled: true,
     pwaTitle: '',
     pwaDescription: '',
     pwaIconURL: '',
+})
+
+// GitHub 链接卡片解析开关的双向绑定（与 frontendConfig.enableGithubCard 同步）
+const githubCardEnabled = computed({
+    get: () => frontendConfig.enableGithubCard === true,
+    set: (val: any) => {
+        const b = (val === true || val === 'true' || val === 1 || val === '1')
+        ;(frontendConfig as any).enableGithubCard = b
+    }
 })
 
 const authForm = reactive<UserToLogin | UserToRegister>({
@@ -891,19 +917,29 @@ const fetchConfig = async () => {
         if (data?.data?.frontendSettings) {
             const settings = data.data.frontendSettings;
             
-            // 遍历配置项进行更新
+            // 遍历配置项进行更新（布尔型键需强制转换）
+            const booleanKeys = ['enableGithubCard', 'pwaEnabled']
             Object.keys(frontendConfig).forEach(key => {
                 if (key === 'backgrounds') {
-                    // 确保背景图片数组正确更新
                     const serverBackgrounds = settings[key];
                     if (Array.isArray(serverBackgrounds)) {
                         frontendConfig[key] = [...serverBackgrounds];
                     }
+                } else if (booleanKeys.includes(key)) {
+                    const v = settings[key] ?? defaultConfig[key]
+                    ;(frontendConfig as any)[key] = (v === true || v === 'true')
                 } else {
                     const v = settings[key] ?? defaultConfig[key]
-                    frontendConfig[key] = typeof v === 'string' ? v.trim() : v
+                    ;(frontendConfig as any)[key] = typeof v === 'string' ? v.trim() : v
                 }
             });
+
+            // 独立处理布尔型未包含在 frontendConfig 键中的字段
+            if (settings.enableGithubCard !== undefined) {
+                const v = settings.enableGithubCard
+                // @ts-ignore 动态添加字段
+                frontendConfig.enableGithubCard = (v === true || v === 'true')
+            }
 
             // 自动应用到页面 Head（标题、描述、图标）
             const title = (frontendConfig.pwaTitle || frontendConfig.siteTitle || '说说笔记').trim()
@@ -1005,6 +1041,37 @@ const savePWAConfig = async () => {
 
             // 通知全局插件重新应用 Head 与 SW 状态
             window.dispatchEvent(new Event('frontend-config-updated'))
+        } else {
+            throw new Error(data.msg || '保存失败')
+        }
+    } catch (error: any) {
+        useToast().add({ title: '错误', description: error.message || '保存失败', color: 'red' })
+    }
+}
+
+// 保存 GitHub 卡片解析配置（独立项）
+const saveGithubCardConfig = async () => {
+    try {
+        const payload = {
+            frontendSettings: {
+                enableGithubCard: !!githubCardEnabled.value
+            }
+        }
+        const response = await fetch('/api/settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload)
+        })
+        const data = await response.json()
+        if (response.ok && data.code === 1) {
+            // 同步本地状态
+            // @ts-ignore
+            frontendConfig.enableGithubCard = !!githubCardEnabled.value
+            await fetchConfig()
+            window.dispatchEvent(new Event('frontend-config-updated'))
+            
+            useToast().add({ title: '成功', description: 'GitHub 解析设置已保存', color: 'green' })
         } else {
             throw new Error(data.msg || '保存失败')
         }

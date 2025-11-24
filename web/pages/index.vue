@@ -111,6 +111,7 @@ const frontendConfig = ref({
     rssDescription: '',
     rssAuthorName: '',
     rssFaviconURL: '',
+    enableGithubCard: false,
     // PWA
     pwaEnabled: true,
     pwaTitle: '',
@@ -158,6 +159,7 @@ const defaultConfig = {
     rssDescription: '一个说说笔记~',
     rssAuthorName: 'Noise',
     rssFaviconURL: '/favicon.ico',
+    enableGithubCard: false,
     // PWA 默认（为空时回退到站点设置）
     pwaEnabled: true,
     pwaTitle: '',
@@ -190,11 +192,14 @@ const fetchConfig = async () => {
         if (data?.data?.frontendSettings) {
             const settings = data.data.frontendSettings;
             // 更新配置
+            const booleanKeys = ['enableGithubCard', 'pwaEnabled']
             Object.keys(frontendConfig.value).forEach(key => {
                 if (settings[key] !== null && settings[key] !== undefined) {
                     if (key === 'backgrounds' && Array.isArray(settings[key])) {
-                        // 特殊处理背景图片数组
                         frontendConfig.value.backgrounds = [...settings[key]];
+                    } else if (booleanKeys.includes(key)) {
+                        const v = settings[key]
+                        frontendConfig.value[key] = (v === true || v === 'true')
                     } else {
                         const v = settings[key]
                         frontendConfig.value[key] = typeof v === 'string' ? v.trim() : v
@@ -341,8 +346,17 @@ const fetchTags = async () => {
   } catch (error) {
     console.error('获取标签失败:', error)
     tags.value = []
-  }
+    }
 }
+
+// 监听前端配置更新事件，保存后主动刷新配置
+onMounted(() => {
+  const handler = () => fetchConfig()
+  window.addEventListener('frontend-config-updated', handler)
+  // 初始拉取
+  fetchConfig()
+  onUnmounted(() => window.removeEventListener('frontend-config-updated', handler))
+})
 // 标签点击处理
 const handleTagClick = async (tag: string) => {
   try {

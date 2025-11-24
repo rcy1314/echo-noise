@@ -435,25 +435,27 @@ func UpdateSetting(c *gin.Context) {
 		setting.FrontendSettings.RSSDescription == "" &&
 		setting.FrontendSettings.RSSAuthorName == "" &&
 		setting.FrontendSettings.RSSFaviconURL == "" &&
-		setting.FrontendSettings.WalineServerURL == "" {
+		setting.FrontendSettings.WalineServerURL == "" &&
+		setting.FrontendSettings.EnableGithubCard == nil {
 		// 前端未传递 frontendSettings，自动从数据库读取
 		var config models.SiteConfig
 		if err := db.Table("site_configs").First(&config).Error; err == nil {
 			frontendSettings = map[string]interface{}{
-				"siteTitle":       config.SiteTitle,
-				"subtitleText":    config.SubtitleText,
-				"avatarURL":       config.AvatarURL,
-				"username":        config.Username,
-				"description":     config.Description,
-				"backgrounds":     config.GetBackgroundsList(),
-				"cardFooterTitle": config.CardFooterTitle,
-				"cardFooterLink":  config.CardFooterLink,
-				"pageFooterHTML":  config.PageFooterHTML,
-				"rssTitle":        config.RSSTitle,
-				"rssDescription":  config.RSSDescription,
-				"rssAuthorName":   config.RSSAuthorName,
-				"rssFaviconURL":   config.RSSFaviconURL,
-				"walineServerURL": config.WalineServerURL,
+				"siteTitle":        config.SiteTitle,
+				"subtitleText":     config.SubtitleText,
+				"avatarURL":        config.AvatarURL,
+				"username":         config.Username,
+				"description":      config.Description,
+				"backgrounds":      config.GetBackgroundsList(),
+				"cardFooterTitle":  config.CardFooterTitle,
+				"cardFooterLink":   config.CardFooterLink,
+				"pageFooterHTML":   config.PageFooterHTML,
+				"rssTitle":         config.RSSTitle,
+				"rssDescription":   config.RSSDescription,
+				"rssAuthorName":    config.RSSAuthorName,
+				"rssFaviconURL":    config.RSSFaviconURL,
+				"walineServerURL":  config.WalineServerURL,
+				"enableGithubCard": config.EnableGithubCard,
 				// PWA 设置（直接从数据库配置）
 				"pwaEnabled":     config.PwaEnabled,
 				"pwaTitle":       config.PwaTitle,
@@ -462,27 +464,63 @@ func UpdateSetting(c *gin.Context) {
 			}
 		}
 	} else {
-		// 正常使用前端传递的配置
-		frontendSettings = map[string]interface{}{
-			"siteTitle":       setting.FrontendSettings.SiteTitle,
-			"subtitleText":    setting.FrontendSettings.SubtitleText,
-			"avatarURL":       setting.FrontendSettings.AvatarURL,
-			"username":        setting.FrontendSettings.Username,
-			"description":     setting.FrontendSettings.Description,
-			"backgrounds":     setting.FrontendSettings.Backgrounds,
-			"cardFooterTitle": setting.FrontendSettings.CardFooterTitle,
-			"cardFooterLink":  setting.FrontendSettings.CardFooterLink,
-			"pageFooterHTML":  setting.FrontendSettings.PageFooterHTML,
-			"rssTitle":        setting.FrontendSettings.RSSTitle,
-			"rssDescription":  setting.FrontendSettings.RSSDescription,
-			"rssAuthorName":   setting.FrontendSettings.RSSAuthorName,
-			"rssFaviconURL":   setting.FrontendSettings.RSSFaviconURL,
-			"walineServerURL": setting.FrontendSettings.WalineServerURL,
-			// PWA 设置（来自请求体）
-			"pwaEnabled":     setting.FrontendSettings.PwaEnabled,
-			"pwaTitle":       setting.FrontendSettings.PwaTitle,
-			"pwaDescription": setting.FrontendSettings.PwaDescription,
-			"pwaIconURL":     setting.FrontendSettings.PwaIconURL,
+		frontendSettings = map[string]interface{}{}
+		if setting.FrontendSettings.SiteTitle != "" {
+			frontendSettings["siteTitle"] = setting.FrontendSettings.SiteTitle
+		}
+		if setting.FrontendSettings.SubtitleText != "" {
+			frontendSettings["subtitleText"] = setting.FrontendSettings.SubtitleText
+		}
+		if setting.FrontendSettings.AvatarURL != "" {
+			frontendSettings["avatarURL"] = setting.FrontendSettings.AvatarURL
+		}
+		if setting.FrontendSettings.Username != "" {
+			frontendSettings["username"] = setting.FrontendSettings.Username
+		}
+		if setting.FrontendSettings.Description != "" {
+			frontendSettings["description"] = setting.FrontendSettings.Description
+		}
+		if len(setting.FrontendSettings.Backgrounds) > 0 {
+			frontendSettings["backgrounds"] = setting.FrontendSettings.Backgrounds
+		}
+		if setting.FrontendSettings.CardFooterTitle != "" {
+			frontendSettings["cardFooterTitle"] = setting.FrontendSettings.CardFooterTitle
+		}
+		if setting.FrontendSettings.CardFooterLink != "" {
+			frontendSettings["cardFooterLink"] = setting.FrontendSettings.CardFooterLink
+		}
+		if setting.FrontendSettings.PageFooterHTML != "" {
+			frontendSettings["pageFooterHTML"] = setting.FrontendSettings.PageFooterHTML
+		}
+		if setting.FrontendSettings.RSSTitle != "" {
+			frontendSettings["rssTitle"] = setting.FrontendSettings.RSSTitle
+		}
+		if setting.FrontendSettings.RSSDescription != "" {
+			frontendSettings["rssDescription"] = setting.FrontendSettings.RSSDescription
+		}
+		if setting.FrontendSettings.RSSAuthorName != "" {
+			frontendSettings["rssAuthorName"] = setting.FrontendSettings.RSSAuthorName
+		}
+		if setting.FrontendSettings.RSSFaviconURL != "" {
+			frontendSettings["rssFaviconURL"] = setting.FrontendSettings.RSSFaviconURL
+		}
+		if setting.FrontendSettings.WalineServerURL != "" {
+			frontendSettings["walineServerURL"] = setting.FrontendSettings.WalineServerURL
+		}
+		if setting.FrontendSettings.EnableGithubCard != nil {
+			frontendSettings["enableGithubCard"] = *setting.FrontendSettings.EnableGithubCard
+		}
+		if setting.FrontendSettings.PwaEnabled != nil {
+			frontendSettings["pwaEnabled"] = *setting.FrontendSettings.PwaEnabled
+		}
+		if setting.FrontendSettings.PwaTitle != nil {
+			frontendSettings["pwaTitle"] = *setting.FrontendSettings.PwaTitle
+		}
+		if setting.FrontendSettings.PwaDescription != nil {
+			frontendSettings["pwaDescription"] = *setting.FrontendSettings.PwaDescription
+		}
+		if setting.FrontendSettings.PwaIconURL != nil {
+			frontendSettings["pwaIconURL"] = *setting.FrontendSettings.PwaIconURL
 		}
 	}
 
@@ -527,7 +565,6 @@ func GetWebManifest(c *gin.Context) {
 	}
 	title := "说说笔记"
 	description := ""
-	// 站点与 PWA 图标统一为 /favicon.ico
 	icon := "/favicon.ico"
 
 	if pwaEnabled {
@@ -537,7 +574,9 @@ func GetWebManifest(c *gin.Context) {
 		if v, ok := fs["pwaDescription"].(string); ok {
 			description = v
 		}
-		// 图标统一，不读取 pwaIconURL
+		if v, ok := fs["pwaIconURL"].(string); ok && v != "" {
+			icon = v
+		}
 	}
 	if title == "说说笔记" {
 		if v, ok := fs["siteTitle"].(string); ok && v != "" {
@@ -549,7 +588,11 @@ func GetWebManifest(c *gin.Context) {
 			description = v
 		}
 	}
-	// 图标固定使用 /favicon.ico；RSS 图标可独立配置
+	if icon == "/favicon.ico" {
+		if v, ok := fs["rssFaviconURL"].(string); ok && v != "" {
+			icon = v
+		}
+	}
 
 	manifest := map[string]interface{}{
 		"name":             title,

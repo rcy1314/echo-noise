@@ -31,6 +31,10 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  enableGithubCard: {
+    type: Boolean,
+    default: true,
+  },
 });
 
 const contentTheme = inject('contentTheme') as any
@@ -67,20 +71,21 @@ const GITHUB_MD_LINK_REG = /(?<!!)\[([^\]]+)\]\((https:\/\/github\.com\/([\w-]+)
 const GITHUB_BARE_LINK_REG = /(?<!["'\(])\bhttps:\/\/github\.com\/([\w-]+)\/([\w.-]+)(?:\/[^\s<\)]*)?\b/g;
 
 const processMediaLinks = (content: string): string => {
-  // 先处理 markdown 普通链接为卡片
-  content = content.replace(GITHUB_MD_LINK_REG, (match, text, url, owner, repo) => {
-    const cardId = `github-card-${owner}-${repo}`;
-    return `<div class="github-card" id="${cardId}" data-owner="${owner}" data-repo="${repo}">
-      <div class="github-card-loading">Loading GitHub Repo...</div>
-    </div>`;
-  });
-  // 再处理裸链接为卡片（避免图片src等）
-  content = content.replace(GITHUB_BARE_LINK_REG, (match, owner, repo) => {
-    const cardId = `github-card-${owner}-${repo}`;
-    return `<div class="github-card" id="${cardId}" data-owner="${owner}" data-repo="${repo}">
-      <div class="github-card-loading">Loading GitHub Repo...</div>
-    </div>`;
-  });
+  // GitHub 卡片解析（可开关）
+  if (props.enableGithubCard) {
+    content = content.replace(GITHUB_MD_LINK_REG, (match, text, url, owner, repo) => {
+      const cardId = `github-card-${owner}-${repo}`;
+      return `<div class="github-card" id="${cardId}" data-owner="${owner}" data-repo="${repo}">
+        <div class="github-card-loading">Loading GitHub Repo...</div>
+      </div>`;
+    });
+    content = content.replace(GITHUB_BARE_LINK_REG, (match, owner, repo) => {
+      const cardId = `github-card-${owner}-${repo}`;
+      return `<div class="github-card" id="${cardId}" data-owner="${owner}" data-repo="${repo}">
+        <div class="github-card-loading">Loading GitHub Repo...</div>
+      </div>`;
+    });
+  }
   return content
     .replace(BILIBILI_REG, "<div class='video-wrapper'><iframe src='https://www.bilibili.com/blackboard/html5mobileplayer.html?bvid=$1&as_wide=1&high_quality=1&danmaku=0' scrolling='no' border='0' frameborder='no' framespacing='0' allowfullscreen='true' style='position:absolute;height:100%;width:100%'></iframe></div>")
     .replace(YOUTUBE_REG, "<div class='video-wrapper'><iframe src='https://www.youtube.com/embed/$1$2' title='YouTube video player' frameborder='0' allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture' allowfullscreen></iframe></div>")
@@ -177,16 +182,18 @@ const renderMarkdown = async (markdown: string) => {
             }
           });
         });
-        // 渲染 GitHub 卡片
-        const githubCards = previewElement.value?.querySelectorAll('.github-card');
-        githubCards?.forEach(card => {
-          const owner = card.getAttribute('data-owner');
-          const repo = card.getAttribute('data-repo');
-          const cardId = card.id;
-          if (owner && repo && cardId) {
-            fetchGitHubRepoInfo(owner, repo, cardId);
-          }
-        });
+        // 渲染 GitHub 卡片（仅当开关开启）
+        if (props.enableGithubCard) {
+          const githubCards = previewElement.value?.querySelectorAll('.github-card');
+          githubCards?.forEach(card => {
+            const owner = card.getAttribute('data-owner');
+            const repo = card.getAttribute('data-repo');
+            const cardId = card.id;
+            if (owner && repo && cardId) {
+              fetchGitHubRepoInfo(owner, repo, cardId);
+            }
+          });
+        }
       }
     });
   } catch (error) {
@@ -312,11 +319,11 @@ watch(() => contentTheme && contentTheme.value, () => {
   word-wrap: break-word;
   box-sizing: border-box;
 }
-.theme-dark .markdown-preview :deep(pre) {
+.theme-dark.markdown-preview :deep(pre) {
   background-color: #0d1117;
   border: 1px solid #30363d;
 }
-.theme-light .markdown-preview :deep(pre) {
+.theme-light.markdown-preview :deep(pre) {
   background-color: #f5f5f5;
   border: 1px solid #e5e7eb;
 }
@@ -326,8 +333,8 @@ watch(() => contentTheme && contentTheme.value, () => {
   background-color: transparent;
   padding: 0;
 }
-.theme-dark .markdown-preview :deep(.hljs) { color: #c9d1d9; }
-.theme-light .markdown-preview :deep(.hljs) { color: #1f2937; }
+.theme-dark.markdown-preview :deep(.hljs) { color: #c9d1d9; }
+.theme-light.markdown-preview :deep(.hljs) { color: #1f2937; }
 
 .markdown-preview :deep(.hljs-keyword) {
   color: #ff7b72;
@@ -385,6 +392,9 @@ watch(() => contentTheme && contentTheme.value, () => {
 
 .markdown-preview :deep(a:hover) {
   text-decoration: underline;
+}
+.theme-light.markdown-preview :deep(a:hover) {
+  color: #0366d6;
 }
 
 .markdown-preview :deep(table) {
@@ -516,6 +526,10 @@ watch(() => contentTheme && contentTheme.value, () => {
 }
 .theme-dark .github-card-footer { color: #8b949e; }
 .theme-light .github-card-footer { color: #6b7280; }
+/* 白天模式下内容区链接颜色加深为深橙色 */
+.theme-light.markdown-preview :deep(a) {
+  color: #0366d6;
+}
 .github-card-loading {
   font-style: italic;
 }
