@@ -6,7 +6,9 @@ WORKDIR /app/web
 
 # 复制前端依赖文件并安装依赖
 COPY ./web/package.json ./web/package-lock.json* ./
-RUN npm ci --omit=dev
+# 使用稳定镜像源以避免 EAI_AGAIN
+RUN npm config set registry https://registry.npmmirror.com && \
+    npm ci --omit=dev --registry=https://registry.npmmirror.com
 
 # 复制前端源代码并构建
 COPY ./web/ .
@@ -20,12 +22,15 @@ FROM golang:1.24.1-alpine AS backend-build
 
 # 设置环境变量
 ENV GOPROXY=https://goproxy.cn,direct
+ENV CGO_ENABLED=1
 
 # 设置工作目录
 WORKDIR /app
 
-# 安装构建时所需的工具
-RUN apk add --no-cache gcc musl-dev
+# 配置 APK 镜像源并安装构建依赖
+RUN echo "https://mirrors.aliyun.com/alpine/v3.21/main" > /etc/apk/repositories && \
+    echo "https://mirrors.aliyun.com/alpine/v3.21/community" >> /etc/apk/repositories && \
+    apk update && apk add --no-cache build-base
 
 # 复制 Go 模块文件并下载依赖
 COPY ./go.mod ./go.sum ./
@@ -73,8 +78,8 @@ RUN set -eux; \
 
 
 # 更换 Alpine 镜像源
-RUN echo "https://mirrors.aliyun.com/alpine/v3.22/main" > /etc/apk/repositories && \
-    echo "https://mirrors.aliyun.com/alpine/v3.22/community" >> /etc/apk/repositories
+RUN echo "https://mirrors.aliyun.com/alpine/v3.21/main" > /etc/apk/repositories && \
+    echo "https://mirrors.aliyun.com/alpine/v3.21/community" >> /etc/apk/repositories
 
 # 安装运行时所需的工具
 RUN apk update && \
