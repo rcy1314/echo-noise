@@ -1329,7 +1329,7 @@ const footerConfig = computed(() => ({
 <style scoped>
 /* 修改内容卡片样式 */
 .content-container {
-  padding: 12px;
+  padding: 8px 12px 12px 12px;
   border-radius: 12px;
   transition: all 0.3s ease;
   margin: 4px 0 0.2rem 0; /* 调整外边距 */
@@ -1363,7 +1363,7 @@ const footerConfig = computed(() => ({
 @media screen and (max-width: 768px) {
   .content-container {
     margin: 2px 0;
-    padding: 8px;
+    padding: 6px 8px 10px 8px;
     box-shadow: none;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
