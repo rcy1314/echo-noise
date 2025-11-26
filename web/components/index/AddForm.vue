@@ -118,13 +118,13 @@
   <!-- 内容预览区域 - 仅在有内容时显示 -->
   <div
     v-if="MessageContentHtml"
-    class="mx-auto sm:max-w-2xl mt-5 backdrop-blur-sm bg-black/40 p-4 rounded-md"
+    class="mx-auto sm:max-w-2xl mt-5 backdrop-blur-sm bg-black/40 p-4 rounded-md editor-preview"
   >
     <div class="prose prose-invert max-w-none">
       <div v-html="MessageContentHtml"></div>
     </div>
     <hr class="border-gray-600 my-4">
-    <div v-if="MessageContentHtml" class="prose prose-invert max-w-none">
+    <div v-if="MessageContentHtml" class="prose prose-invert max-w-none editor-preview">
       <div v-html="MessageContentHtml"></div>
     </div>
   </div>
@@ -373,8 +373,110 @@ const handleVideoUploaded = (videoUrl: string) => {
   }
 };
 
+const INLINE_IMAGE_REG = /!\s*(https?:\/\/[^\s!]+\.(?:png|jpe?g|gif|webp))(?:\?[^\s!]*)?/gi;
+const normalizeInlineImageLinks = (md: string): string => md.replace(INLINE_IMAGE_REG, (m, url) => `![](${url})`);
+
+const applyImageGridHTML = (html: string) => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const isPureImageParagraph = (p: Element) => {
+    let ok = true;
+    const children = Array.from(p.childNodes);
+    if (children.length === 0) return false;
+    for (const node of children) {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node as Element;
+        const tag = el.tagName.toLowerCase();
+        if (tag === 'img') continue;
+        if (tag === 'a' && el.childElementCount === 1 && el.querySelector('img')) continue;
+        if (tag === 'br') { ok = false; break; }
+        ok = false; break;
+      } else if (node.nodeType === Node.TEXT_NODE) {
+        if ((node.textContent || '').trim() !== '') { ok = false; break; }
+      }
+    }
+    return ok;
+  };
+
+  const paras = Array.from(doc.body.querySelectorAll('p'));
+  const runs: Element[][] = [];
+  let current: Element[] = [];
+  for (const p of paras) {
+    if (isPureImageParagraph(p)) {
+      const last = current[current.length - 1];
+      if (!last || last.nextElementSibling === p) {
+        current.push(p);
+      } else {
+        if (current.length >= 2) runs.push(current);
+        current = [p];
+      }
+    } else {
+      if (current.length >= 2) runs.push(current);
+      current = [];
+    }
+  }
+  if (current.length >= 2) runs.push(current);
+
+  for (const run of runs) {
+    const grid = doc.createElement('div');
+    const count = run.length;
+    const cols = count === 2 || count === 4 ? 2 : Math.min(3, count);
+    grid.className = `image-grid cols-${cols}`;
+    const group = `grid-${Math.random().toString(36).slice(2)}`;
+    for (const p of run) {
+      const img = p.querySelector('img') as HTMLImageElement | null;
+      const a = p.querySelector('a') as HTMLAnchorElement | null;
+      if (!img && !a) continue;
+      const item = doc.createElement('div');
+      item.className = 'image-grid-item';
+      let anchor: HTMLAnchorElement;
+      if (a && a.querySelector('img')) {
+        anchor = a;
+        anchor.setAttribute('data-fancybox', group);
+        if (!anchor.getAttribute('href')) {
+          const innerImg = a.querySelector('img') as HTMLImageElement;
+          anchor.setAttribute('href', innerImg.src);
+        }
+      } else if (img) {
+        anchor = doc.createElement('a');
+        anchor.setAttribute('href', img.src);
+        anchor.setAttribute('data-fancybox', group);
+        anchor.appendChild(img);
+      } else {
+        continue;
+      }
+      item.appendChild(anchor);
+      grid.appendChild(item);
+    }
+    const first = run[0];
+    first.replaceWith(grid);
+    for (let i = 1; i < run.length; i++) run[i].remove();
+  }
+  return doc.body.innerHTML;
+};
+
 watch(MessageContent, (val) => {
-  MessageContentHtml.value = Vditor.md2html(val || "");
+  const raw = Vditor.md2html(normalizeInlineImageLinks(val || ""));
+  MessageContentHtml.value = applyImageGridHTML(raw);
+  nextTick(() => {
+    const roots = document.querySelectorAll('.editor-preview');
+    roots.forEach((root) => {
+      root.querySelectorAll('.image-grid-item img').forEach((imgEl) => {
+        const img = imgEl as HTMLImageElement;
+        const parent = img.parentElement as HTMLElement;
+        const setAR = () => {
+          const w = img.naturalWidth;
+          const h = img.naturalHeight;
+          parent.classList.remove('ar-169','ar-34','ar-11');
+          if (w > h) parent.classList.add('ar-169');
+          else if (h > w) parent.classList.add('ar-34');
+          else parent.classList.add('ar-11');
+        };
+        if (img.complete && img.naturalWidth && img.naturalHeight) setAR();
+        else img.addEventListener('load', setAR, { once: true });
+      });
+    });
+  });
 });
 
 watch(() => userStore.isLogin, (newLoginState) => {
@@ -459,3 +561,37 @@ const addMessage = async () => {
   }
 };
 </script>
+
+<style scoped>
+.editor-preview p { margin: 0.5rem 0; }
+.editor-preview img { margin: 0.4rem 0; }
+.image-grid {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  width: 100%;
+  grid-auto-flow: dense;
+  align-items: stretch;
+  justify-items: stretch;
+}
+.image-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+.image-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.image-grid-item {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 10px;
+}
+.image-grid-item > a { display: block; width: 100%; height: 100%; }
+.image-grid-item > a > img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
+.image-grid-item.ar-169 { aspect-ratio: 16 / 9; }
+.image-grid-item.ar-34 { aspect-ratio: 3 / 4; }
+.image-grid-item.ar-11 { aspect-ratio: 1 / 1; }
+.image-grid-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  margin: 0;
+}
+</style>

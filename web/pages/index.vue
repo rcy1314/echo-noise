@@ -4,7 +4,7 @@
       <div class="rainbow-spinner"></div>
       <div class="loading-text">加载中...</div>
     </div>
-    <div class="content-wrapper" :class="{ 'gpu-accelerated': true }">
+    <div ref="contentWrapper" class="content-wrapper" :class="{ 'gpu-accelerated': true }">
       <UContainer class="container-fixed py-2 pb-4 my-4">
         <div class="moments-header">
           <div class="header-image" :style="headerImageStyle">
@@ -46,11 +46,19 @@
       :target-message-id="targetMessageId" 
       />
       </UContainer>
-      <Notification />
-      <!-- 添加搜索模态框组件 -->
-      <SearchMode v-model="showSearchModal" @search-result="handleSearchResult" />
-    </div>
+  <Notification />
+  <!-- 添加搜索模态框组件 -->
+  <SearchMode v-model="showSearchModal" @search-result="handleSearchResult" />
+  <div class="scroll-buttons" @mouseenter="hoverScroll = true" @mouseleave="hoverScroll = false">
+    <UButton v-show="showUp" :class="scrollButtonClass" variant="ghost" size="sm" @click="scrollToTop">
+      <UIcon :class="iconClass" name="i-heroicons-arrow-up" />
+    </UButton>
+    <UButton v-show="showDown" :class="scrollButtonClass" variant="ghost" size="sm" @click="scrollToBottom">
+      <UIcon :class="iconClass" name="i-heroicons-arrow-down" />
+    </UButton>
   </div>
+  </div>
+</div>
 </template>
 
 <script setup lang="ts">
@@ -89,6 +97,57 @@ provide('toggleContentTheme', () => {
     document.documentElement.className = contentTheme.value === 'dark' ? 'dark' : ''
   }
 })
+
+const contentWrapper = ref<HTMLElement | null>(null)
+const scrollToTop = () => {
+  const el = contentWrapper.value
+  if (el) el.scrollTo({ top: 0, behavior: 'smooth' })
+  else window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+const scrollToBottom = () => {
+  const el = contentWrapper.value
+  if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+  else {
+    const h = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)
+    window.scrollTo({ top: h, behavior: 'smooth' })
+  }
+}
+
+// 滚动状态与按钮展示逻辑
+const hoverScroll = ref(false)
+const isAtTop = ref(true)
+const isAtBottom = ref(false)
+const updateScrollState = () => {
+  const el = contentWrapper.value
+  if (!el) {
+    const y = window.scrollY || document.documentElement.scrollTop || 0
+    const max = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)
+    isAtTop.value = y <= 2
+    isAtBottom.value = window.innerHeight + y >= max - 2
+    return
+  }
+  const y = el.scrollTop
+  const max = el.scrollHeight
+  isAtTop.value = y <= 2
+  isAtBottom.value = el.clientHeight + y >= max - 2
+}
+onMounted(() => {
+  updateScrollState()
+  contentWrapper.value?.addEventListener('scroll', updateScrollState, { passive: true })
+})
+onUnmounted(() => {
+  contentWrapper.value?.removeEventListener('scroll', updateScrollState)
+})
+
+const showUp = computed(() => hoverScroll.value || isAtBottom.value)
+const showDown = computed(() => hoverScroll.value || isAtTop.value)
+const isDark = computed(() => contentTheme.value === 'dark')
+const scrollButtonClass = computed(() => (
+  isDark.value
+    ? 'scroll-button bg-[rgba(36,43,50,0.85)] hover:bg-[rgba(36,43,50,0.95)] text-white shadow-[0_6px_16px_rgba(0,0,0,0.35)]'
+    : 'scroll-button bg-white/95 hover:bg-white text-gray-700 ring-1 ring-gray-200 shadow-[0_4px_12px_rgba(0,0,0,0.12)]'
+))
+const iconClass = computed(() => (isDark.value ? 'text-white w-6 h-6' : 'text-gray-600 w-6 h-6'))
 
 // 添加监听，查看状态变化
 watch(showHeatmap, (newVal) => {
@@ -827,5 +886,28 @@ white-space: nowrap;  /* 防止换行 */
   border-radius: 8px;
   padding: 1rem;
   margin-bottom: 1rem;
+}
+.scroll-buttons {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 1000;
+}
+.scroll-button {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+  backdrop-filter: blur(6px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.95;
+}
+.scroll-button:hover {
+  transform: scale(1.06);
 }
 </style>

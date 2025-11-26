@@ -14,7 +14,7 @@ const QQMUSIC_REG = /https:\/\/y\.qq\.com\/n\/yqq\/song(\w+)\.html/;
 const QQVIDEO_REG = /https:\/\/v\.qq\.com\/x\/cover\/\w+\/(\w+)\.html/;
 const SPOTIFY_REG = /https:\/\/open\.spotify\.com\/(track|album|playlist)\/([a-zA-Z0-9]+)/;
 const YOUKU_REG = /https:\/\/v\.youku\.com\/v_show\/id_([a-zA-Z0-9]+)\.html/;
-const emit = defineEmits(['tagClick'])
+const emit = defineEmits(['tagClick', 'rendered'])
 const previewElement = ref<HTMLDivElement | null>(null);
 let zoom: any = null;
 // 添加 window 类型声明
@@ -63,6 +63,99 @@ const initializeZoom = () => {
     }
   }
 };
+
+const applyImageGrid = () => {
+  if (!previewElement.value) return;
+  const isPureImageParagraph = (p: Element) => {
+    let ok = true;
+    const children = Array.from(p.childNodes);
+    if (children.length === 0) return false;
+    for (const node of children) {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node as Element;
+        const tag = el.tagName.toLowerCase();
+        if (tag === 'img') continue;
+        if (tag === 'a' && el.childElementCount === 1 && el.querySelector('img')) continue;
+        if (tag === 'br') { ok = false; break; }
+        ok = false; break;
+      } else if (node.nodeType === Node.TEXT_NODE) {
+        if ((node.textContent || '').trim() !== '') { ok = false; break; }
+      }
+    }
+    return ok;
+  };
+
+  const paras = Array.from(previewElement.value.querySelectorAll('p'));
+  const runs: Element[][] = [];
+  let current: Element[] = [];
+  for (const p of paras) {
+    if (isPureImageParagraph(p)) {
+      const last = current[current.length - 1];
+      if (!last || last.nextElementSibling === p) {
+        current.push(p);
+      } else {
+        if (current.length >= 2) runs.push(current);
+        current = [p];
+      }
+    } else {
+      if (current.length >= 2) runs.push(current);
+      current = [];
+    }
+  }
+  if (current.length >= 2) runs.push(current);
+
+  for (const run of runs) {
+    const grid = document.createElement('div');
+    const count = run.length;
+    const cols = count === 2 || count === 4 ? 2 : Math.min(3, count);
+    grid.className = `image-grid cols-${cols}`;
+    const group = `grid-${Math.random().toString(36).slice(2)}`;
+    for (const p of run) {
+      const img = p.querySelector('img') as HTMLImageElement | null;
+      const a = p.querySelector('a') as HTMLAnchorElement | null;
+      if (!img && !a) continue;
+      const item = document.createElement('div');
+      item.className = 'image-grid-item';
+      let anchor: HTMLAnchorElement;
+      if (a && a.querySelector('img')) {
+        anchor = a;
+        anchor.setAttribute('data-fancybox', group);
+        if (!anchor.getAttribute('href') && a.querySelector('img')) {
+          const innerImg = a.querySelector('img') as HTMLImageElement;
+          anchor.setAttribute('href', innerImg.src);
+        }
+      } else if (img) {
+        anchor = document.createElement('a');
+        anchor.setAttribute('href', img.src);
+        anchor.setAttribute('data-fancybox', group);
+        anchor.appendChild(img);
+      } else {
+        continue;
+      }
+      item.appendChild(anchor);
+      grid.appendChild(item);
+    }
+    grid.querySelectorAll('img').forEach((imgEl) => {
+      const img = imgEl as HTMLImageElement;
+      const item = img.closest('.image-grid-item') as HTMLElement;
+      const setAR = () => {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        if (!item) return;
+        item.classList.remove('ar-169','ar-34','ar-11');
+        if (w > h) item.classList.add('ar-169');
+        else if (h > w) item.classList.add('ar-34');
+        else item.classList.add('ar-11');
+      };
+      if (img.complete && img.naturalWidth && img.naturalHeight) setAR();
+      else img.addEventListener('load', setAR, { once: true });
+    });
+    const first = run[0];
+    first.replaceWith(grid);
+    for (let i = 1; i < run.length; i++) run[i].remove();
+  }
+};
+
 
 // 修改正则，避免匹配 Markdown 图片链接
 // 1. 匹配 markdown 普通链接（非图片）
@@ -131,20 +224,32 @@ const renderMarkdown = async (markdown: string) => {
     }
 
     // 先处理媒体链接
-    const processedContent = processMediaLinks(markdown);
+    let normalizedContent = '';
+    try {
+      normalizedContent = normalizeInlineImageLinks(markdown ?? '');
+    } catch {
+      normalizedContent = markdown ?? '';
+    }
+    const processedContent = processMediaLinks(normalizedContent);
     
     // 修改标签匹配规则，排除HTML标签内的内容
-    const finalContent = processedContent
-      .replace(/<a /g, '<a target="_blank" ')
-      .replace(
-        /(?<!<[^>]*)#([^\s#<>]+)(?![^<]*>)/g,
-        '<span class="clickable-tag" onclick="window.handleTagClick(\'$1\')" style="cursor: pointer;">#$1</span>'
-      );
+    let finalContent = '';
+    try {
+      finalContent = processedContent
+        .replace(/<a /g, '<a target="_blank" ')
+        .replace(
+          /(?<!<[^>]*)#([^\s#<>]+)(?![^<]*>)/g,
+          '<span class="clickable-tag" onclick="window.handleTagClick(\'$1\')" style="cursor: pointer;">#$1</span>'
+        );
+    } catch {
+      finalContent = processedContent.replace(/<a /g, '<a target="_blank" ');
+    }
 
   // 使用处理后的内容
   const currentTheme = contentTheme && contentTheme.value === 'dark' ? 'dark' : 'light'
   const hljsStyle = currentTheme === 'dark' ? 'github-dark' : 'github'
-  Vditor.preview(previewElement.value, finalContent, {
+  try {
+    Vditor.preview(previewElement.value, finalContent, {
       mode: 'light',
       lang: 'zh_CN',
       theme: {
@@ -165,11 +270,11 @@ const renderMarkdown = async (markdown: string) => {
             link.setAttribute('rel', 'noopener noreferrer');
           }
         });
-        
-        // 初始化图片缩放
+        applyThemeClass();
+        applyImageGrid();
         initializeZoom();
         console.log('Rendering complete.');
-        applyThemeClass();
+        emit('rendered');
         
         // 绑定标签点击事件
         const tags = previewElement.value?.querySelectorAll('.clickable-tag');
@@ -196,6 +301,14 @@ const renderMarkdown = async (markdown: string) => {
         }
       }
     });
+  } catch (e) {
+    try {
+      previewElement.value.innerHTML = Vditor.md2html(finalContent);
+      applyThemeClass();
+    } catch (_) {
+      previewElement.value.innerHTML = finalContent;
+    }
+  }
   } catch (error) {
     console.error("Error rendering markdown:", error);
     previewElement.value.innerHTML = '';
@@ -237,7 +350,7 @@ watch(() => contentTheme && contentTheme.value, () => {
 <style>
 .markdown-preview {
   font-family: "LXGW WenKai Screen";
-
+  line-height: 1.6;
 }
 
 .markdown-preview h1,
@@ -251,6 +364,8 @@ watch(() => contentTheme && contentTheme.value, () => {
 
 .markdown-preview p {
   color: rgb(227, 220, 220);
+  margin: 0.5em 0;
+  line-height: 1.6;
 }
 .clickable-tag {
   color: #fb923c !important;
@@ -258,6 +373,8 @@ watch(() => contentTheme && contentTheme.value, () => {
   transition: color 0.2s ease;
   padding: 0 2px;
 }
+.theme-dark .clickable-tag { color: #fb923c !important; }
+.theme-light .clickable-tag { color: #b45309 !important; }
 
 .clickable-tag:hover {
   color: #f97316 !important;
@@ -305,7 +422,7 @@ watch(() => contentTheme && contentTheme.value, () => {
   max-width: 100%;
   height: auto;
   display: block;
-  margin: 1em auto;
+  margin: 0.4em auto;
 }
 
 
@@ -585,5 +702,35 @@ watch(() => contentTheme && contentTheme.value, () => {
   .github-card-title {
     font-size: 15px;
   }
+}
+.image-grid {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  width: 100%;
+  grid-auto-flow: dense;
+  align-items: stretch;
+  justify-items: stretch;
+}
+.image-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+.image-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.image-grid-item {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 10px;
+}
+.image-grid-item > a { display: block; width: 100%; height: 100%; }
+.image-grid-item > a > img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
+.image-grid-item.ar-169 { aspect-ratio: 16 / 9; }
+.image-grid-item.ar-34 { aspect-ratio: 3 / 4; }
+.image-grid-item.ar-11 { aspect-ratio: 1 / 1; }
+.image-grid-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  display: block;
+  margin: 0;
 }
 </style>

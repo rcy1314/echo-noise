@@ -87,8 +87,8 @@
               <!-- 分隔线 -->
               <div v-if="msg.image_url && msg.content" class="border-t border-gray-600 my-4"></div>
               <!-- 文本内容区域 -->
-              <div class="overflow-y-hidden relative" :class="[{ 'max-h-[700px]': !isExpanded[msg.id] }, listThemeTextClass]">
-                <MarkdownRenderer :content="msg.content" :enableGithubCard="siteConfig?.enableGithubCard === true" @tagClick="handleTagClick" link-target="_blank"/>
+              <div class="overflow-y-hidden relative" :class="[{ 'max-h-[700px]': !isExpanded[msg.id] && !hasGrid[msg.id] }, listThemeTextClass]">
+                <MarkdownRenderer :content="msg.content" :enableGithubCard="siteConfig?.enableGithubCard === true" @tagClick="handleTagClick" @rendered="checkContentHeight" link-target="_blank"/>
                 <div v-if="shouldShowExpandButton[msg.id] && !isExpanded[msg.id]"
     :class="['absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t', gradientClass]">
   </div>
@@ -249,6 +249,8 @@ const jumpToPage = async () => {
   }
 
   try {
+    const sc = document.querySelector('.content-wrapper') as HTMLElement | null;
+    const prevY = sc ? sc.scrollTop : window.scrollY;
     const result = await message.getMessages({
       page,
       pageSize: 15,
@@ -258,16 +260,13 @@ const jumpToPage = async () => {
       throw new Error('跳转页面失败');
     }
     
-    // 更新消息列表
-    message.messages = result.items;
+    const nonPinned = result.items.filter((m: any) => !m.pinned);
+    message.messages = [...pinnedTopItems.value, ...nonPinned];
+    message.page = result.page || page;
     
-    // 滚动到顶部
-    window.scrollTo({ 
-      top: 0,
-      behavior: 'instant'
-    });
-    
-    targetPage.value = ''; // 清空输入框
+    targetPage.value = '';
+    await nextTick();
+    if (sc) sc.scrollTo({ top: prevY, behavior: 'instant' }); else window.scrollTo({ top: prevY, behavior: 'instant' });
   } catch (error) {
     console.error('跳转页面失败:', error);
     useToast().add({
@@ -488,11 +487,20 @@ const canPin = (msg: any) => {
   return isAdmin || isAuthor;
 };
 
+const pinnedTopItems = ref<any[]>([]);
+
 const togglePin = async (msg: any) => {
   try {
     const next = !msg.pinned;
     const res = await message.setPinned(msg.id, next);
     if (res) {
+      if (next) {
+        if (!pinnedTopItems.value.some((m: any) => m.id === msg.id)) {
+          pinnedTopItems.value = [msg, ...pinnedTopItems.value];
+        }
+      } else {
+        pinnedTopItems.value = pinnedTopItems.value.filter((m: any) => m.id !== msg.id);
+      }
       useToast().add({ title: next ? '已置顶' : '已取消置顶', color: 'green', timeout: 1500 });
     }
   } catch (e) {
@@ -524,6 +532,7 @@ const formatDate = (dateString: string) => {
 // 添加展开状态管理
 const isExpanded = ref<{ [key: number]: boolean }>({});
 const shouldShowExpandButton = ref<{ [key: number]: boolean }>({});
+const hasGrid = ref<{ [key: number]: boolean }>({});
 
 // 添加展开/折叠切换函数
 const toggleExpand = (msgId: number) => {
@@ -542,11 +551,21 @@ const checkContentHeight = () => {
       const contentEl = document.querySelector(
         `.content-container[data-msg-id="${msg.id}"] .overflow-y-hidden`
       );
-      if (contentEl && contentEl.scrollHeight > 700) {
+      if (!contentEl) return;
+      const hasImageGrid = !!document.querySelector(`.content-container[data-msg-id="${msg.id}"] .image-grid`);
+      hasGrid.value[msg.id] = hasImageGrid;
+      if (hasImageGrid) {
+        shouldShowExpandButton.value[msg.id] = false;
+        isExpanded.value[msg.id] = true;
+        return;
+      }
+      if (contentEl.scrollHeight > 700) {
         shouldShowExpandButton.value[msg.id] = true;
         if (isExpanded.value[msg.id] === undefined) {
           isExpanded.value[msg.id] = false;
         }
+      } else {
+        shouldShowExpandButton.value[msg.id] = false;
       }
     });
   });
@@ -718,18 +737,22 @@ const loadPreviousPage = async () => {
   if (isPageLoading.value || message.page <= 1) return;
   isPageLoading.value = true;
   try {
+    const sc = document.querySelector('.content-wrapper') as HTMLElement | null;
+    const prevY = sc ? sc.scrollTop : window.scrollY;
     const targetPage = message.page - 1;
     const result = await message.getMessages({
       page: targetPage,
       pageSize: 15,
     });
     if (result && Array.isArray(result.items)) {
-      message.messages = result.items;
+      const nonPinned = result.items.filter((m: any) => !m.pinned);
+      message.messages = [...pinnedTopItems.value, ...nonPinned];
       message.page = result.page || targetPage;
     } else {
       message.page = targetPage;
     }
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    await nextTick();
+    if (sc) sc.scrollTo({ top: prevY, behavior: 'instant' }); else window.scrollTo({ top: prevY, behavior: 'instant' });
   } catch (error) {
     useToast().add({
       title: '加载失败',
@@ -745,18 +768,22 @@ const loadNextPage = async () => {
   if (isPageLoading.value || !message.hasMore) return;
   isPageLoading.value = true;
   try {
+    const sc = document.querySelector('.content-wrapper') as HTMLElement | null;
+    const prevY = sc ? sc.scrollTop : window.scrollY;
     const targetPage = message.page + 1;
     const result = await message.getMessages({
       page: targetPage,
       pageSize: 15,
     });
     if (result && Array.isArray(result.items)) {
-      message.messages = result.items;
+      const nonPinned = result.items.filter((m: any) => !m.pinned);
+      message.messages = [...pinnedTopItems.value, ...nonPinned];
       message.page = result.page || targetPage;
     } else {
       message.page = targetPage;
     }
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    await nextTick();
+    if (sc) sc.scrollTo({ top: prevY, behavior: 'instant' }); else window.scrollTo({ top: prevY, behavior: 'instant' });
   } catch (error) {
     useToast().add({
       title: '加载失败',
@@ -786,6 +813,11 @@ watch(
   () => message.messages,
   async () => {
     try {
+      if (message.page === 1) {
+        const pins = (message.messages || []).filter((m: any) => m.pinned);
+        const unique = pins.filter((m: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.id === m.id) === i);
+        pinnedTopItems.value = unique;
+      }
       await nextTick();
       checkContentHeight();
       initFancybox();
@@ -1248,7 +1280,10 @@ const displayMessages = computed(() => {
   if (isSearchMode.value && Array.isArray(searchResults.value)) {
     return searchResults.value;
   }
-  return message.messages || []; // 确保返回数组，即使是空数组
+  const base = message.messages || [];
+  if (!pinnedTopItems.value.length) return base;
+  const rest = base.filter((m: any) => !pinnedTopItems.value.some((p: any) => p.id === m.id));
+  return [...pinnedTopItems.value, ...rest];
 });
 
 // 添加事件监听
