@@ -16,6 +16,12 @@ document.addEventListener('DOMContentLoaded', function() {
     let hasMore = true;
     let currentTag = '';
     
+    // 清理可能错误的配置格式（去掉反引号与多余空格）
+    const clean = (s) => typeof s === 'string' ? s.replace(/`/g, '').trim() : s;
+    config.host = clean(config.host);
+    config.domId = clean(config.domId);
+    config.commentServer = clean(config.commentServer);
+
     // Create UI elements
     const loadMoreBtn = document.createElement('button');
     loadMoreBtn.id = 'load-more-note';
@@ -380,7 +386,8 @@ document.addEventListener('DOMContentLoaded', function() {
         processedContent = parseContent(processedContent);
         description.innerHTML = processedContent;
 
-        // 初始化图片灯箱效果
+        buildImageGrids(description);
+
         const zoomImages = description.querySelectorAll('.zoom-image');
         mediumZoom(zoomImages, {
             margin: 24,
@@ -502,6 +509,71 @@ document.addEventListener('DOMContentLoaded', function() {
         messageDiv.appendChild(contentDiv);
         
         return messageDiv;
+    }
+    
+    function buildImageGrids(root) {
+        try {
+            const blocks = Array.from(root.children);
+            let run = [];
+            const flush = () => {
+                if (run.length < 2) { run = []; return; }
+                const grid = document.createElement('div');
+                const count = run.length;
+                const cols = (count === 2 || count === 4) ? 2 : Math.min(3, count);
+                grid.className = `image-grid cols-${cols}`;
+                for (const p of run) {
+                    const img = p.querySelector('img');
+                    const a = p.querySelector('a');
+                    if (!img && !a) continue;
+                    const item = document.createElement('div');
+                    item.className = 'image-grid-item';
+                    let node;
+                    if (a && a.querySelector('img')) {
+                        node = a;
+                    } else if (img) {
+                        node = img;
+                    } else {
+                        continue;
+                    }
+                    item.appendChild(node);
+                    grid.appendChild(item);
+                }
+
+                grid.querySelectorAll('img').forEach((imgEl) => {
+                    const img = imgEl;
+                    const item = img.closest('.image-grid-item');
+                    const setAR = () => {
+                        if (!item) return;
+                        const w = img.naturalWidth;
+                        const h = img.naturalHeight;
+                        item.classList.remove('ar-169','ar-34','ar-11');
+                        if (w > h) item.classList.add('ar-169');
+                        else if (h > w) item.classList.add('ar-34');
+                        else item.classList.add('ar-11');
+                    };
+                    if (img.complete && img.naturalWidth && img.naturalHeight) setAR();
+                    else img.addEventListener('load', setAR, { once: true });
+                });
+
+                const first = run[0];
+                first.replaceWith(grid);
+                for (let i = 1; i < run.length; i++) run[i].remove();
+                run = [];
+            };
+
+            for (const el of blocks) {
+                const hasImg = !!el.querySelector('img');
+                const hasLinkImg = !!el.querySelector('a img');
+                if (el.tagName.toLowerCase() === 'p' && (hasImg || hasLinkImg)) {
+                    run.push(el);
+                } else {
+                    flush();
+                }
+            }
+            flush();
+        } catch (e) {
+            console.warn('image-grid build failed:', e);
+        }
     }
     
     // 将filterByTag函数暴露到全局作用域
