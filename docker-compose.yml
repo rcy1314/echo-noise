@@ -3,11 +3,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: note-noise
+      # 构建配置（默认final-mcp带有mcp）
+      target: final-mcp
+    container_name: Ech0-Noise
     env_file:
       - .env
-    ports:
-      - "1314:1314"
+    # 端口映射在下方统一声明
     volumes:
       - ./data:/app/data
     environment:
@@ -29,6 +30,11 @@ services:
       #- DB_USER=
       #- DB_PASSWORD=
       #- DB_NAME=
+      - NOTE_HTTP_PORT=1315
+      - NOTE_HOST=http://localhost:1314
+    ports:
+      - "1314:1314"
+      - "1315:1315"
     restart: unless-stopped
 
   # PostgreSQL 服务（可选）

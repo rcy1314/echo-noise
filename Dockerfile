@@ -51,8 +51,21 @@ RUN mkdir -p /app/data /app/public && chmod -R 755 /app/data
 # 编译 Go 应用
 RUN go build -trimpath -ldflags "-s -w" -o /app/noise ./cmd/server/main.go
 
+# MCP 构建阶段（打包为单文件，避免在最终镜像中保留 node_modules）
+FROM node:20-alpine AS mcp-build
+WORKDIR /app/mcp
+COPY ./mcp/package.json ./
+RUN npm config set registry https://registry.npmmirror.com && \
+    npm install --omit=dev --registry=https://registry.npmmirror.com
+COPY ./mcp/server.js ./server.js
+RUN npx --yes esbuild@0.23.0 server.js \
+    --bundle \
+    --platform=node \
+    --format=esm \
+    --outfile=server.bundle.mjs
+
 # 运行时阶段
-FROM alpine:3.20 AS final
+FROM alpine:3.21 AS final
 
 # 可选：是否使用 UPX 压缩二进制（1=启用，0=禁用）
 ARG USE_UPX=1
@@ -66,6 +79,9 @@ COPY --from=backend-build /app/noise /app/noise
 
 # 从前端构建阶段复制静态文件
 COPY --from=frontend-build /app/public /app/public
+
+# 复制 MCP 打包后的单文件（不包含 node_modules，减小镜像体积）
+ 
 
 # 按需裁剪静态字体：保留仅在 CSS 中引用的 woff2
 RUN set -eux; \
@@ -104,6 +120,19 @@ RUN if [ "$USE_UPX" = "1" ]; then \
 
 # 暴露应用端口
 EXPOSE 1314
+EXPOSE 1315
 
-# 启动应用
+# 启动后端与 MCP（MCP 后台运行，Go 服务为主进程）
 CMD ["/app/noise"]
+
+FROM final AS final-mcp
+RUN echo "https://mirrors.aliyun.com/alpine/v3.21/main" > /etc/apk/repositories && \
+    echo "https://mirrors.aliyun.com/alpine/v3.21/community" >> /etc/apk/repositories && \
+    apk update && \
+    apk add --no-cache nodejs && \
+    rm -rf /var/cache/apk/*
+COPY --from=mcp-build /app/mcp/server.bundle.mjs /app/mcp/server.bundle.mjs
+ENV NOTE_HTTP_PORT=1315
+EXPOSE 1314
+EXPOSE 1315
+CMD ["sh","-c","node /app/mcp/server.bundle.mjs & exec /app/noise"]

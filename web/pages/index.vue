@@ -50,11 +50,8 @@
   <!-- 添加搜索模态框组件 -->
   <SearchMode v-model="showSearchModal" @search-result="handleSearchResult" />
   <div class="scroll-buttons" @mouseenter="hoverScroll = true" @mouseleave="hoverScroll = false">
-    <UButton v-show="showUp" :class="scrollButtonClass" variant="ghost" size="sm" @click="scrollToTop">
-      <UIcon :class="iconClass" name="i-heroicons-arrow-up" />
-    </UButton>
-    <UButton v-show="showDown" :class="scrollButtonClass" variant="ghost" size="sm" @click="scrollToBottom">
-      <UIcon :class="iconClass" name="i-heroicons-arrow-down" />
+    <UButton v-show="showScroll" :class="scrollButtonClass" variant="ghost" size="sm" @click="handleScrollClick">
+      <UIcon :class="iconClass" :name="scrollIconName" />
     </UButton>
   </div>
   </div>
@@ -139,8 +136,15 @@ onUnmounted(() => {
   contentWrapper.value?.removeEventListener('scroll', updateScrollState)
 })
 
-const showUp = computed(() => hoverScroll.value || isAtBottom.value)
-const showDown = computed(() => hoverScroll.value || isAtTop.value)
+const showScroll = computed(() => isAtTop.value || isAtBottom.value || hoverScroll.value)
+const scrollIconName = computed(() => (isAtBottom.value && !isAtTop.value) ? 'i-heroicons-arrow-up' : 'i-heroicons-arrow-down')
+const handleScrollClick = () => {
+  if (isAtBottom.value && !isAtTop.value) {
+    scrollToTop()
+  } else {
+    scrollToBottom()
+  }
+}
 const isDark = computed(() => contentTheme.value === 'dark')
 const scrollButtonClass = computed(() => (
   isDark.value

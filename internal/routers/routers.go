@@ -109,6 +109,10 @@ func SetupRouter() *gin.Engine {
 	tokenAuth.Use(middleware.TokenAuthMiddleware()) // 使用 TokenAuthMiddleware
 	{
 		tokenAuth.POST("/messages", controllers.PostMessage)
+		tokenAuth.PUT("/messages/:id", controllers.UpdateMessage)
+		tokenAuth.PUT("/messages/:id/pin", controllers.UpdateMessagePinned)
+		tokenAuth.DELETE("/messages/:id", controllers.DeleteMessage)
+		tokenAuth.PUT("/settings", controllers.UpdateSetting)
 	}
 	// 需要鉴权的消息操作路由
 	messages := authRoutes.Group("/messages")

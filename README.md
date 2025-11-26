@@ -4,57 +4,30 @@
 
 ## 介绍
 
-这是基于[Ech0](https://github.com/lin-snow/Ech0)基本框架的二次开发、魔改及完善，类似朋友圈样式风格，支持后台配置修改如背景图、个性签名等，支持api 获取内容、更新操作等，支持对b站视频、网易云音乐、youtube等的解析添加、支持一键复制，一键生成内容图片、支持http post发送内容到平台，支持对接webhook、telegram、企业微信、飞书的一键推送，支持内容热力图组件等个性化组件，它完全属于个人的自定化使用，会加入定制化的一些功能，使用完全自由个性化，通过内置API联通其它站点组件，可以看作笔记存储或传输中转。
+基于 [Ech0](https://github.com/lin-snow/Ech0) 原框架魔改完善的轻博客/朋友圈式「说说笔记」。面向个人的高度自定义场景，并提供完善的开放 API 与 MCP 支持，适配自动化平台与一键发布/更新/删除/搜索。通过内置组件与扩展能力，它既可作为内容笔记，也可作为跨平台的发布与中转中心。
 
 ------
 
+## 特征
 
+- 统一的前端交互与内置组件体验，支持外部扩展、网页组件
+- 前端优化宫格图片、长文折叠与灯箱，流畅 Markdown 预览与宫格图卡片渲染
+- 完整开放 API 与 Token 认证，便于第三方接入与自动化工作流
+- 支持 MCP 工具，在 AI 环境中一键发布/更新/删除/搜索
+- 推送增强，支持 webhook、Telegram、企业微信、飞书 等渠道
+- 兼容自动化平台（如 n8n），可构建连续的 API 工作流
+- 多数据库支持：SQLite / PostgreSQL / MySQL
+- 支持多平台部署运行，一键docker运行及fly.io等平台运行
 
-- [安装部署](#安装部署)
-
-<details>
-<summary>✅ 整体特征</summary>
-
-
-### 编辑器部分：
-
-1. 自适应高度和拖拽调整功能
-2. 扩展的工具栏功能
-3. 完整的响应式支持
-4. 平滑的过渡动画效果
-5. 优化的间距和字体设置
-6. md格式图片即时预览
-7. 添加定制化的组件
-
-## 主页部分：
-
-1. 调整页面内容自适应高度和宽度
-2. 添加随机背景图的展示并带有模糊效果
-3. 增加md 格式下对网易云音乐、哔哩哔哩视频、youtube、qq 音乐的解析渲染
-4. 调整信息条目的背景ui 及显示尺寸的优化
-5. 调整ui及加载响应页面的整体显示效果
-6. 添加朋友圈样式主图banner,并和背景图使用相同
-7. 所有链接都可通过新标签页打开
-8. 长内容的折叠展开处理
-9. 完善的二次编辑及预览保存
-10. 一键复制及生成内容图片的功能化组件
-11. 增加标签系统路由及组件
-
-## 代码部分
-
-1. 调整jwk验证为session方式，同时调整token的验证机制
-2. 调整优化数据库的迁移及连接处理
-3. 增加不同的路由及调整控制器
-4. 增加额外的外挂插件文件
-5. 增加定期清理缓存
-
-</details>
+[安装部署](#安装部署)
 
 <details>
 <summary><h2>✅ 更新状况【点击查看】</h2></summary>
 
 
 ## 2025更新状态
+
+- MCP功能加入，支持ai一键操作搜索、发布、更新等
 
 - 实现 Markdown 连续图片宫格渲染,将图片连续写且中间保留换行即可触发宫格。插入文本或其他元素会取消宫格并按正常预览显示。
 
@@ -64,7 +37,7 @@
 
 - 后台增加暗黑模式主题控制开关，前端页面整体统一主题色，优化编辑器主题色效果
 
-- 精简镜像包体积大小
+- 精简镜像包体积大小（无mcp包时）
 
   ![FG7av3W9XmHdelT](https://s2.loli.net/2025/11/25/FG7av3W9XmHdelT.png)
 
@@ -198,104 +171,6 @@
 
 ## 安装部署
 
-<details>
-<summary>✅ 本地前后端分离【点击展开】</summary>
-
-本地启动示例
-
-- 修改为本地开发配置：
-  - config/config.yaml:2-8 设置为：
-    - port: 1314
-    - host: "127.0.0.1"
-    - database.path: "./data/noise.db"
-
-快速指引
-
-1) 生成前端静态文件
-
-```bash
-cd web
-npm run generate
-```
-
-生成产物输出到 `web/.output/public`。
-
-2) 同步静态文件到后端 `./public`
-
-```bash
-rsync -a --delete .output/public/ ../public/
-# 或者
-cp -r .output/public ../
-```
-
-后端静态服务读取 `./public` 目录，见 `internal/routers/routers.go:62`。
-
-3) 一键执行
-
-```bash
-bash scripts/build.sh
-```
-
-完成后访问 `http://localhost:1314/`，接口位于同域的 `/api/*`。
-
-------
-
-前后端详细说明
-
-
-- 同域部署（推荐）
-  - 构建前端：在仓库根目录执行 `bash scripts/build.sh`
-  - 构建产物输出到根目录 `./public`，后端静态服务读取该目录，映射见 `internal/routers/routers.go:62`
-  - 构建后端：`go build -o server ./cmd/server/main.go`
-  - 启动后端：`./server`
-  - 服务地址由配置决定：`config/config.yaml:1-4`（`host`、`port`、`mode`），后端监听设置见 `cmd/server/main.go:70-76`
-  - 验证：
-    - 页面：`curl http://localhost:1314/ | head -n 20` 应返回 HTML
-    - 接口：`curl http://localhost:1314/api/status`、`curl http://localhost:1314/api/messages/page`
-    - 前端脚本内的 `baseApi` 为 `"/api"`：可在首页 HTML 中看到 `window.__NUXT__.config.public.baseApi`
-
-- 真正前后端分离（跨域/反向代理）
-  - 前端：按上文生成的 `./public` 部署到前端域（例如 `https://note.example.com`）或由反向代理托管
-  - 后端：在独立主机或容器构建并运行 `./server`，提供接口域（例如 `https://api.example.com`）
-  - 后端跨域：设置环境变量 `CORS_ORIGINS="https://note.example.com"`（支持逗号分隔多个来源），来源解析与应用见 `internal/routers/routers.go:37-55`
-  - 前端与接口对接：保持前端 `baseApi` 为 `"/api"`，通过前端服务器或反向代理将 `"/api"` 路径转发到后端接口域
-
-说明
-
-- 生产静态模式访问地址：`http://localhost:1314/`
-- 前端静态资源目录：`./public`（构建产物）
-- 后端接口：同域下的 `/api/*`，例如：
-  - 配置：`/api/frontend/config`
-  - 列表分页：`/api/messages/page`
-  - 状态：`/api/status`
-
-`.env.prod.example` 模版环境变量说明
-
-- 当 `DB_TYPE=sqlite` 时，后端只使用 `DB_PATH` 指向 `noise.db` 文件；环境变量中的 `DB_USER`、`DB_PASSWORD`、`DB_HOST` 等不会用于连接。
-- `DB_USER` / `DB_PASSWORD` 等仅在 `postgres` 或 `mysql` 作为数据库类型时用于构建连接串。
-
-- 基础
-  - `LOG_LEVEL` 控制日志级别
-  - `TZ` 设置时区
-- 数据库
-  - `DB_TYPE` 支持 `sqlite`、`postgres`、`mysql`
-  - `DB_PATH` 仅在 `sqlite` 时生效；仓库默认配置文件为 `/app/data/noise.db`（`config/config.yaml:6-9`），本地二进制运行建议设置为 `./data/noise.db`
-  - `DB_HOST`、`DB_PORT`、`DB_USER`、`DB_PASSWORD`、`DB_NAME` 对应远程数据库连接
-  - `DB_SSL_MODE`（PostgreSQL）：常用 `disable` 或云服务要求的 `require`
-  - `DB_TIMEZONE`（PostgreSQL）：建议 `Asia/Shanghai`
-  - `DB_CHARSET`（MySQL）：建议 `utf8mb4`
-- 跨域
-  - `CORS_ORIGINS` 留空表示使用默认同源；如需分离前后端或反向代理到不同域，设置逗号分隔来源列表，例如 `http://note.example.com`
-
-### 后端依赖
-
-- 运行依赖升级：`go get -u ./...`
-- 整理模块文件：`go mod tidy`
-
-</details>
-
-
-
 > 💡 部署完成后访问 ip:1314 即可使用
 > 
 
@@ -308,25 +183,53 @@ docker run -d \
   --name Ech0-Noise \
   --platform linux/amd64 \
   -p 1314:1314 \
-  -v /opt/data:/app/data \
   noise233/echo-noise
 ```
 
-其中请确保/opt/data文件夹中包含你原有的数据库文件noise.db，如果没有，可以去掉这个挂载命令，它也会自动创建
+> **可使用 -v /opt/data:/app/data \ 可挂载你原有的数据，请确保/opt/data文件夹中包含原数据库文件，如果没有原数据库文件，进入页面会无任何可用数据**
+>
+>  --platform linux/amd64 命令可选择不同平台
 
- --platform linux/amd64 命令可选择不同平台
+> 默认用户名：admin
+>
+> 默认用户密码：admin
 
-你也可以使用-v /opt/data/noise.db:/app/data/noise.db 来只挂载原有数据库，
+------
 
-默认用户名：admin
+启用 带MCP HTTP/SSE（对外暴露 1315，便于 curl /浏览器调用 MCP）：
 
-默认用户密码：admin
+```
+docker run -d \
+  --name Ech0-Noise \
+  -p 1314:1314 \
+  -p 1315:1315 \
+  -e NOTE_HOST=http://localhost:1314 \
+  -e NOTE_HTTP_PORT=1315 \
+  -v /opt/data:/app/data \
+  noise233/echo-noise:latest-mcp
+```
 
-目前会构建两个版本
+验证： curl http://<服务器IP>:1315/mcp/tools
 
-双镜像版：latest镜像  同时支持linux/amd64,linux/arm64，拉取时会系统会自动选择
+仅后端 API（不对外提供 MCP HTTP/SSE，后续用 docker exec 以 Stdio 连接 MCP）：
 
-单镜像版：last镜像  支持linux/amd6，镜像包容量更小
+```
+docker run -d \
+  --name Ech0-Noise \
+  -p 1314:1314 \
+  -e NOTE_HOST=http://localhost:1314 \
+  -e NOTE_HTTP_PORT=0 \
+  -v /opt/data:/app/data \
+  noise233/echo-noise:latest-mcp
+```
+
+## 已发布Docker镜像版本
+
+稳定双镜像版：latest 镜像  同时支持linux/amd64,linux/arm64，拉取时会系统会自动选择
+
+带MCP双镜像版：latest-mcp 镜像  同时支持linux/amd64,linux/arm64
+
+单平台镜像版：last 镜像  支持linux/amd6，镜像包容量更小
 
 ### docker-componse构建部署
 
@@ -335,6 +238,14 @@ docker run -d \
 ```shell
 docker-compose up -d
 ```
+
+#### 镜像构建目标说明
+- `final`（不带 MCP，轻量）：仅包含后端与前端静态资源，无 Node.js 运行时。
+  - 手动构建示例：`docker build -t ech0-noise:nomcp .`
+- `final-mcp`（带 MCP）：安装 `nodejs`，复制 `mcp/server.bundle.mjs`，容器内同时启动 MCP 与后端。
+  - 手动构建示例：`docker build --target final-mcp -t ech0-noise:mcp .`
+- 本仓库的 `docker-compose.yml` 已默认使用 `final-mcp`：
+  - 如需不带 MCP，请删除或修改 `build.target: final-mcp` 为 `final`。
 
 ## 无服务器平台+postgres免费数据库部署
 
@@ -522,31 +433,6 @@ railway up
 
 如果你是直接在平台拉取项目部署而不是通过命令部署，你需要拷贝fork本项目并将fly.toml、railway.toml、zeabur.toml文件放入根目录下才能一键部署
 
-
-
-# 开发
-
-依赖环境
-后端： `Go 1.24.1+`
-前端： `NodeJS v22.13.0,NPM`
-
-启动
-在根目录下：
-
-后端：
-
-```
-go run cmd/server/main.go
-```
-
-前端： 将`.env`文件中的prod那一行注释掉，然后保留dev即可
-
-```
-cd web # 进入前端目录
-
-npm run dev
-```
-
 ## 数据库连接
 
 本地数据库直接docker部署即可
@@ -640,11 +526,101 @@ docker run -d \
 
 ⚠️ ：因PostgreSQL/MySQL云服务会有SSL连接、兼容版本号、数据表格式等要求，后台一键备份恢复不一定能满足你需要连接的远程数据库，请尽量前往服务商处下载备份
 
+## 开发
+
+<details>
+<summary>✅ 本地前后端分离【点击展开】</summary>
+
+本地启动示例
+
+- 修改为本地开发配置：
+  - config/config.yaml:2-8 设置为：
+    - port: 1314
+    - host: "127.0.0.1"
+    - database.path: "./data/noise.db"
+
+快速指引
+
+1. 生成前端静态文件
+
+```
+cd web
+npm run generate
+```
+
+生成产物输出到 `web/.output/public`。
+
+1. 同步静态文件到后端 `./public`
+
+```
+rsync -a --delete .output/public/ ../public/
+# 或者
+cp -r .output/public ../
+```
+
+后端静态服务读取 `./public` 目录，见 `internal/routers/routers.go:62`。
+
+1. 一键执行
+
+```
+bash scripts/build.sh
+```
+
+完成后访问 `http://localhost:1314/`，接口位于同域的 `/api/*`。
+
+前后端详细说明
+
+- 同域部署（推荐）
+  - 构建前端：在仓库根目录执行 `bash scripts/build.sh`
+  - 构建产物输出到根目录 `./public`，后端静态服务读取该目录，映射见 `internal/routers/routers.go:62`
+  - 构建后端：`go build -o server ./cmd/server/main.go`
+  - 启动后端：`./server`
+  - 服务地址由配置决定：`config/config.yaml:1-4`（`host`、`port`、`mode`），后端监听设置见 `cmd/server/main.go:70-76`
+  - 验证：
+    - 页面：`curl http://localhost:1314/ | head -n 20` 应返回 HTML
+    - 接口：`curl http://localhost:1314/api/status`、`curl http://localhost:1314/api/messages/page`
+    - 前端脚本内的 `baseApi` 为 `"/api"`：可在首页 HTML 中看到 `window.__NUXT__.config.public.baseApi`
+- 真正前后端分离（跨域/反向代理）
+  - 前端：按上文生成的 `./public` 部署到前端域（例如 `https://note.example.com`）或由反向代理托管
+  - 后端：在独立主机或容器构建并运行 `./server`，提供接口域（例如 `https://api.example.com`）
+  - 后端跨域：设置环境变量 `CORS_ORIGINS="https://note.example.com"`（支持逗号分隔多个来源），来源解析与应用见 `internal/routers/routers.go:37-55`
+  - 前端与接口对接：保持前端 `baseApi` 为 `"/api"`，通过前端服务器或反向代理将 `"/api"` 路径转发到后端接口域
+
+说明
+
+- 生产静态模式访问地址：`http://localhost:1314/`
+- 前端静态资源目录：`./public`（构建产物）
+- 后端接口：同域下的 `/api/*`，例如：
+  - 配置：`/api/frontend/config`
+  - 列表分页：`/api/messages/page`
+  - 状态：`/api/status`
+
+`.env.prod.example`模版环境变量说明
+
+- 当 `DB_TYPE=sqlite` 时，后端只使用 `DB_PATH` 指向 `noise.db` 文件；环境变量中的 `DB_USER`、`DB_PASSWORD`、`DB_HOST` 等不会用于连接。
+- `DB_USER` / `DB_PASSWORD` 等仅在 `postgres` 或 `mysql` 作为数据库类型时用于构建连接串。
+
+- 基础
+  - `LOG_LEVEL` 控制日志级别
+  - `TZ` 设置时区
+- 数据库
+  - `DB_TYPE` 支持 `sqlite`、`postgres`、`mysql`
+  - `DB_PATH` 仅在 `sqlite` 时生效；仓库默认配置文件为 `/app/data/noise.db`（`config/config.yaml:6-9`），本地二进制运行建议设置为 `./data/noise.db`
+  - `DB_HOST`、`DB_PORT`、`DB_USER`、`DB_PASSWORD`、`DB_NAME` 对应远程数据库连接
+  - `DB_SSL_MODE`（PostgreSQL）：常用 `disable` 或云服务要求的 `require`
+  - `DB_TIMEZONE`（PostgreSQL）：建议 `Asia/Shanghai`
+  - `DB_CHARSET`（MySQL）：建议 `utf8mb4`
+- 跨域
+  - `CORS_ORIGINS` 留空表示使用默认同源；如需分离前后端或反向代理到不同域，设置逗号分隔来源列表，例如 `http://note.example.com`
+
+### 后端依赖
+
+- 运行依赖升级：`go get -u ./...`
+- 整理模块文件：`go mod tidy`
+
+</details>
+
 ## API指南🧭
-
-*因api众多...需待更新完善...*
-
-（获取信息是get,发布是post）
 
 先到后台获取api token,然后可以参考下面的命令运行或使用其它服务（记得将https://your.localhost.com 更改为你自己的服务地址）
 
@@ -1147,6 +1123,232 @@ curl -X POST http://localhost:8080/api/notify/send \
 
 </details>
 
+## MCP 接入（AI 客户端）
+
+完整的 MCP 操作说明已迁移至单独文档：
+
+[MCP 操作说明（docs/mcp.md）](docs/mcp.md)
+
+- 拉取下载仓库mcp 文件夹，主文件为server.js
+
+- 安装环境依赖，确保本地已安装 Node
+
+- npm install
+
+  ```
+  npm install
+  ```
+
+- 推荐（跨平台）写法：使用环境变量字段而不是 `env` 命令
+
+  ```json
+  {
+    "mcpServers": {
+      "ech0-noise-local-stdio": {
+        "command": "node",
+        "args": ["/absolute/path/to/mcp/server.js"],
+        "env": {
+          "NOTE_HOST": "http://<服务器IP>:1314",
+          "NOTE_HTTP_PORT": "0",
+          "NOTE_TOKEN": "<你的Token>"
+        }
+      }
+    }
+  }
+  ```
+
+- 可选（类 Unix）写法：使用 `env` 作为命令设置环境再运行 `node`
+
+  ```json
+  {
+    "mcpServers": {
+      "ech0-noise-local-stdio-env": {
+        "command": "env",
+        "args": [
+          "NOTE_HOST=http://<服务器IP>:1314",
+          "NOTE_HTTP_PORT=0",
+          "NOTE_TOKEN=<你的Token>",
+          "node",
+          "/absolute/path/to/mcp/server.js"
+        ]
+      }
+    }
+  }
+  ```
+
+- 使用本地mcp实例单独运行
+
+  `docker exec` 启动 `stdio` 握手的实例时，将 `NOTE_HTTP_PORT` 设为 `0`，只进行握手，不再监听 HTTP
+
+```json
+{
+  "mcpServers": {
+    "ech0-noise-mcp-stdio": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "-e", "NOTE_HOST=http://<服务器IP>:1314",
+        "-e", "NOTE_HTTP_PORT=0",
+        "-e", "NOTE_TOKEN=<你的Token>",
+        "Ech0-Noise",
+        "node",
+        "/app/mcp/server.bundle.mjs"
+      ]
+    }
+  }
+}
+```
+
+- 保留 SSE 监控仅用于事件订阅，不作为握手连接
+
+```json
+{
+  "mcpServers": {
+    "ech0-noise-mcp-sse-monitor": {
+      "type": "sse",
+      "url": "http://<服务器IP>:1315/mcp/sse"
+    }
+  }
+}
+```
+
+### SSE 握手与保活
+- 连接到 `GET /mcp/sse` 后，服务会立即推送握手事件：
+  - `event: mcp_hello` 携带服务名称与版本
+  - `event: mcp_tools` 携带可用工具列表
+  - `event: keepalive` 每 30 秒推送一次，保持连接活跃
+- 示例：
+  ```bash
+  curl -N http://localhost:1315/mcp/sse | head -n 10
+  # 预期输出包含：
+  # event: mcp_hello
+  # data: {"name":"ech0-noise-mcp","version":"0.1.0"}
+  # event: mcp_tools
+  # data: ["search","publish",...]
+  ```
+- 提示：SSE 侧仅提供握手信号与运行事件；完整的 MCP 协议交互仍通过 `stdio` 完成。
+
+### 工具与命令
+
+- 工具名称（英文优先）：`search`、`publish`、`delete`、`update`、`message`、`page`、`status`、`calendar`、`config`、`login`、`token`、`rss`
+- 中文名称兼容但可能触发客户端校验警告：`搜索`、`发布`、`删除`、`更新`、`消息`、`页面`、`状态`、`日历`、`配置`、`登录`、`令牌`、`RSS`
+
+#### 认证要求与提示
+- 无需认证：`search`、`page`、`message`、`status`、`calendar`、`config`、`rss`
+- 支持令牌或会话：`publish`
+- 令牌或会话（需后端启用 token 路由）：`update`、`delete`、`pin`、`settings`
+- 未登录或无令牌时工具会直接返回友好提示：
+  - `需要登录或令牌：请先调用 登录 工具，或在配置中设置 NOTE_TOKEN。发布支持令牌；更新/删除/置顶/设置支持令牌（需后端启用）或会话认证。`
+  - 令牌无效：`令牌无效或已过期：请在后台重新生成 token，或先 登录。`
+  - 后端未启用：`后端未启用 token 路由：请更新后端并重启服务，或使用 登录 获取会话后再操作。`
+
+#### 快捷别名（自然语言更友好）
+- 发布别名：`笔记`、`说说`、`说说笔记`（均等价于 `发布`）
+- 示例：
+  ```json
+  { "tool": "笔记", "params": { "content": "这是一段内容", "private": false } }
+  { "tool": "说说", "params": { "type": "image", "image": "https://example.com/a.jpg", "content": "配文可选" } }
+  ```
+
+#### 避免未格式化的输出
+- 一些客户端会原样展示工具调用日志（如 `<tool_use_result>` 等）。建议在提示语中明确要求：
+  - “只输出解析后的中文列表，不展示工具调用日志或原始 JSON，不使用任何未渲染标签。”
+  - “按中文列出 id、用户名、时间与内容摘要。”
+
+#### 搜索空参回退与输出格式
+- 当 `搜索` 未提供 `keyword/query` 时自动回退到分页列表（第一页），避免校验错误
+- `搜索/页面` 会同时返回：
+  - 可读摘要文本（`id/用户名/时间/内容前200字`）
+  - 原始 JSON（便于程序消费）
+
+### Docker 独立运行MCP
+1. 构建镜像：
+   ```bash
+   cd mcp
+   docker build -t ech0-noise-mcp .
+   ```
+2. 以 Token 认证运行：
+   ```bash
+   docker run --rm -e NOTE_HOST=https://note.noisework.cn -e NOTE_TOKEN=你的_token ech0-noise-mcp
+   ```
+3. 以用户名密码运行：
+   ```bash
+   docker run --rm -e NOTE_HOST=https://note.noisework.cn ech0-noise-mcp
+   # 在客户端调用“登录”工具设置 Cookie 会话
+   ```
+
+### docker-compose 一键启动（后端 + 前端静态 + MCP 同容器）
+仓库根目录已有 `docker-compose.yml`。执行：
+```bash
+docker-compose up -d
+```
+- 服务 `my-app`：后端 Go + 前端静态，并内置 MCP 服务（Node）。
+- 端口：应用 `1314`、MCP HTTP/SSE `1315`（皆映射至宿主）。
+
+查看工具列表与流式调用：
+```bash
+curl http://localhost:1315/mcp/tools
+curl -N -X POST http://localhost:1315/mcp/tool/搜索 -H 'Content-Type: application/json' -d '{"keyword":"#CDN"}'
+```
+
+### HTTP 与 SSE
+- 开启 HTTP 与 SSE：设置 `NOTE_HTTP_PORT` 启动服务端口
+  ```bash
+  NOTE_HOST=https://note.noisework.cn \
+  NOTE_TOKEN=你的_token \
+  NOTE_HTTP_PORT=1315 \
+  npm start
+  ```
+- 列出工具：`GET /mcp/tools`
+  ```bash
+  curl http://localhost:1315/mcp/tools
+  ```
+- 流式调用工具：`POST /mcp/tool/{name}` 返回换行分隔 JSON
+  ```bash
+  curl -N -X POST http://localhost:1315/mcp/tool/搜索 \
+    -H 'Content-Type: application/json' \
+    -d '{"keyword":"#CDN","page":1,"pageSize":10}'
+  ```
+- SSE 订阅：`GET /mcp/sse`，推送 `tool_start`、`tool_end`
+  ```bash
+  curl -N http://localhost:1315/mcp/sse
+  ```
+
+#### 前端联动
+- 置顶联动：前端列表会将置顶项排在顶部，取消置顶后按时间顺序排列（逻辑见 `web/components/index/MessageList.vue:260-264`）。
+- 更新联动：修改内容后列表即时读取更新，无需重建；详情页 `消息` 工具可用于验证。
+- 设置联动：通过 `settings` 更新后端配置，`配置` 工具可直接获取最新前端配置用于前端渲染。
+
+### 常用工具与入参
+- 搜索/`search`：`{ keyword, page?, pageSize? }`（支持 `#标签`）
+- 发布/`publish`：`{ content, private?, imageURL? }`
+- 删除/`delete`：`{ id }`
+- 更新/`update`：`{ id, content }`
+- 消息/`消息`：`{ id }`
+- 页面/`页面`：`{ page?, pageSize? }`
+- 状态/`状态`：无入参
+- 日历/`日历`：无入参
+- 配置/`配置`：无入参
+- 登录/`登录`：`{ username, password }`（设置 Cookie 会话）
+- 令牌/`令牌`：无入参（基于会话生成新 Token）
+- RSS/`RSS`：无入参（返回全文 XML）
+
+### 与现有 API 的对应关系
+- 搜索：`/api/messages/search` 或 `/api/messages/tags/:tag`
+- 发布：`/api/messages`（会话）、`/api/token/messages`（Token）
+- 删除/更新：`/api/messages/:id`
+- 消息：`/api/messages/:id`
+- 页面：`/api/messages/page`
+- 状态：`/api/status`
+- 日历：`/api/messages/calendar`
+- 配置：`/api/frontend/config`
+- 登录：`/api/login`（读取 `Set-Cookie`）
+- 令牌：`/api/user/token/regenerate`
+- RSS：`/rss`
+
+------
+
 ## 发布说明
 
 如果你需要构建自己的镜像发布-示例：
@@ -1159,6 +1361,20 @@ docker buildx create --use --name mybuilder
 ```
 
 然后发布
+
+构建（带 MCP）：
+
+```
+docker buildx build --platform linux/amd64,linux/arm64 --target final-mcp -t noise233/echo-noise:latest-mcp --push --no-cache .
+```
+
+构建（不带 MCP）：
+
+```
+docker buildx build --platform linux/amd64 --target final -t noise233/echo-noise:last --push --no-cache .
+```
+
+常规
 
 ```
 docker buildx build --platform linux/amd64,linux/arm64 -t noise233/echo-noise:latest --push --no-cache .
@@ -1388,11 +1604,14 @@ exports.actions = [{
 - [x] 内容置顶功能
 - [x] 增加公告栏组件
 - [x] 实现 Markdown 连续图片宫格渲染
-- [ ] MCP模式（搜索、写入）AI发布写入
+- [ ] MCP模式（搜索、写入等）AI发布写入
 - [x] 页面加载过渡优化
+- [ ] 扩展支持一键识别当前网站信息并写入笔记（书签或稍后阅读）
 - [ ] 跨平台桌面端
-- [ ] 后台ui优化定制
-- [ ] 网页组件优化
+- [ ] SQL数据库文件支持一键接入R2或S3实现备份和恢复
+- [ ] 登录注册优化
+- [ ] 后台界面的ui优化定制
+- [ ] 网页前端的美化
 - [ ] 数据库备份优化
 - [ ] 其它组件的添加
 
