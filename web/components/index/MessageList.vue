@@ -1026,8 +1026,9 @@ const downloadAsImage = async (msgId: number) => {
         overflow: visible;
         max-height: none !important;
         height: auto !important;
-        padding: 8px 12px;
+        padding: 4px 12px;
         line-height: 1.6;
+        margin-top: 0;
         margin-bottom: 0;
         white-space: pre-wrap;
         background: ${bgColor};
@@ -1040,12 +1041,25 @@ const downloadAsImage = async (msgId: number) => {
     const directChildren = Array.from(contentClone.children);
     const topImage = directChildren.find((el) => el.tagName === 'IMG') as HTMLImageElement | undefined;
     if (topImage) {
-      topImage.style.margin = '4px 0';
+      topImage.style.margin = '1px 0';
       topImage.style.display = 'block';
     }
+    contentClone.querySelectorAll('img').forEach((img) => {
+      (img as HTMLImageElement).style.margin = '1px 0';
+      (img as HTMLImageElement).style.display = 'block';
+    });
     const separatorEl = contentClone.querySelector('.border-t') as HTMLElement | null;
     if (separatorEl) {
-      separatorEl.style.margin = '6px 0';
+      separatorEl.style.margin = '1px 0';
+    }
+    const md = contentClone.querySelector('.markdown-preview') as HTMLElement | null;
+    if (md) {
+      md.style.marginTop = '1px';
+      const firstChild = md.firstElementChild as HTMLElement | null;
+      if (firstChild) firstChild.style.marginTop = '1px';
+      md.querySelectorAll('p, h1, h2, h3, h4, h5, h6').forEach((el) => {
+        (el as HTMLElement).style.marginTop = (el as HTMLElement).style.marginTop || '2px';
+      });
     }
 
     // 处理媒体元素

@@ -25,7 +25,7 @@ FROM golang:1.24.1-alpine AS backend-build
 
 # 设置环境变量
 ENV GOPROXY=https://goproxy.cn,direct
-ENV CGO_ENABLED=1
+ENV CGO_ENABLED=0
 
 # 设置工作目录
 WORKDIR /app
@@ -45,11 +45,14 @@ COPY ./internal ./internal
 COPY ./pkg ./pkg
 COPY ./config ./config
 
+# 整理依赖，生成完整 go.sum（修复禁用 CGO 后构建缺少依赖的问题）
+RUN go mod tidy
+
 # 创建必要的目录并设置权限
 RUN mkdir -p /app/data /app/public && chmod -R 755 /app/data
 
 # 编译 Go 应用
-RUN go build -trimpath -ldflags "-s -w" -o /app/noise ./cmd/server/main.go
+RUN go build -trimpath -ldflags "-s -w -buildid=" -o /app/noise ./cmd/server/main.go
 
 # MCP 构建阶段（打包为单文件，避免在最终镜像中保留 node_modules）
 FROM node:20-alpine AS mcp-build
@@ -95,6 +98,15 @@ RUN set -eux; \
       rm -f keep.list; \
     fi
 
+# 额外剔除：删除前端 sourcemap 与许可证文件，减少镜像体积
+ARG KEEP_SOURCEMAPS=0
+RUN set -eux; \
+    if [ "$KEEP_SOURCEMAPS" != "1" ]; then \
+      find /app/public -type f -name '*.map' -delete; \
+      find /app/public -type f -name '*LICENSE*' -delete; \
+      find /app/public -type f -name '.DS_Store' -delete; \
+    fi
+
 
 # 更换 Alpine 镜像源
 RUN echo "https://mirrors.aliyun.com/alpine/v3.21/main" > /etc/apk/repositories && \
@@ -115,7 +127,7 @@ COPY ./data/noise.db /app/data/
 # 可选：使用 UPX 压缩二进制以减小体积（默认启用，影响极小）
 RUN if [ "$USE_UPX" = "1" ]; then \
       apk add --no-cache upx; \
-      upx -q /app/noise || true; \
+      upx --best --lzma -q /app/noise || true; \
     fi
 
 # 暴露应用端口
@@ -136,3 +148,10 @@ ENV NOTE_HTTP_PORT=1315
 EXPOSE 1314
 EXPOSE 1315
 CMD ["sh","-c","node /app/mcp/server.bundle.mjs & exec /app/noise"]
+
+FROM node:20-alpine AS mcp-final
+WORKDIR /app/mcp
+COPY --from=mcp-build /app/mcp/server.bundle.mjs /app/mcp/server.bundle.mjs
+ENV NOTE_HTTP_PORT=1315
+EXPOSE 1315
+CMD ["node","/app/mcp/server.bundle.mjs"]

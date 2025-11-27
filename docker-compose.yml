@@ -3,37 +3,49 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      # 构建配置（默认final-mcp带有mcp）
-      target: final-mcp
+      # 默认仅包含后端 + 前端静态，体积更小
+      target: final
     container_name: Ech0-Noise
     env_file:
       - .env
-    # 端口映射在下方统一声明
     volumes:
       - ./data:/app/data
     environment:
       - LOG_LEVEL=info
-      # 数据库配置（默认使用 SQLite）
       - DB_TYPE=sqlite
       - DB_PATH=/app/data/noise.db
-      # PostgreSQL 配置（可选）
+      # 如启用外部数据库，取消注释并配置
       #- DB_TYPE=postgres
       #- DB_HOST=postgres
       #- DB_PORT=5432
       #- DB_USER=postgres
       #- DB_PASSWORD=
       #- DB_NAME=noise
-      # MySQL 配置（可选）
       #- DB_TYPE=mysql
       #- DB_HOST=mysql
       #- DB_PORT=3306
       #- DB_USER=
       #- DB_PASSWORD=
       #- DB_NAME=
-      - NOTE_HTTP_PORT=1315
-      - NOTE_HOST=http://localhost:1314
+      # 如需与 MCP 联动，请在 MCP 服务内设置 NOTE_HOST 指向此服务
     ports:
       - "1314:1314"
+    restart: unless-stopped
+    depends_on:
+      - mcp
+
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # 仅包含 Node 运行时 + MCP 单文件
+      target: mcp-final
+    container_name: Ech0-Noise-MCP
+    environment:
+      # MCP 通过 NOTE_HOST 访问后端服务（同网络）
+      - NOTE_HOST=http://my-app:1314
+      - NOTE_HTTP_PORT=1315
+    ports:
       - "1315:1315"
     restart: unless-stopped
 

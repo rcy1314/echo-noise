@@ -182,6 +182,10 @@
 
 一键部署
 
+> 默认用户名：admin
+>
+> 默认用户密码：admin
+
 无任何挂载时默认：
 
 ```
@@ -189,16 +193,22 @@ docker run -d \
   --name Ech0-Noise \
   --platform linux/amd64 \
   -p 1314:1314 \
-  noise233/echo-noise
+  noise233/echo-noise:latest
 ```
 
-> 可使用 -v /opt/data:/app/data \ 可挂载你原有的数据，请确保/opt/data文件夹中包含原数据库文件，如果没有原数据库文件，进入页面会无任何可用数据
->
->  --platform linux/amd64 命令可选择不同平台
+有原数据库文件挂载时默认：
 
-> 默认用户名：admin
+```
+docker run -d \
+  --name Ech0-Noise \
+  --platform linux/amd64 \
+  -v /opt/data:/app/data \
+  -p 1314:1314 \
+  noise233/echo-noise:latest
+```
+
+> 使用 -v /opt/data:/app/data \ 可挂载你原有的数据，请确保/opt/data文件夹中包含原数据库文件，如有图片请一起放在data文件夹下images 文件夹中，如果没有原数据库文件还使用该命令，进入页面会无任何可用数据显示 使用 --platform linux/amd64 命令可选择不同架构运行部署
 >
-> 默认用户密码：admin
 
 ------
 
@@ -1371,22 +1381,28 @@ docker buildx create --use --name mybuilder
 
 然后发布
 
-构建（带 MCP）：
+常规主镜像（不含 MCP）
+
+```
+docker buildx build --platform linux/amd64,linux/arm64 --target final -t noise233/echo-noise:latest --push --no-cache .
+```
+
+开启 UPX 压缩以确保镜像更小（不含 MCP）：
+
+```
+docker buildx build --platform linux/amd64,linux/arm64 --target final --build-arg USE_UPX=1 -t noise233/echo-noise:latest --push --no-cache .
+```
+
+MCP 独立镜像：
 
 ```
 docker buildx build --platform linux/amd64,linux/arm64 --target final-mcp -t noise233/echo-noise:latest-mcp --push --no-cache .
 ```
 
-构建（不带 MCP）：
+精简主镜像单架构amd64（不带 MCP）：
 
 ```
 docker buildx build --platform linux/amd64 --target final -t noise233/echo-noise:last --push --no-cache .
-```
-
-常规
-
-```
-docker buildx build --platform linux/amd64,linux/arm64 -t noise233/echo-noise:latest --push --no-cache .
 ```
 
 Podman（替代Docker）
