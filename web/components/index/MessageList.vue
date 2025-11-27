@@ -1026,7 +1026,7 @@ const downloadAsImage = async (msgId: number) => {
         overflow: visible;
         max-height: none !important;
         height: auto !important;
-        padding: 12px;
+        padding: 8px 12px;
         line-height: 1.6;
         margin-bottom: 0;
         white-space: pre-wrap;
@@ -1035,6 +1035,17 @@ const downloadAsImage = async (msgId: number) => {
         font-size: 14px;
         color: ${textColor};
       `;
+    }
+
+    const directChildren = Array.from(contentClone.children);
+    const topImage = directChildren.find((el) => el.tagName === 'IMG') as HTMLImageElement | undefined;
+    if (topImage) {
+      topImage.style.margin = '4px 0';
+      topImage.style.display = 'block';
+    }
+    const separatorEl = contentClone.querySelector('.border-t') as HTMLElement | null;
+    if (separatorEl) {
+      separatorEl.style.margin = '6px 0';
     }
 
     // 处理媒体元素
