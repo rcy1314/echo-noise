@@ -1155,7 +1155,7 @@ curl -X POST http://localhost:8080/api/notify/send \
     "mcpServers": {
       "ech0-noise-local-stdio": {
         "command": "node",
-        "args": ["/absolute/path/to/mcp/server.js"],
+        "args": ["/你的文件地址/server.js"],
         "env": {
           "NOTE_HOST": "http://<服务器IP>:1314",
           "NOTE_HTTP_PORT": "0",
@@ -1178,7 +1178,7 @@ curl -X POST http://localhost:8080/api/notify/send \
           "NOTE_HTTP_PORT=0",
           "NOTE_TOKEN=<你的Token>",
           "node",
-          "/absolute/path/to/mcp/server.js"
+          "/你的文件地址/server.js"
         ]
       }
     }
