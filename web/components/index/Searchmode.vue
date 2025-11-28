@@ -37,7 +37,7 @@ import { ref, computed } from 'vue';
 
 const toast = useToast();
 const config = useRuntimeConfig();
-const BASE_API = config.public.baseApi;
+const BASE_API = config.public.baseApi || '/api';
 
 // 添加props和emits以支持v-model
 const props = defineProps({

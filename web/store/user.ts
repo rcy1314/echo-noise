@@ -9,17 +9,17 @@ export const useUserStore = defineStore("userStore", () => {
 
     // 设置用户状态
     const setUserStatus = (newStatus: Status) => {
-        status.value = newStatus;
-        if (newStatus.Users) {
-            const currentUser = newStatus.Users.find(u => u.ID === user.value?.ID);
-            if (currentUser) {
-                user.value = {
-                    ID: currentUser.ID,
-                    Username: currentUser.Username,
-                    IsAdmin: currentUser.IsAdmin
-                };
-                isLogin.value = true;
-            }
+        status.value = newStatus as any;
+        const list = (newStatus as any).users || (newStatus as any).Users || []
+        const u = list.find((it: any) => (it.user_id ?? it.ID) === (user.value as any)?.userid)
+        if (u) {
+            user.value = {
+                userid: u.user_id ?? u.ID,
+                username: u.username ?? u.Username,
+                is_admin: u.is_admin ?? u.IsAdmin,
+                total_messages: (newStatus as any).total_messages ?? 0
+            } as any
+            isLogin.value = true
         }
     }
 
@@ -68,7 +68,12 @@ export const useUserStore = defineStore("userStore", () => {
         }
 
         if (response && response.code === 1 && response.data) {
-            user.value = response.data;
+            const u: any = response.data as any
+            user.value = {
+                userid: u.id ?? u.ID ?? u.user_id,
+                username: u.username ?? u.Username,
+                is_admin: u.is_admin ?? u.IsAdmin
+            } as any
             isLogin.value = true;
             await getStatus();
             return true;
@@ -79,7 +84,7 @@ export const useUserStore = defineStore("userStore", () => {
 
     // 获取状态
     const getStatus = async () => {
-        const response = await getRequest<Status>("status", {
+        const response = await getRequest<Status>("status", undefined, {
             credentials: 'include'
         });
         if (!response || response.code !== 1) {
@@ -103,7 +108,7 @@ export const useUserStore = defineStore("userStore", () => {
 
     // 获取当前登录用户信息
     const getUser = async (showToast: boolean = false) => {
-        const response = await getRequest<User>("user", {
+        const response = await getRequest<User>("user", undefined, {
             credentials: 'include'
         });
         if (!response || response.code !== 1) {
@@ -122,7 +127,12 @@ export const useUserStore = defineStore("userStore", () => {
         }
 
         if (response && response.code === 1 && response.data) {
-            user.value = response.data;
+            const u: any = response.data as any
+            user.value = {
+                userid: u.id ?? u.ID ?? u.user_id,
+                username: u.username ?? u.Username,
+                is_admin: u.is_admin ?? u.IsAdmin
+            } as any
             isLogin.value = true;
             await getStatus();
             return true;
@@ -150,16 +160,18 @@ export const useUserStore = defineStore("userStore", () => {
     
             // 如果获取用户信息失败，尝试获取状态
             const userStatus = await getStatus();
-            if (userStatus && userStatus.Users) {
-                const currentUser = userStatus.Users.find(u => u.ID === user.value?.ID);
+            const list = (userStatus as any)?.users || (userStatus as any)?.Users
+            if (userStatus && Array.isArray(list)) {
+                const currentUser = list.find((u: any) => (u.user_id ?? u.ID) === (user.value as any)?.userid)
                 if (currentUser) {
                     user.value = {
-                        ID: currentUser.ID,
-                        Username: currentUser.Username,
-                        IsAdmin: currentUser.IsAdmin
-                    };
-                    isLogin.value = true;
-                    return true;
+                        userid: currentUser.user_id ?? currentUser.ID,
+                        username: currentUser.username ?? currentUser.Username,
+                        is_admin: currentUser.is_admin ?? currentUser.IsAdmin,
+                        total_messages: (userStatus as any).total_messages ?? 0
+                    } as any
+                    isLogin.value = true
+                    return true
                 }
             }
     

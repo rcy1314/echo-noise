@@ -104,7 +104,17 @@
             </div>
             <!-- 评论区域 -->
             <div v-show="activeCommentId === msg.id" class="mt-4" :class="commentThemeClass">
-              <div :id="`waline-${msg.id}`"></div>
+              <template v-if="siteConfig?.commentEnabled === true">
+                <template v-if="(siteConfig?.commentSystem || 'waline') === 'builtin'">
+                  <BuiltinComments :message-id="msg.id" :site-config="siteConfig" />
+                </template>
+                <template v-else-if="useWaline">
+                  <div :id="`waline-${msg.id}`"></div>
+                </template>
+                <template v-else>
+                  <div class="text-xs opacity-70">未配置评论系统</div>
+                </template>
+              </template>
             </div>
           </div>
         </div>
@@ -220,6 +230,7 @@
 import { useMessageStore } from "~/store/message";
 import { useUserStore } from "~/store/user";
 import MarkdownRenderer from "~/components/index/MarkdownRenderer.vue";
+import BuiltinComments from "~/components/comments/BuiltinComments.vue";
 const contentTheme = inject('contentTheme', ref<string>(typeof window !== 'undefined' ? (localStorage.getItem('contentTheme') || 'dark') : 'dark'))
 const listThemeClass = computed(() => contentTheme.value === 'dark' ? 'bg-[rgba(36,43,50,0.95)] text-white' : 'bg-white text-black')
 const listThemeTextClass = computed(() => contentTheme.value === 'dark' ? 'text-white' : 'text-black')
@@ -287,6 +298,12 @@ const props = defineProps({
     default: null
   }
 });
+const useWaline = computed(() => {
+  const s: any = props.siteConfig || {}
+  const system = String(s.commentSystem || 'waline').toLowerCase()
+  const enabled = typeof s.commentEnabled === 'boolean' ? !!s.commentEnabled : true
+  return enabled && system === 'waline' && !!s.walineServerURL
+})
 // 添加监听器
 watch(() => props.targetMessageId, async (newId) => {
   if (!newId) return;
@@ -303,7 +320,7 @@ watch(() => props.targetMessageId, async (newId) => {
   }
 }, { immediate: true });
 
-const BASE_API = useRuntimeConfig().public.baseApi;
+const BASE_API = useRuntimeConfig().public.baseApi || '/api';
 const { deleteMessage } = useMessage();
 const message = useMessageStore();
 
@@ -448,7 +465,7 @@ const toggleComment = async (msgId: number) => {
   } else {
     activeCommentId.value = msgId;
     await nextTick();
-    if (window.Waline) {
+    if (useWaline.value && window.Waline) {
       const el = document.querySelector(`#waline-${msgId}`);
       if (el) {
         window.Waline.init({
@@ -471,8 +488,6 @@ const toggleComment = async (msgId: number) => {
       } else {
         console.error(`评论容器 #waline-${msgId} 未找到`);
       }
-    } else {
-      console.error("Waline 未加载");
     }
   }
 };
@@ -591,8 +606,8 @@ onMounted(async () => {
     // 获取路由中的消息ID
     const messageId = route.hash.split('/messages/').pop();
     
-    // 加载 Waline
-    if (!window.Waline) {
+    // 加载 Waline（仅当选择 Waline 时）
+    if (useWaline.value && !window.Waline) {
       const link = document.createElement("link");
       link.rel = "stylesheet";
       link.href = "https://unpkg.com/@waline/client@v2/dist/waline.css";

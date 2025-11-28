@@ -68,6 +68,7 @@ import HeatmapWidget from '~/components/widgets/heatmap.vue'
 import SearchMode from '~/components/index/Searchmode.vue' // 导入 SearchMode 组件
 import TagList from '~/components/index/TagList.vue'
 import AnnouncementBar from '~/components/widgets/AnnouncementBar.vue'
+import { getRequest } from '~/utils/api'
 
 // 添加 messageList ref
 const messageList = ref(null)
@@ -195,7 +196,12 @@ const frontendConfig = ref({
     pwaDescription: '',
     pwaIconURL: '',
     announcementText: '',
-    announcementEnabled: true
+    announcementEnabled: true,
+    // 评论系统
+    commentEnabled: false,
+    commentSystem: 'waline',
+    commentEmailEnabled: false,
+    walineServerURL: ''
 })
 
 const backgroundStyle = computed(() => ({
@@ -244,40 +250,27 @@ const defaultConfig = {
     pwaTitle: '',
     pwaDescription: '',
     pwaIconURL: '',
-    walineServerURL: 'https://s9cewscb.lc-cn-n1-shared.com'
-    ,announcementText: '欢迎访问我的说说笔记！'
-    ,announcementEnabled: true
+    announcementText: '欢迎访问我的说说笔记！',
+    announcementEnabled: true,
+    // 评论系统默认值
+    commentEnabled: false,
+    commentSystem: 'waline',
+    commentEmailEnabled: false,
+    walineServerURL: ''
 };
 
 // 修改 fetchConfig 方法
 const fetchConfig = async () => {
     try {
-        // 先设置默认值
         frontendConfig.value = { ...defaultConfig };
-        
-        const response = await fetch(`${useRuntimeConfig().public.baseApi}/frontend/config`, {
-            credentials: 'include',
-            headers: {
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache'
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        
-        const data = await response.json();
-        console.log('获取到的配置数据:', data);
-        
-        if (data?.data?.frontendSettings) {
-            const settings = data.data.frontendSettings;
-            // 更新配置
-            const booleanKeys = ['enableGithubCard', 'pwaEnabled', 'announcementEnabled']
+        const res = await getRequest<any>('frontend/config', undefined, { credentials: 'include' })
+        if (res && res.code === 1 && res.data && res.data.frontendSettings) {
+            const settings = res.data.frontendSettings
+            const booleanKeys = ['enableGithubCard', 'pwaEnabled', 'announcementEnabled', 'commentEnabled', 'commentEmailEnabled']
             Object.keys(frontendConfig.value).forEach(key => {
                 if (settings[key] !== null && settings[key] !== undefined) {
                     if (key === 'backgrounds' && Array.isArray(settings[key])) {
-                        frontendConfig.value.backgrounds = [...settings[key]];
+                        frontendConfig.value.backgrounds = [...settings[key]]
                     } else if (booleanKeys.includes(key)) {
                         const v = settings[key]
                         frontendConfig.value[key] = (v === true || v === 'true')
@@ -286,8 +279,7 @@ const fetchConfig = async () => {
                         frontendConfig.value[key] = typeof v === 'string' ? v.trim() : v
                     }
                 }
-            });
-            // 应用默认内容主题
+            })
             const defaultTheme = (settings.defaultContentTheme || 'light').trim()
             if (typeof window !== 'undefined' && !localStorage.getItem('contentTheme')) {
               contentTheme.value = defaultTheme === 'light' ? 'light' : 'dark'
@@ -296,26 +288,20 @@ const fetchConfig = async () => {
               document.documentElement.className = contentTheme.value === 'dark' ? 'dark' : ''
             }
         }
-
-        // 确保背景图片数组存在且有效
         if (!frontendConfig.value.backgrounds?.length) {
-            frontendConfig.value.backgrounds = [...defaultConfig.backgrounds];
+            frontendConfig.value.backgrounds = [...defaultConfig.backgrounds]
         }
-
-        // 设置初始背景图
         if (frontendConfig.value.backgrounds.length > 0) {
-            const randomIndex = Math.floor(Math.random() * frontendConfig.value.backgrounds.length);
-            currentImage.value = frontendConfig.value.backgrounds[randomIndex];
+            const randomIndex = Math.floor(Math.random() * frontendConfig.value.backgrounds.length)
+            currentImage.value = frontendConfig.value.backgrounds[randomIndex]
         }
-        
-        isLoaded.value = true;
+        isLoaded.value = true
     } catch (error) {
-        console.error('获取配置失败:', error);
-        // 发生错误时保持默认配置
-        frontendConfig.value = { ...defaultConfig };
-        isLoaded.value = true;
+        console.error('获取配置失败:', error)
+        frontendConfig.value = { ...defaultConfig }
+        isLoaded.value = true
     }
-};
+}
 const currentImage = ref('')
 const isLoaded = ref(false)
 const imageLoading = ref(false)
@@ -425,20 +411,16 @@ const handleTagsUpdate = async () => {
 // 获取所有标签
 const fetchTags = async () => {
   try {
-    const response = await fetch(`${useRuntimeConfig().public.baseApi}/messages/tags`, {
-      headers: {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
-      }
-    })
-    const data = await response.json()
-    if (data.code === 1) {
-      tags.value = data.data || []
+    const res = await getRequest<any>('messages/tags')
+    if (res && res.code === 1) {
+      tags.value = res.data || []
+    } else {
+      tags.value = []
     }
   } catch (error) {
     console.error('获取标签失败:', error)
     tags.value = []
-    }
+  }
 }
 
 // 监听前端配置更新事件，保存后主动刷新配置
@@ -452,38 +434,25 @@ onMounted(() => {
 // 标签点击处理
 const handleTagClick = async (tag: string) => {
   try {
-    const encodedTag = encodeURIComponent(tag.trim());
-    const response = await fetch(`${useRuntimeConfig().public.baseApi}/messages/tags/${encodedTag}`, {
-      credentials: 'include',
-      headers: {
-        'Accept': 'application/json'
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    if (data.code === 1 && Array.isArray(data.data)) {
-      // 直接调用 messageList 的处理方法
+    const encodedTag = encodeURIComponent(tag.trim())
+    const res = await getRequest<any>(`messages/tags/${encodedTag}`, undefined, { credentials: 'include' })
+    if (res && res.code === 1 && Array.isArray(res.data)) {
       if (messageList.value) {
-        messageList.value.handleSearchResult(data.data);
+        messageList.value.handleSearchResult(res.data)
       }
     } else {
-      throw new Error(data.msg || '获取标签内容失败');
+      throw new Error(res?.msg || '获取标签内容失败')
     }
   } catch (error: any) {
-    console.error('获取标签消息失败:', error);
+    console.error('获取标签消息失败:', error)
     useToast().add({
       title: '获取标签消息失败',
       description: error.message || '服务器错误，请稍后重试',
       color: 'red',
       timeout: 3000
-    });
+    })
   }
-};
+}
 // 修改打字效果函数
 const startTypeEffect = () => {
   if (!subtitleEl.value) return

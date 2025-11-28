@@ -216,7 +216,7 @@ const uploadVideo = (file: File) => {
   xhr.send(formData);
 };
 const toast = useToast()
-const BASE_API = useRuntimeConfig().public.baseApi;
+const BASE_API = useRuntimeConfig().public.baseApi || '/api';
 const { save } = useMessage();
 
 const showHeatmap = inject('showHeatmap') as Ref<boolean>;

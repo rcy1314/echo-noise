@@ -31,6 +31,17 @@ type Message struct {
 	Pinned    bool      `gorm:"default:false" json:"pinned"`
 }
 
+type Comment struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	MessageID uint      `gorm:"index;not null" json:"message_id"`
+	Nick      string    `gorm:"type:varchar(100)" json:"nick"`
+	Mail      string    `gorm:"type:varchar(191)" json:"mail"`
+	Link      string    `gorm:"type:varchar(191)" json:"link"`
+	Content   string    `gorm:"type:text;not null" json:"content"`
+	ParentID  *uint     `json:"parent_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type User struct {
 	ID       uint   `gorm:"primaryKey" json:"id"`
 	Username string `gorm:"type:varchar(191);not null;uniqueIndex" json:"username"`
@@ -92,6 +103,44 @@ type SiteConfig struct {
 	AnnouncementText    string `gorm:"type:varchar(191)"`
 	AnnouncementEnabled bool   `gorm:"default:true"`
 	Version             int    `json:"version"`
+	SmtpEnabled         bool   `gorm:"default:false" json:"smtpEnabled"`
+	SmtpDriver          string `gorm:"type:varchar(50)" json:"smtpDriver"`
+	SmtpHost            string `gorm:"type:varchar(191)" json:"smtpHost"`
+	SmtpPort            int    `json:"smtpPort"`
+	SmtpUser            string `gorm:"type:varchar(191)" json:"smtpUser"`
+	SmtpPass            string `gorm:"type:varchar(191)" json:"smtpPass"`
+	SmtpFrom            string `gorm:"type:varchar(191)" json:"smtpFrom"`
+	SmtpEncryption      string `gorm:"type:varchar(20)" json:"smtpEncryption"`
+	SmtpTLS             bool   `gorm:"default:false" json:"smtpTLS"`
+	// GitHub OAuth
+	GithubOAuthEnabled bool   `gorm:"default:false"`
+	GithubClientId     string `gorm:"type:varchar(191)"`
+	GithubClientSecret string `gorm:"type:varchar(191)"`
+	GithubCallbackURL  string `gorm:"type:varchar(191)"`
+	// 云存储（S3/R2）备份设置
+	StorageEnabled       bool   `gorm:"default:false"`
+	StorageProvider      string `gorm:"type:varchar(20)"` // s3 或 r2
+	StorageEndpoint      string `gorm:"type:varchar(191)"`
+	StorageRegion        string `gorm:"type:varchar(100)"`
+	StorageBucket        string `gorm:"type:varchar(191)"`
+	StorageAccessKey     string `gorm:"type:varchar(191)"`
+	StorageSecretKey     string `gorm:"type:varchar(191)"`
+	StorageUsePathStyle  bool   `gorm:"default:true"`
+	StoragePublicBaseURL string `gorm:"type:varchar(191)"`
+	// 音乐播放器配置（NeteaseMiniPlayer）
+	MusicEnabled          bool   `gorm:"default:false"`
+	MusicPlaylistId       string `gorm:"type:varchar(50)"`
+	MusicSongId           string `gorm:"type:varchar(50)"`
+	MusicPosition         string `gorm:"type:varchar(30)"` // static/top-left/top-right/bottom-left/bottom-right
+	MusicTheme            string `gorm:"type:varchar(20)"` // auto/light/dark
+	MusicLyric            bool   `gorm:"default:true"`
+	MusicAutoplay         bool   `gorm:"default:false"`
+	MusicDefaultMinimized bool   `gorm:"default:true"`
+	MusicEmbed            bool   `gorm:"default:false"`
+	// 评论系统配置
+	CommentEnabled      bool   `gorm:"default:false"`
+	CommentSystem       string `gorm:"type:varchar(20)"` // builtin/waline/none/other
+	CommentEmailEnabled bool   `gorm:"default:false"`
 }
 
 func (s *SiteConfig) GetBackgroundsList() []string {

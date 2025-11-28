@@ -61,7 +61,6 @@ func SetupRouter() *gin.Engine {
 
 	r.Use(cors.New(corsConfig))
 
-	// 映射静态文件目录
 	r.Use(static.Serve("/", static.LocalFile("./public", true)))
 	r.Static("/api/images", "./data/images")
 	r.Static("/video", "./data/video")
@@ -86,6 +85,7 @@ func SetupRouter() *gin.Engine {
 	api.POST("/login", controllers.Login)
 	api.POST("/register", controllers.Register)
 	api.GET("/status", controllers.GetStatus)
+	api.GET("/captcha", controllers.GetCaptcha)
 	// api.GET("/config", controllers.GetFrontendConfig)
 	api.GET("/messages", controllers.GetMessages)
 	api.GET("/messages/:id", controllers.GetMessage)
@@ -94,6 +94,10 @@ func SetupRouter() *gin.Engine {
 	api.GET("/messages/calendar", controllers.GetMessagesCalendar) // 新增热力图专用路由
 	api.GET("/messages/search", controllers.SearchMessages)        // 新增搜索消息路由
 	api.GET("/version/check", controllers.CheckVersion)            // 添加版本检查路由
+	// GitHub OAuth
+	api.GET("/oauth/github/login", controllers.GithubLogin)
+	r.GET("/oauth/github/callback", controllers.GithubCallback)
+	api.POST("/password/forgot", controllers.PasswordForgot)
 
 	// 添加标签和图像相关路由
 	api.GET("/messages/tags/:tag", controllers.GetMessagesByTag) // 获取指定标签的消息
@@ -122,6 +126,10 @@ func SetupRouter() *gin.Engine {
 		messages.PUT("/:id/pin", controllers.UpdateMessagePinned)
 		messages.DELETE("/:id", controllers.DeleteMessage)
 	}
+
+	// 评论系统（内置）公共路由
+	api.GET("/messages/:id/comments", controllers.GetComments)
+	api.POST("/messages/:id/comments", controllers.PostComment)
 	// 添加推送配置路由
 	notify := authRoutes.Group("/notify")
 	{
@@ -131,11 +139,18 @@ func SetupRouter() *gin.Engine {
 		notify.PUT("/config", controllers.SaveNotifyConfig) // 保存配置
 	}
 
+	email := authRoutes.Group("/email")
+	{
+		email.POST("/test", controllers.EmailTest)
+	}
+
 	// 数据库备份相关路由
 	backup := authRoutes.Group("/backup")
 	{
 		backup.GET("/download", controllers.HandleBackupDownload)
 		backup.POST("/restore", controllers.HandleBackupRestore)
+		backup.POST("/storage/upload", controllers.HandleBackupUploadToURL)
+		backup.POST("/storage/restore", controllers.HandleBackupRestoreFromURL)
 	}
 
 	// 图片上传路由
@@ -150,6 +165,7 @@ func SetupRouter() *gin.Engine {
 		user.PUT("/change_password", controllers.ChangePassword)
 		user.PUT("/update", controllers.UpdateUser)
 		user.PUT("/admin", controllers.UpdateUserAdmin)
+		user.DELETE("", controllers.DeleteUser)
 		user.POST("/logout", controllers.Logout) // 添加退出登录路由
 		// 添加 Token 相关路由
 		user.GET("/token", controllers.GetUserToken)
@@ -159,7 +175,9 @@ func SetupRouter() *gin.Engine {
 	// 设置路由
 	authRoutes.PUT("/settings", controllers.UpdateSetting)
 
-	// 404 处理
+	r.GET("/status", func(c *gin.Context) {
+		c.File("./public/index.html")
+	})
 	r.NoRoute(func(c *gin.Context) {
 		path := c.Request.URL.Path
 		if strings.HasPrefix(path, "/m/") ||

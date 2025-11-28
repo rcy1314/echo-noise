@@ -2,11 +2,13 @@ package services
 
 import (
 	"errors"
-    "fmt"
-    "github.com/lin-snow/ech0/internal/dto"
-    "github.com/lin-snow/ech0/internal/models"
-    "github.com/lin-snow/ech0/internal/repository"
-    "github.com/lin-snow/ech0/pkg"
+	"fmt"
+
+	"github.com/lin-snow/ech0/internal/dto"
+	"github.com/lin-snow/ech0/internal/models"
+	"github.com/lin-snow/ech0/internal/repository"
+	"github.com/lin-snow/ech0/pkg"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func Register(userdto dto.RegisterDto) error {
@@ -14,11 +16,15 @@ func Register(userdto dto.RegisterDto) error {
 		return errors.New(models.UsernameOrPasswordCannotBeEmptyMessage)
 	}
 
-	userdto.Password = pkg.MD5Encrypt(userdto.Password)
+	// 使用 bcrypt 存储新用户密码
+	hashed := models.HashPassword(userdto.Password)
+	if hashed == "" {
+		return errors.New("密码加密失败")
+	}
 
 	newuser := models.User{
 		Username: userdto.Username,
-		Password: userdto.Password,
+		Password: hashed,
 		IsAdmin:  false,
 		Token:    models.GenerateToken(32),
 	}
@@ -44,50 +50,58 @@ func Register(userdto dto.RegisterDto) error {
 }
 
 func Login(userdto dto.LoginDto) (*models.User, error) {
-    if userdto.Username == "" || userdto.Password == "" {
-        return nil, errors.New(models.UsernameOrPasswordCannotBeEmptyMessage)
-    }
+	if userdto.Username == "" || userdto.Password == "" {
+		return nil, errors.New(models.UsernameOrPasswordCannotBeEmptyMessage)
+	}
 
-    userdto.Password = pkg.MD5Encrypt(userdto.Password)
+	plain := userdto.Password
+	md5pwd := pkg.MD5Encrypt(plain)
 
-    user, err := repository.GetUserByUsername(userdto.Username)
-    if err != nil {
-        return nil, errors.New(models.UserNotFoundMessage)
-    }
+	user, err := repository.GetUserByUsername(userdto.Username)
+	if err != nil {
+		return nil, errors.New(models.UserNotFoundMessage)
+	}
 
-    if user.Password != userdto.Password {
-        return nil, errors.New(models.PasswordIncorrectMessage)
-    }
+	// 兼容两种密码存储：MD5 与 bcrypt
+	// 1) 直接匹配 MD5
+	if user.Password == md5pwd {
+		// ok
+	} else {
+		// 2) 尝试按 bcrypt 校验
+		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(plain)); err != nil {
+			return nil, errors.New(models.PasswordIncorrectMessage)
+		}
+	}
 
-    // 只在 token 为空时生成新的 token
-    if user.Token == "" {
-        user.Token = models.GenerateToken(32)
-        if err := repository.UpdateUser(user); err != nil {
-            return nil, fmt.Errorf("生成用户 token 失败: %v", err)
-        }
-    }
+	// 只在 token 为空时生成新的 token
+	if user.Token == "" {
+		user.Token = models.GenerateToken(32)
+		if err := repository.UpdateUser(user); err != nil {
+			return nil, fmt.Errorf("生成用户 token 失败: %v", err)
+		}
+	}
 
-    return user, nil
+	return user, nil
 }
 
 func GetStatus() (models.Status, error) {
-    sysuser, err := repository.GetSysAdmin()
-    if err != nil {
-        return models.Status{}, errors.New(models.UserNotFoundMessage)
-    }
+	sysuser, err := repository.GetSysAdmin()
+	if err != nil {
+		return models.Status{}, errors.New(models.UserNotFoundMessage)
+	}
 
-    var users []models.UserStatus
-    allusers, err := repository.GetAllUsers()
-    if err != nil {
-        return models.Status{}, errors.New(models.GetAllUsersFailMessage)
-    }
-    for _, user := range allusers {
-        users = append(users, models.UserStatus{
-            ID:       user.ID,
-            Username: user.Username,
-            IsAdmin:  user.IsAdmin,
-        })
-    }
+	var users []models.UserStatus
+	allusers, err := repository.GetAllUsers()
+	if err != nil {
+		return models.Status{}, errors.New(models.GetAllUsersFailMessage)
+	}
+	for _, user := range allusers {
+		users = append(users, models.UserStatus{
+			ID:       user.ID,
+			Username: user.Username,
+			IsAdmin:  user.IsAdmin,
+		})
+	}
 
 	status := models.Status{}
 
@@ -138,34 +152,38 @@ func UpdateUser(user *models.User, userdto dto.UserInfoDto) error {
 }
 
 func ChangePassword(user *models.User, userdto dto.UserInfoDto) error {
-    if user == nil {
-        return errors.New("用户信息不能为空")
-    }
+	if user == nil {
+		return errors.New("用户信息不能为空")
+	}
 
-    if userdto.Password == "" {
-        return errors.New(models.PasswordCannotBeEmptyMessage)
-    }
+	if userdto.Password == "" {
+		return errors.New(models.PasswordCannotBeEmptyMessage)
+	}
 
-    newPassword := pkg.MD5Encrypt(userdto.Password)
-    if user.Password == newPassword {
-        return errors.New(models.PasswordCannotBeSameAsBeforeMessage)
-    }
+	// 如果新密码与旧密码一致，则拒绝
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(userdto.Password)); err == nil {
+		return errors.New(models.PasswordCannotBeSameAsBeforeMessage)
+	}
 
-    user.Password = newPassword
-    // 修改密码时不更新 token
-    
-    if err := repository.UpdateUser(user); err != nil {
-        return fmt.Errorf("更新密码失败: %v", err)
-    }
+	// 使用 bcrypt 更新密码
+	hashed := models.HashPassword(userdto.Password)
+	if hashed == "" {
+		return fmt.Errorf("密码加密失败")
+	}
+	user.Password = hashed
 
-    return nil
+	if err := repository.UpdateUser(user); err != nil {
+		return fmt.Errorf("更新密码失败: %v", err)
+	}
+
+	return nil
 }
 
 func UpdateUserAdmin(userID uint) error {
-	user, err := repository.GetUserByID(userID)
-	if err != nil {
-		return err
-	}
+    user, err := repository.GetUserByID(userID)
+    if err != nil {
+        return err
+    }
 
 	user.IsAdmin = !user.IsAdmin
 
@@ -173,5 +191,13 @@ func UpdateUserAdmin(userID uint) error {
 		return err
 	}
 
-	return nil
+    return nil
+}
+
+func GetUserByUsername(username string) (*models.User, error) {
+    user, err := repository.GetUserByUsername(username)
+    if err != nil {
+        return nil, err
+    }
+    return user, nil
 }

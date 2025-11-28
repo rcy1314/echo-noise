@@ -3,7 +3,7 @@ import { useUserStore } from "~/store/user";
 import { useToast } from "#imports";
 
 export const postRequest = async <T>(url: string, body: object | FormData, options?: { credentials?: RequestCredentials }) => {
-    const BASE_API = useRuntimeConfig().public.baseApi;
+    const BASE_API = useRuntimeConfig().public.baseApi || '/api';
     const userStore = useUserStore();
     const token = userStore.token || "null";
 
@@ -20,18 +20,21 @@ export const postRequest = async <T>(url: string, body: object | FormData, optio
             method: 'POST',
             headers,
             body: isFormData ? body : JSON.stringify(body),
-            credentials: options?.credentials
+            credentials: options?.credentials,
+            timeout: 8000,
+            retry: 0
         });
 
         return response;
     } catch (error) {
-        console.error('请求失败:', error);
-        throw error;
+        const toast = useToast();
+        toast.add({ title: '请求失败', description: '网络异常或服务器不可用', color: 'red', timeout: 2000 });
+        return { code: 0, msg: '网络异常', data: null } as any as Response<T>;
     }
 };
 
 export const getRequest = async <T>(url: string, params?: any, options?: { credentials?: RequestCredentials }) => {
-    const BASE_API = useRuntimeConfig().public.baseApi;
+    const BASE_API = useRuntimeConfig().public.baseApi || '/api';
     const userStore = useUserStore();
     const token = userStore.token || "null";
 
@@ -45,7 +48,9 @@ export const getRequest = async <T>(url: string, params?: any, options?: { crede
                 'Cache-Control': 'no-cache',
                 'Pragma': 'no-cache'
             },
-            credentials: options?.credentials
+            credentials: options?.credentials,
+            timeout: 8000,
+            retry: 0
         });
 
         return response;
@@ -55,13 +60,14 @@ export const getRequest = async <T>(url: string, params?: any, options?: { crede
         if (status === 401) {
             return { code: 0, msg: 'Unauthorized' } as any as Response<T>;
         }
-        console.error('请求失败:', error);
-        throw error;
+        const toast = useToast();
+        toast.add({ title: '请求失败', description: '网络异常或服务器不可用', color: 'red', timeout: 2000 });
+        return { code: 0, msg: '网络异常', data: null } as any as Response<T>;
     }
 };
 
 export const putRequest = async <T>(url: string, body: object, options?: { credentials?: RequestCredentials }) => {
-    const BASE_API = useRuntimeConfig().public.baseApi;
+    const BASE_API = useRuntimeConfig().public.baseApi || '/api';
     const toast = useToast();
     const userStore = useUserStore();
     const token = userStore.token || "null";
@@ -74,7 +80,9 @@ export const putRequest = async <T>(url: string, body: object, options?: { crede
                 'Authorization': `${token}`,
             },
             body: JSON.stringify(body),
-            credentials: options?.credentials
+            credentials: options?.credentials,
+            timeout: 8000,
+            retry: 0
         });
 
         if (response.code !== 1) {
@@ -90,13 +98,14 @@ export const putRequest = async <T>(url: string, body: object, options?: { crede
 
         return response;
     } catch (error) {
-        console.error('请求失败:', error);
-        throw error;
+        const toast = useToast();
+        toast.add({ title: '请求失败', description: '网络异常或服务器不可用', color: 'red', timeout: 2000 });
+        return { code: 0, msg: '网络异常', data: null } as any as Response<T>;
     }
 };
 
 export const deleteRequest = async <T>(url: string, params?: any, options?: { credentials?: RequestCredentials }) => {
-    const BASE_API = useRuntimeConfig().public.baseApi;
+    const BASE_API = useRuntimeConfig().public.baseApi || '/api';
     const userStore = useUserStore();
     const token = userStore.token || "null";
 

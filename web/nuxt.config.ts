@@ -51,7 +51,7 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      baseApi: process.env.BASE_API,
+      baseApi: process.env.BASE_API || '/api',
     }
   },
   // 添加以下配置
@@ -60,6 +60,10 @@ export default defineNuxtConfig({
     devProxy: {
       '/api': {
         target: 'http://localhost:1315/api',
+        changeOrigin: true
+      },
+      '/rss': {
+        target: 'http://localhost:1315/rss',
         changeOrigin: true
       }
     },
@@ -78,8 +82,8 @@ export default defineNuxtConfig({
     payloadExtraction: false
   },
   devServer: {
-    port: 1314,
-    host: 'localhost'
+    port: 3000,
+    host: '0.0.0.0'
   },
   ssr: false,
 })

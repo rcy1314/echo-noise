@@ -6,8 +6,9 @@ type LoginDto struct {
 }
 
 type RegisterDto struct {
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
+    Username string `json:"username" binding:"required"`
+    Password string `json:"password" binding:"required"`
+    Captcha  string `json:"captcha" binding:"required"`
 }
 
 // TwitterOAuth2CallbackDto Twitter OAuth2 回调参数

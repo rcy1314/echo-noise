@@ -26,7 +26,7 @@ import { useToast } from '#imports'
 const emit = defineEmits(['video-uploaded', 'upload-progress'])
 const videoInput = ref<HTMLInputElement | null>(null)
 const toast = useToast()
-const BASE_API = useRuntimeConfig().public.baseApi
+const BASE_API = useRuntimeConfig().public.baseApi || '/api'
 
 const triggerVideoInput = () => {
   videoInput.value?.click()

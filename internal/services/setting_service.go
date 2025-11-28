@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/lin-snow/ech0/internal/database"
 	"github.com/lin-snow/ech0/internal/models"
@@ -45,6 +46,11 @@ func GetFrontendConfig() (map[string]interface{}, error) {
 			"rssFaviconURL":    config.RSSFaviconURL,
 			"walineServerURL":  config.WalineServerURL,
 			"enableGithubCard": config.EnableGithubCard,
+			// GitHub OAuth
+			"githubOAuthEnabled": config.GithubOAuthEnabled,
+			"githubClientId":     config.GithubClientId,
+			"githubClientSecret": config.GithubClientSecret,
+			"githubCallbackURL":  config.GithubCallbackURL,
 			// PWA 设置
 			"pwaEnabled":     config.PwaEnabled,
 			"pwaTitle":       choose(config.PwaTitle, config.SiteTitle),
@@ -55,7 +61,41 @@ func GetFrontendConfig() (map[string]interface{}, error) {
 			// 公告栏
 			"announcementText":    choose(config.AnnouncementText, "欢迎访问我的说说笔记！"),
 			"announcementEnabled": config.AnnouncementEnabled,
+			// 音乐播放器
+			"musicEnabled":          config.MusicEnabled,
+			"musicPlaylistId":       choose(config.MusicPlaylistId, ""),
+			"musicSongId":           choose(config.MusicSongId, ""),
+			"musicPosition":         choose(config.MusicPosition, "bottom-left"),
+			"musicTheme":            choose(config.MusicTheme, "auto"),
+			"musicLyric":            config.MusicLyric,
+			"musicAutoplay":         config.MusicAutoplay,
+			"musicDefaultMinimized": config.MusicDefaultMinimized,
+			"musicEmbed":            config.MusicEmbed,
+			// 评论系统
+			"commentEnabled":      config.CommentEnabled,
+			"commentSystem":       choose(config.CommentSystem, "waline"),
+			"commentEmailEnabled": config.CommentEmailEnabled,
 		},
+		"storageEnabled": config.StorageEnabled,
+		"storageConfig": map[string]interface{}{
+			"provider":      choose(config.StorageProvider, ""),
+			"endpoint":      choose(config.StorageEndpoint, ""),
+			"region":        choose(config.StorageRegion, ""),
+			"bucket":        choose(config.StorageBucket, ""),
+			"accessKey":     choose(config.StorageAccessKey, ""),
+			"secretKey":     choose(config.StorageSecretKey, ""),
+			"usePathStyle":  config.StorageUsePathStyle,
+			"publicBaseURL": choose(config.StoragePublicBaseURL, ""),
+		},
+		"smtpEnabled":    config.SmtpEnabled,
+		"smtpDriver":     config.SmtpDriver,
+		"smtpHost":       config.SmtpHost,
+		"smtpPort":       config.SmtpPort,
+		"smtpUser":       config.SmtpUser,
+		"smtpPass":       config.SmtpPass,
+		"smtpFrom":       config.SmtpFrom,
+		"smtpEncryption": config.SmtpEncryption,
+		"smtpTLS":        config.SmtpTLS,
 	}
 	return configMap, nil
 }
@@ -125,6 +165,86 @@ func UpdateFrontendSetting(userID uint, settingMap map[string]interface{}) error
 	}
 	if v, ok := frontendSettings["walineServerURL"].(string); ok {
 		config.WalineServerURL = v
+	}
+	// 评论系统设置
+	if vb, ok := frontendSettings["commentEnabled"].(bool); ok {
+		config.CommentEnabled = vb
+	} else if vs, ok := frontendSettings["commentEnabled"].(string); ok {
+		if vs == "true" {
+			config.CommentEnabled = true
+		} else if vs == "false" {
+			config.CommentEnabled = false
+		}
+	}
+
+	// 音乐播放器设置
+	if vb, ok := frontendSettings["musicEnabled"].(bool); ok {
+		config.MusicEnabled = vb
+	} else if vs, ok := frontendSettings["musicEnabled"].(string); ok {
+		config.MusicEnabled = (vs == "true")
+	}
+	if v, ok := frontendSettings["musicPlaylistId"].(string); ok {
+		config.MusicPlaylistId = v
+	}
+	if v, ok := frontendSettings["musicSongId"].(string); ok {
+		config.MusicSongId = v
+	}
+	if v, ok := frontendSettings["musicPosition"].(string); ok {
+		config.MusicPosition = v
+	}
+	if v, ok := frontendSettings["musicTheme"].(string); ok {
+		config.MusicTheme = v
+	}
+	if vb, ok := frontendSettings["musicLyric"].(bool); ok {
+		config.MusicLyric = vb
+	} else if vs, ok := frontendSettings["musicLyric"].(string); ok {
+		config.MusicLyric = (vs == "true")
+	}
+	if vb, ok := frontendSettings["musicAutoplay"].(bool); ok {
+		config.MusicAutoplay = vb
+	} else if vs, ok := frontendSettings["musicAutoplay"].(string); ok {
+		config.MusicAutoplay = (vs == "true")
+	}
+	if vb, ok := frontendSettings["musicDefaultMinimized"].(bool); ok {
+		config.MusicDefaultMinimized = vb
+	} else if vs, ok := frontendSettings["musicDefaultMinimized"].(string); ok {
+		config.MusicDefaultMinimized = (vs == "true")
+	}
+	if vb, ok := frontendSettings["musicEmbed"].(bool); ok {
+		config.MusicEmbed = vb
+	} else if vs, ok := frontendSettings["musicEmbed"].(string); ok {
+		config.MusicEmbed = (vs == "true")
+	}
+	if v, ok := frontendSettings["commentSystem"].(string); ok {
+		config.CommentSystem = v
+	}
+	if vb, ok := frontendSettings["commentEmailEnabled"].(bool); ok {
+		config.CommentEmailEnabled = vb
+	} else if vs, ok := frontendSettings["commentEmailEnabled"].(string); ok {
+		if vs == "true" {
+			config.CommentEmailEnabled = true
+		} else if vs == "false" {
+			config.CommentEmailEnabled = false
+		}
+	}
+	// GitHub OAuth 设置
+	if vb, ok := frontendSettings["githubOAuthEnabled"].(bool); ok {
+		config.GithubOAuthEnabled = vb
+	} else if vs, ok := frontendSettings["githubOAuthEnabled"].(string); ok {
+		if vs == "true" {
+			config.GithubOAuthEnabled = true
+		} else if vs == "false" {
+			config.GithubOAuthEnabled = false
+		}
+	}
+	if v, ok := frontendSettings["githubClientId"].(string); ok {
+		config.GithubClientId = v
+	}
+	if v, ok := frontendSettings["githubClientSecret"].(string); ok {
+		config.GithubClientSecret = v
+	}
+	if v, ok := frontendSettings["githubCallbackURL"].(string); ok {
+		config.GithubCallbackURL = v
 	}
 	if v, ok := frontendSettings["enableGithubCard"].(bool); ok {
 		config.EnableGithubCard = v
@@ -213,6 +333,62 @@ func UpdateFrontendSetting(userID uint, settingMap map[string]interface{}) error
 		}
 	}
 
+	if v, ok := settingMap["smtpEnabled"].(bool); ok {
+		config.SmtpEnabled = v
+	}
+	if v, ok := settingMap["smtpDriver"].(string); ok {
+		config.SmtpDriver = v
+	}
+	if v, ok := settingMap["smtpHost"].(string); ok {
+		config.SmtpHost = v
+	}
+	if v, ok := settingMap["smtpPort"].(float64); ok {
+		config.SmtpPort = int(v)
+	} else if vi, ok := settingMap["smtpPort"].(int); ok {
+		config.SmtpPort = vi
+	} else if vs, ok := settingMap["smtpPort"].(string); ok {
+		if p, err := strconv.Atoi(vs); err == nil {
+			config.SmtpPort = p
+		}
+	}
+	if v, ok := settingMap["smtpUser"].(string); ok {
+		config.SmtpUser = v
+	}
+	if v, ok := settingMap["smtpPass"].(string); ok {
+		config.SmtpPass = v
+	}
+	if v, ok := settingMap["smtpFrom"].(string); ok {
+		config.SmtpFrom = v
+	}
+	if v, ok := settingMap["smtpEncryption"].(string); ok {
+		config.SmtpEncryption = v
+	}
+	if v, ok := settingMap["smtpTLS"].(bool); ok {
+		config.SmtpTLS = v
+	}
+
+	// 自动启用：当必填项齐全时，强制启用
+	if !config.SmtpEnabled {
+		if config.SmtpHost != "" && config.SmtpPort > 0 && config.SmtpUser != "" && config.SmtpPass != "" &&
+			(config.SmtpEncryption == "ssl" || config.SmtpEncryption == "tls") {
+			config.SmtpEnabled = true
+		}
+	}
+
+	// 基础校验：开启时必填项必须完整
+	if config.SmtpEnabled {
+		if config.SmtpHost == "" || config.SmtpPort <= 0 || config.SmtpUser == "" || config.SmtpPass == "" ||
+			(config.SmtpEncryption != "ssl" && config.SmtpEncryption != "tls") {
+			tx.Rollback()
+			return fmt.Errorf("邮件设置错误")
+		}
+	}
+
+	if err := tx.Table("site_configs").Save(&config).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("更新配置失败: %v", err)
+	}
+
 	// 提交事务
 	if err := tx.Commit().Error; err != nil {
 		return fmt.Errorf("提交配置更新失败: %v", err)
@@ -252,9 +428,14 @@ func getDefaultConfig() map[string]interface{} {
 			"rssTitle":         "Noise的说说笔记",
 			"rssDescription":   "一个说说笔记~",
 			"rssAuthorName":    "Noise",
-			"rssFaviconURL":    "/favicon.ico",
+			"rssFaviconURL":    "/favicon-32x32.png",
 			"walineServerURL":  "请前往waline官网https://waline.js.org查看部署配置",
 			"enableGithubCard": false,
+			// GitHub OAuth 默认关闭
+			"githubOAuthEnabled": false,
+			"githubClientId":     "",
+			"githubClientSecret": "",
+			"githubCallbackURL":  "",
 			// PWA 设置默认值
 			"pwaEnabled":          true,
 			"pwaTitle":            "",
@@ -263,6 +444,31 @@ func getDefaultConfig() map[string]interface{} {
 			"defaultContentTheme": "dark",
 			"announcementText":    "欢迎访问我的说说笔记！",
 			"announcementEnabled": true,
+			// 音乐播放器默认关闭，但默认位置为左下角并最小化
+			"musicEnabled":          false,
+			"musicPlaylistId":       "",
+			"musicSongId":           "",
+			"musicPosition":         "bottom-left",
+			"musicTheme":            "auto",
+			"musicLyric":            true,
+			"musicAutoplay":         false,
+			"musicDefaultMinimized": true,
+			"musicEmbed":            false,
+			// 评论系统默认值
+			"commentEnabled":      false,
+			"commentSystem":       "waline",
+			"commentEmailEnabled": false,
+		},
+		"storageEnabled": false,
+		"storageConfig": map[string]interface{}{
+			"provider":      "",
+			"endpoint":      "",
+			"region":        "",
+			"bucket":        "",
+			"accessKey":     "",
+			"secretKey":     "",
+			"usePathStyle":  true,
+			"publicBaseURL": "",
 		},
 	}
 }

@@ -1,8 +1,6 @@
 <template>
     <client-only>
-        <UContainer class="flex justify-center items-center h-screen">
-            <StatusPanel @restore-success="handleRestoreSuccess" />
-        </UContainer>
+        <StatusPanel @restore-success="handleRestoreSuccess" />
         <Notification />
     </client-only>
 </template>
@@ -11,6 +9,7 @@
 import StatusPanel from '@/components/index/StatusPanel.vue'
 import Notification from '~/components/widgets/Notification.vue';
 import { useToast } from '#imports'
+definePageMeta({ middleware: ['auth'] })
 
 // 添加恢复成功处理函数
 const handleRestoreSuccess = () => {

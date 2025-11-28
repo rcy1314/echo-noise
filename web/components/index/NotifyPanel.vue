@@ -1,15 +1,15 @@
 <template>
-    <div class="bg-gray-700 rounded-lg p-4 mb-6">
+    <div class="rounded-lg p-4 mb-6">
         <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-semibold text-white">推送渠道配置</h2>
+            <h2 class="text-xl font-semibold" :class="text">推送渠道配置</h2>
         </div>
 
         <!-- 配置列表 -->
         <div class="space-y-4">
             <!-- Webhook配置 -->
-            <div class="bg-gray-800 rounded p-3">
+            <div class="rounded p-3" :class="subtleBg">
                 <div class="flex justify-between items-center mb-2">
-                    <span class="text-gray-300">Webhook推送</span>
+                    <span :class="mutedText">Webhook推送</span>
                     <div class="flex items-center gap-2">
                         <USwitch v-model="localConfig.webhookEnabled" />
                         <UButton
@@ -39,9 +39,9 @@
             </div>
 
             <!-- Telegram配置 -->
-            <div class="bg-gray-800 rounded p-3">
+            <div class="rounded p-3" :class="subtleBg">
                 <div class="flex justify-between items-center mb-2">
-                    <span class="text-gray-300">Telegram推送</span>
+                    <span :class="mutedText">Telegram推送</span>
                     <div class="flex items-center gap-2">
                         <USwitch v-model="localConfig.telegramEnabled" />
                         <UButton
@@ -75,9 +75,9 @@
             </div>
 
             <!-- 企业微信配置 -->
-            <div class="bg-gray-800 rounded p-3">
+            <div class="rounded p-3" :class="subtleBg">
                 <div class="flex justify-between items-center mb-2">
-                    <span class="text-gray-300">企业微信推送</span>
+                    <span :class="mutedText">企业微信推送</span>
                     <div class="flex items-center gap-2">
                         <USwitch v-model="localConfig.weworkEnabled" />
                         <UButton
@@ -107,9 +107,9 @@
             </div>
 
             <!-- 飞书配置 -->
-            <div class="bg-gray-800 rounded p-3">
+            <div class="rounded p-3" :class="subtleBg">
                 <div class="flex justify-between items-center mb-2">
-                    <span class="text-gray-300">飞书推送</span>
+                    <span :class="mutedText">飞书推送</span>
                     <div class="flex items-center gap-2">
                         <USwitch v-model="localConfig.feishuEnabled" />
                         <UButton
@@ -143,9 +143,9 @@
                 </div>
             </div> <!-- 这里补上飞书配置块的闭合 -->
             <!-- Twitter配置 -->
-            <div class="bg-gray-800 rounded p-3">
+            <div class="rounded p-3" :class="subtleBg">
                 <div class="flex justify-between items-center mb-2">
-                    <span class="text-gray-300">Twitter推送</span>
+                    <span :class="mutedText">Twitter推送</span>
                     <div class="flex items-center gap-2">
                         <USwitch v-model="localConfig.twitterEnabled" />
                         <UButton
@@ -171,9 +171,9 @@
             </div>
 
             <!-- 自定义HTTP配置 -->
-            <div class="bg-gray-800 rounded p-3">
+            <div class="rounded p-3" :class="subtleBg">
                 <div class="flex justify-between items-center mb-2">
-                    <span class="text-gray-300">自定义HTTP推送</span>
+                    <span :class="mutedText">自定义HTTP推送</span>
                     <div class="flex items-center gap-2">
                         <USwitch v-model="localConfig.customHttpEnabled" />
                         <UButton
@@ -216,7 +216,7 @@
 
 <script setup lang="ts">
 import { useToast } from '#ui/composables/useToast'
-import { ref, reactive, watch, onMounted } from 'vue'
+import { ref, reactive, watch, onMounted, computed } from 'vue'
 
 // 添加 emit 定义
 const emit = defineEmits(['save'])
@@ -225,6 +225,9 @@ const emit = defineEmits(['save'])
 const props = defineProps<{
     config: NotifyConfig;
     immediate?: boolean;
+    subtleBg?: string;
+    text?: string;
+    mutedText?: string;
 }>();
 
 // 添加类型定义
@@ -537,4 +540,7 @@ onMounted(async () => {
         });
     }
 });
+const subtleBg = computed(() => props.subtleBg || 'bg-gray-800')
+const text = computed(() => props.text || 'text-white')
+const mutedText = computed(() => props.mutedText || 'text-gray-300')
 </script>

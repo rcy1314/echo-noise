@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
-	"strings" // 添加 strings 包
-	"sync"    // 添加 sync 包
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -19,6 +19,7 @@ import (
 	"github.com/lin-snow/ech0/internal/database"
 	"github.com/lin-snow/ech0/internal/dto"
 	"github.com/lin-snow/ech0/internal/models"
+	"github.com/lin-snow/ech0/internal/repository"
 	"github.com/lin-snow/ech0/internal/services"
 )
 
@@ -88,12 +89,46 @@ func Register(c *gin.Context) {
 		return
 	}
 
+	session := sessions.Default(c)
+	sc := session.Get("captcha_code")
+	se := session.Get("captcha_exp")
+	if sc == nil || se == nil {
+		c.JSON(http.StatusOK, dto.Fail[string]("验证码已过期"))
+		return
+	}
+	exp, ok := se.(int64)
+	if !ok || time.Now().Unix() > exp {
+		c.JSON(http.StatusOK, dto.Fail[string]("验证码已过期"))
+		return
+	}
+	if strings.ToLower(user.Captcha) != strings.ToLower(fmt.Sprintf("%v", sc)) {
+		c.JSON(http.StatusOK, dto.Fail[string]("验证码不正确"))
+		return
+	}
+
 	if err := services.Register(user); err != nil {
 		c.JSON(http.StatusOK, dto.Fail[string](err.Error()))
 		return
 	}
 
 	c.JSON(http.StatusOK, dto.OK[any](nil, models.RegisterSuccessMessage))
+}
+
+func GetCaptcha(c *gin.Context) {
+	letters := []rune("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
+	b := make([]rune, 5)
+	for i := range b {
+		b[i] = letters[int(time.Now().UnixNano()+int64(i))%len(letters)]
+	}
+	code := string(b)
+
+	session := sessions.Default(c)
+	session.Set("captcha_code", code)
+	session.Set("captcha_exp", time.Now().Add(2*time.Minute).Unix())
+	session.Save()
+
+	svg := fmt.Sprintf("<svg xmlns='http://www.w3.org/2000/svg' width='96' height='40'><rect width='100%%' height='100%%' fill='#0f172a'/><text x='50%%' y='50%%' dominant-baseline='middle' text-anchor='middle' font-family='monospace' font-size='20' fill='#ffffff'>%s</text></svg>", code)
+	c.Data(http.StatusOK, "image/svg+xml", []byte(svg))
 }
 
 // GetMessages 处理 GET /messages 请求，返回所有留言
@@ -540,6 +575,44 @@ func UpdateSetting(c *gin.Context) {
 		"allowRegistration": setting.AllowRegistration,
 		"frontendSettings":  frontendSettings,
 	}
+	if setting.SmtpEnabled != nil {
+		settingMap["smtpEnabled"] = *setting.SmtpEnabled
+	}
+	if setting.SmtpDriver != nil {
+		settingMap["smtpDriver"] = *setting.SmtpDriver
+	}
+	if setting.SmtpHost != nil {
+		settingMap["smtpHost"] = *setting.SmtpHost
+	}
+	if setting.SmtpPort != nil {
+		settingMap["smtpPort"] = *setting.SmtpPort
+	}
+	if setting.SmtpUser != nil {
+		settingMap["smtpUser"] = *setting.SmtpUser
+	}
+	if setting.SmtpPass != nil {
+		settingMap["smtpPass"] = *setting.SmtpPass
+	}
+	if setting.SmtpFrom != nil {
+		settingMap["smtpFrom"] = *setting.SmtpFrom
+	}
+	if setting.SmtpEncryption != nil {
+		settingMap["smtpEncryption"] = *setting.SmtpEncryption
+	}
+	if setting.SmtpTLS != nil {
+		settingMap["smtpTLS"] = *setting.SmtpTLS
+	}
+
+	if v, ok := settingMap["smtpEnabled"].(bool); !ok || !v {
+		host, _ := settingMap["smtpHost"].(string)
+		port, _ := settingMap["smtpPort"].(int)
+		user, _ := settingMap["smtpUser"].(string)
+		pass, _ := settingMap["smtpPass"].(string)
+		enc, _ := settingMap["smtpEncryption"].(string)
+		if host != "" && port > 0 && user != "" && pass != "" && (enc == "ssl" || enc == "tls") {
+			settingMap["smtpEnabled"] = true
+		}
+	}
 	if err := services.UpdateFrontendSetting(0, settingMap); err != nil {
 		c.JSON(http.StatusOK, dto.Fail[string]("保存前端配置失败: "+err.Error()))
 		return
@@ -562,6 +635,99 @@ func GetFrontendConfig(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 1, "data": config})
 }
 
+// 获取指定消息的评论列表（内置评论系统）
+func GetComments(c *gin.Context) {
+	idStr := c.Param("id")
+	msgID, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil || msgID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "无效的消息ID"})
+		return
+	}
+	db, _ := database.GetDB()
+	var comments []models.Comment
+	if err := db.Where("message_id = ?", msgID).Order("created_at ASC").Find(&comments).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "msg": "获取评论失败"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 1, "data": comments})
+}
+
+// 提交评论（内置评论系统）
+func PostComment(c *gin.Context) {
+	idStr := c.Param("id")
+	msgID64, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil || msgID64 == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "无效的消息ID"})
+		return
+	}
+	msgID := uint(msgID64)
+	var req struct {
+		Nick     string `json:"nick"`
+		Mail     string `json:"mail"`
+		Link     string `json:"link"`
+		Content  string `json:"content"`
+		ParentID *uint  `json:"parent_id"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "请求参数错误"})
+		return
+	}
+	req.Content = strings.TrimSpace(req.Content)
+	if req.Content == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "评论内容不能为空"})
+		return
+	}
+	db, _ := database.GetDB()
+	// 校验消息存在
+	var message models.Message
+	if err := db.First(&message, msgID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"code": 0, "msg": "消息不存在"})
+		return
+	}
+	comment := models.Comment{
+		MessageID: msgID,
+		Nick:      strings.TrimSpace(req.Nick),
+		Mail:      strings.TrimSpace(req.Mail),
+		Link:      strings.TrimSpace(req.Link),
+		Content:   req.Content,
+		ParentID:  req.ParentID,
+	}
+	if err := db.Create(&comment).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "msg": "保存评论失败"})
+		return
+	}
+	// 邮件通知
+	var cfg models.SiteConfig
+	_ = db.Table("site_configs").First(&cfg).Error
+	if cfg.SmtpEnabled && cfg.CommentEmailEnabled {
+		// 站点URL
+		scheme := c.Request.Header.Get("X-Forwarded-Proto")
+		if scheme == "" {
+			scheme = "http"
+		}
+		host := c.Request.Host
+		siteURL := fmt.Sprintf("%s://%s", scheme, host)
+		// 管理员邮箱
+		adminTo := cfg.SmtpFrom
+		if adminTo == "" {
+			adminTo = cfg.SmtpUser
+		}
+		subject := fmt.Sprintf("新评论通知 - %s", cfg.SiteTitle)
+		body := fmt.Sprintf("站点：%s\n用户：%s\n邮箱：%s\n网址：%s\n内容：\n%s\n\n查看：%s/m/%d", cfg.SiteTitle, comment.Nick, comment.Mail, comment.Link, comment.Content, siteURL, message.ID)
+		_ = models.SendEmail(adminTo, subject, body)
+		// 回复通知
+		if comment.ParentID != nil {
+			var parent models.Comment
+			if err := db.First(&parent, *comment.ParentID).Error; err == nil && strings.TrimSpace(parent.Mail) != "" {
+				replySubject := fmt.Sprintf("你的评论有新回复 - %s", cfg.SiteTitle)
+				replyBody := fmt.Sprintf("用户 %s 回复了你的评论：\n\n原评论：%s\n回复内容：%s\n\n查看：%s/m/%d", comment.Nick, parent.Content, comment.Content, siteURL, message.ID)
+				_ = models.SendEmail(strings.TrimSpace(parent.Mail), replySubject, replyBody)
+			}
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 1, "data": comment, "msg": "评论已发布"})
+}
+
 // 动态生成 Web Manifest
 func GetWebManifest(c *gin.Context) {
 	configMap, _ := services.GetFrontendConfig()
@@ -577,8 +743,8 @@ func GetWebManifest(c *gin.Context) {
 	}
 	title := "说说笔记"
 	description := ""
-	// 站点图标（浏览器 favicon）与 PWA 图标分离，优先使用后台设置
-	siteIcon := "/favicon.ico"
+	// 站点图标（浏览器 favicon）与 PWA 图标分离，优先使用后台设置（使用标准 PNG 32x32）
+	siteIcon := "/favicon-32x32.png"
 
 	if pwaEnabled {
 		if v, ok := fs["pwaTitle"].(string); ok && v != "" {
@@ -1076,6 +1242,7 @@ func TestNotify(c *gin.Context) {
 
 	var request struct {
 		Type string `json:"type" binding:"required"`
+		To   string `json:"to"`
 	}
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusOK, dto.Fail[string]("无效的请求参数"))
@@ -1099,6 +1266,19 @@ func TestNotify(c *gin.Context) {
 		testErr = models.SendTwitter(testMsg)
 	case "customHttp":
 		testErr = models.SendCustomHttp(testMsg)
+	case "email":
+		to := strings.TrimSpace(request.To)
+		if to == "" {
+			db, _ := database.GetDB()
+			var cfg models.SiteConfig
+			_ = db.Table("site_configs").First(&cfg).Error
+			if cfg.SmtpFrom != "" {
+				to = cfg.SmtpFrom
+			} else {
+				to = cfg.SmtpUser
+			}
+		}
+		testErr = models.SendTestEmail(to)
 	default:
 		c.JSON(http.StatusOK, dto.Fail[string]("不支持的推送类型"))
 		return
@@ -1478,6 +1658,221 @@ func SendNotify(c *gin.Context) {
 		"code": 1,
 		"msg":  "推送成功",
 	})
+}
+func EmailTest(c *gin.Context) {
+	_, err := checkAdmin(c)
+	if err != nil {
+		c.JSON(http.StatusOK, dto.Fail[string](err.Error()))
+		return
+	}
+	var req struct {
+		To string `json:"to" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, dto.Fail[string]("无效的请求参数"))
+		return
+	}
+	if req.To == "" {
+		c.JSON(http.StatusOK, dto.Fail[string]("收件人不能为空"))
+		return
+	}
+	if err := models.SendTestEmail(req.To); err != nil {
+		c.JSON(http.StatusOK, dto.Fail[string](err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, dto.OK[any](nil, "测试邮件已发送"))
+}
+func PasswordForgot(c *gin.Context) {
+	var req struct {
+		Account string `json:"account" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, dto.Fail[string]("无效的请求参数"))
+		return
+	}
+	db, _ := database.GetDB()
+	var cfg models.SiteConfig
+	if err := db.Table("site_configs").First(&cfg).Error; err != nil {
+		c.JSON(http.StatusOK, dto.Fail[string]("系统配置读取失败"))
+		return
+	}
+	if !cfg.SmtpEnabled {
+		c.JSON(http.StatusOK, dto.Fail[string]("邮件未开启"))
+		return
+	}
+	account := strings.TrimSpace(req.Account)
+	if account == "" {
+		c.JSON(http.StatusOK, dto.Fail[string]("账号不能为空"))
+		return
+	}
+	var user *models.User
+	var err error
+	if !strings.Contains(account, "@") {
+		user, err = services.GetUserByUsername(account)
+		if err != nil || user == nil {
+			c.JSON(http.StatusOK, dto.Fail[string]("用户不存在"))
+			return
+		}
+	}
+	to := cfg.SmtpFrom
+	if to == "" {
+		to = cfg.SmtpUser
+	}
+	if strings.Contains(account, "@") {
+		to = account
+	}
+	temp := models.GenerateToken(16)
+	if user != nil {
+		hashed := models.HashPassword(temp)
+		user.Password = hashed
+		if e := services.UpdateUser(user, dto.UserInfoDto{Username: user.Username}); e != nil {
+			c.JSON(http.StatusOK, dto.Fail[string]("更新密码失败"))
+			return
+		}
+	}
+	subject := "密码重置通知"
+	body := "您的临时密码为: " + temp + "\n请使用该密码登录后尽快在后台修改为新密码。"
+	if err := models.SendEmail(to, subject, body); err != nil {
+		c.JSON(http.StatusOK, dto.Fail[string](err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, dto.OK[any](nil, "重置邮件已发送"))
+}
+
+// GitHub OAuth 登录
+func GithubLogin(c *gin.Context) {
+	db, _ := database.GetDB()
+	var cfg models.SiteConfig
+	if err := db.Table("site_configs").First(&cfg).Error; err != nil || !cfg.GithubOAuthEnabled {
+		c.JSON(http.StatusOK, dto.Fail[string]("未开启 GitHub 登录"))
+		return
+	}
+	clientID := strings.TrimSpace(cfg.GithubClientId)
+	callback := strings.TrimSpace(cfg.GithubCallbackURL)
+	if clientID == "" || callback == "" {
+		c.JSON(http.StatusOK, dto.Fail[string]("GitHub 登录参数不完整"))
+		return
+	}
+	authURL := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=read:user", clientID, callback)
+	c.Redirect(http.StatusFound, authURL)
+}
+
+func GithubCallback(c *gin.Context) {
+	code := c.Query("code")
+	if code == "" {
+		c.JSON(http.StatusOK, dto.Fail[string]("回调参数缺失"))
+		return
+	}
+	db, _ := database.GetDB()
+	var cfg models.SiteConfig
+	if err := db.Table("site_configs").First(&cfg).Error; err != nil || !cfg.GithubOAuthEnabled {
+		c.JSON(http.StatusOK, dto.Fail[string]("未开启 GitHub 登录"))
+		return
+	}
+	clientID := strings.TrimSpace(cfg.GithubClientId)
+	clientSecret := strings.TrimSpace(cfg.GithubClientSecret)
+	if clientID == "" || clientSecret == "" {
+		c.JSON(http.StatusOK, dto.Fail[string]("GitHub 登录参数不完整"))
+		return
+	}
+	// 交换令牌
+	tokenReq, _ := http.NewRequest("POST", "https://github.com/login/oauth/access_token", strings.NewReader(fmt.Sprintf("client_id=%s&client_secret=%s&code=%s", clientID, clientSecret, code)))
+	tokenReq.Header.Set("Accept", "application/json")
+	tokenResp, err := http.DefaultClient.Do(tokenReq)
+	if err != nil {
+		c.JSON(http.StatusOK, dto.Fail[string]("访问 GitHub 失败"))
+		return
+	}
+	defer tokenResp.Body.Close()
+	var tokenData struct {
+		AccessToken string `json:"access_token"`
+	}
+	_ = json.NewDecoder(tokenResp.Body).Decode(&tokenData)
+	if tokenData.AccessToken == "" {
+		c.JSON(http.StatusOK, dto.Fail[string]("获取令牌失败"))
+		return
+	}
+	// 获取用户信息
+	userReq, _ := http.NewRequest("GET", "https://api.github.com/user", nil)
+	userReq.Header.Set("Authorization", "Bearer "+tokenData.AccessToken)
+	userResp, err := http.DefaultClient.Do(userReq)
+	if err != nil {
+		c.JSON(http.StatusOK, dto.Fail[string]("获取用户信息失败"))
+		return
+	}
+	defer userResp.Body.Close()
+	var gh struct {
+		Login string `json:"login"`
+		ID    int64  `json:"id"`
+	}
+	_ = json.NewDecoder(userResp.Body).Decode(&gh)
+	if gh.Login == "" {
+		c.JSON(http.StatusOK, dto.Fail[string]("获取用户信息失败"))
+		return
+	}
+	// 查找或创建用户
+	user, _ := services.GetUserByUsername(gh.Login)
+	if user == nil {
+		// 检查是否允许注册
+		var setting models.Setting
+		allowReg := true
+		if err := db.Table("settings").First(&setting).Error; err == nil {
+			allowReg = setting.AllowRegistration
+		}
+		if !allowReg {
+			c.JSON(http.StatusOK, dto.Fail[string]("站点已关闭注册"))
+			return
+		}
+		// 创建用户，密码随机
+		pwd := models.GenerateToken(16)
+		hashed := models.HashPassword(pwd)
+		newUser := models.User{Username: gh.Login, Password: hashed, IsAdmin: false, Token: models.GenerateToken(32)}
+		if err := database.DB.Create(&newUser).Error; err != nil {
+			c.JSON(http.StatusOK, dto.Fail[string]("创建用户失败"))
+			return
+		}
+		user = &newUser
+	}
+	// 设置会话
+	session := sessions.Default(c)
+	session.Clear()
+	session.Set("user_id", user.ID)
+	session.Set("username", user.Username)
+	session.Set("is_admin", user.IsAdmin)
+	if err := session.Save(); err != nil {
+		c.JSON(http.StatusOK, dto.Fail[any]("Session 保存失败"))
+		return
+	}
+	// 跳转到后台
+	c.Redirect(http.StatusFound, "/#/status")
+}
+
+// 删除用户
+func DeleteUser(c *gin.Context) {
+	userIDStr := c.Query("id")
+	if userIDStr == "" {
+		c.JSON(http.StatusOK, dto.Fail[string]("缺少用户ID"))
+		return
+	}
+	id, _ := strconv.Atoi(userIDStr)
+	// 权限校验：必须管理员
+	session := sessions.Default(c)
+	isAdmin, _ := session.Get("is_admin").(bool)
+	if !isAdmin {
+		c.JSON(http.StatusOK, dto.Fail[string]("权限不足"))
+		return
+	}
+	// 不允许删除自己
+	selfID, _ := session.Get("user_id").(uint)
+	if uint(id) == selfID {
+		c.JSON(http.StatusOK, dto.Fail[string]("不允许删除当前登录用户"))
+		return
+	}
+	if err := repository.DeleteUser(uint(id)); err != nil {
+		c.JSON(http.StatusOK, dto.Fail[string]("删除失败"))
+		return
+	}
+	c.JSON(http.StatusOK, dto.OK[any](nil, "已删除用户"))
 }
 func sendTelegramErrorNotify(c *gin.Context, err error) {
 	log.Printf("Telegram 推送失败: %v", err)
