@@ -35,10 +35,6 @@
 
 - 增加音乐设置组件
 
-  ![1764316056461](https://s2.loli.net/2025/11/28/og15GV7eHjBfFcI.png)
-
-  ![1764316038281](https://s2.loli.net/2025/11/28/hmWMKvg4ZaiIJDR.png)
-
 - 内置评论代替远程评论，内置评论调用smtp回复评论
 
   ![1764316124235](https://s2.loli.net/2025/11/28/bcjsEDBx5iSPHGK.png)

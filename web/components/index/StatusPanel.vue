@@ -1,6 +1,6 @@
 <template>
  
-    <div class="min-h-screen w-screen" :class="theme.pageBg">
+    <div class="min-h-screen w-full overflow-x-hidden" :class="theme.pageBg">
         <div class="min-h-screen w-full">
       <aside
         class="w-72 h-screen overflow-y-auto backdrop-blur-md flex flex-col fixed left-0 top-0 z-40 transition-transform duration-300 border-r"
@@ -93,7 +93,7 @@
         </div>
       </aside>
       <main class="flex flex-col flex-1 h-full md:ml-72 min-h-screen overflow-y-auto" :class="theme.text">
-        <div class="md:hidden flex items-center justify-between px-4 py-3 border-b" :class="[theme.headerBg, theme.border, theme.text]">
+        <div class="md:hidden flex items-center justify-between px-4 py-3 border-b rounded-b-2xl" :class="[theme.headerBg, theme.border, theme.text]">
           <div class="flex items-center gap-2">
             <button class="p-2 rounded-lg bg-slate-800/70 shadow" @click="sidebarOpen = !sidebarOpen"><UIcon name="i-heroicons-bars-3" class="w-5 h-5" /></button>
             <span class="font-semibold">系统管理面板</span>
@@ -104,12 +104,12 @@
           </div>
         </div>
         <div v-if="sidebarOpen" class="fixed inset-0 bg-black/40 md:hidden" @click="sidebarOpen=false"></div>
-        <div class="flex-1 p-4 pb-24 flex flex-col w-full" :class="isAdmin ? 'gap-4' : 'gap-0'">
+        <div class="flex-1 px-4 pb-24 flex flex-col w-full space-y-4">
           <div class="col-span-12">
             <h1 class="text-2xl md:text-3xl font-bold text-center" :class="theme.text">系统管理面板</h1>
           </div>
           <div class="col-span-12">
-            <div class="rounded-xl border" :class="[theme.cardBg, theme.border]">
+            <div :class="[theme.cardBg, theme.border, cardCls]">
               <div class="px-4 py-3 flex items-center justify-between">
                 <div class="flex items-center gap-4">
                   <span :class="theme.text">配色</span>
@@ -128,19 +128,6 @@
             </div>
           </div>
 
-          <div id="comments-section" class="col-span-12">
-            <div class="rounded-xl border shadow-xl" :class="[theme.cardBg, theme.border]">
-              <div class="flex items-center justify-between px-4 py-3">
-                <div class="font-semibold flex items-center gap-2" :class="theme.text">
-                  <UIcon name="i-heroicons-chat-bubble-left-right" class="w-5 h-5" />
-                  <span>评论系统</span>
-                </div>
-              </div>
-              <div class="px-4 pb-4">
-                <CommentsSettings v-model:config="frontendConfig" />
-              </div>
-            </div>
-          </div>
           <div id="system-section" class="col-span-12">
             <div class="rounded-xl border shadow-xl" :class="[theme.cardBg, theme.border]">
               <div class="px-4 py-3 flex flex-wrap items-center gap-6">
@@ -161,19 +148,19 @@
           </div>
           
           <div id="site-music-section" class="col-span-12">
-            <div class="rounded-xl border shadow-xl" :class="[theme.cardBg, theme.border]">
+            <div :class="[theme.cardBg, theme.border, cardCls]">
               <div class="flex items-center justify-between px-4 py-3">
                 <div class="font-semibold flex items-center gap-2" :class="theme.text">
                   <UIcon name="i-heroicons-musical-note" class="w-5 h-5" />
                   <span>音乐配置</span>
                 </div>
+                <div class="flex items-center gap-3">
+                  <UToggle v-model="frontendConfig.musicEnabled" />
+                  <UButton color="green" @click="saveMusicConfig" class="shadow">保存</UButton>
+                </div>
               </div>
               <div class="px-4 pb-4">
                 <div class="rounded-lg p-4 space-y-4" :class="theme.subtleBg">
-                  <div class="flex items-center justify-between">
-                    <span class="font-medium" :class="theme.text">启用音乐播放器</span>
-                    <USwitch v-model="frontendConfig.musicEnabled" />
-                  </div>
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label class="text-sm mb-1 block" :class="theme.mutedText">歌单 ID</label>
@@ -425,21 +412,43 @@
               </div>
             </div>
           </div>
+          
+          
+          <div id="comments-section" class="col-span-12">
+            <div :class="[theme.cardBg, theme.border, cardCls]">
+              <div class="flex items-center justify-between px-4 py-3">
+                <div class="font-semibold flex items-center gap-2" :class="theme.text">
+                  <UIcon name="i-heroicons-chat-bubble-left-right" class="w-5 h-5" />
+                  <span class="whitespace-nowrap">评论系统</span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <UToggle v-model="frontendConfig.commentEmailEnabled" />
+                  <UButton color="green" @click="saveCommentConfig" class="shadow">保存</UButton>
+                </div>
+              </div>
+              <div class="px-4 pb-4">
+                <CommentsSettings v-model:config="frontendConfig" />
+              </div>
+            </div>
+          </div>
+
+          <div class="mx-4 my-2 border-t" :class="theme.border"></div>
 
           <div id="email-section" class="col-span-12">
-            <div class="rounded-xl border shadow-xl" :class="[theme.cardBg, theme.border]">
+            <div :class="[theme.cardBg, theme.border, cardCls]">
               <div class="flex items-center justify-between px-4 py-3">
                 <div class="font-semibold flex items-center gap-2" :class="theme.text">
                   <UIcon name="i-heroicons-envelope" class="w-5 h-5" />
                   <span>邮件设置（SMTP）</span>
                 </div>
+                <div class="flex items-center gap-3">
+                  <UToggle v-model="smtp.enabled" />
+                  <UButton color="green" @click="saveSmtp" class="shadow">保存</UButton>
+                </div>
               </div>
               <div class="px-4 pb-4">
                 <div class="rounded-lg p-4 space-y-4" :class="theme.subtleBg">
-                  <div class="flex items-center justify-between">
-                    <span class="font-medium" :class="theme.text">启用邮件</span>
-                    <USwitch v-model="smtp.enabled" />
-                  </div>
+                  
                   <div>
                     <div class="text-sm font-medium mb-2" :class="theme.text">地址</div>
                     <UInput v-model="smtp.from" placeholder="发件地址，如 name@example.com" />
@@ -486,7 +495,7 @@
           </div>
 
           <div id="admin-users-section" class="col-span-12">
-            <div class="rounded-xl border shadow-xl" :class="[theme.cardBg, theme.border]">
+            <div :class="[theme.cardBg, theme.border, cardCls]">
               <div class="flex items-center justify-between px-4 py-3">
                 <div class="font-semibold flex items-center gap-2" :class="theme.text">
                   <UIcon name="i-heroicons-shield-check" class="w-5 h-5" />
@@ -561,13 +570,10 @@
                   <UIcon name="i-mdi-github" class="w-5 h-5" />
                   <span>GitHub 登录</span>
                 </div>
+                <USwitch v-model="frontendConfig.githubOAuthEnabled" />
               </div>
               <div class="px-4 pb-4 space-y-3">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div class="md:col-span-1 flex items-center gap-2">
-                    <span class="text-sm" :class="theme.text">启用</span>
-                    <USwitch v-model="frontendConfig.githubOAuthEnabled" />
-                  </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <div class="text-sm mb-2" :class="theme.text">Client ID</div>
                     <UInput v-model="frontendConfig.githubClientId" placeholder="GitHub OAuth App Client ID" />
@@ -576,7 +582,7 @@
                     <div class="text-sm mb-2" :class="theme.text">Client Secret</div>
                     <UInput v-model="frontendConfig.githubClientSecret" type="password" placeholder="GitHub OAuth App Client Secret" />
                   </div>
-                  <div class="md:col-span-3">
+                  <div class="md:col-span-2">
                     <div class="text-sm mb-2" :class="theme.text">回调地址</div>
                     <UInput v-model="frontendConfig.githubCallbackURL" placeholder="例如 https://your.domain.com/oauth/github/callback" />
                   </div>
@@ -673,12 +679,13 @@
         </div>
         
       </main>
-      <div class="hidden md:flex fixed bottom-0 left-0 right-0 md:left-72 z-40 border-t px-3 py-3 justify-between items-center" :class="[theme.bottomBg, theme.border]">
+      <div class="hidden md:flex fixed bottom-0 left-0 right-0 md:left-72 z-50 border-t px-3 py-3 justify-between items-center backdrop-blur-md shadow-xl" :class="[theme.bottomBg, theme.border]">
         <UButton
           icon="i-heroicons-arrow-left"
           :color="panelTheme === 'light' ? 'gray' : 'white'"
           variant="soft"
           @click="$router.push('/')"
+          class="shadow ring-1 ring-inset ring-slate-400/30 transition hover:opacity-90"
         >
           返回首页
         </UButton>
@@ -688,6 +695,7 @@
             color="red"
             variant="solid"
             @click="handleLogout"
+            class="shadow transition hover:opacity-90"
           >
             退出登录
           </UButton>
@@ -1102,39 +1110,7 @@
                 
             </div>
  
-<!-- 数据库管理面板 -->
-<div id="section-db" v-if="isAdmin" class="bg-gray-700 rounded-lg p-4 mb-6">
-    <h2 class="text-xl font-semibold text-white mb-4">数据库管理</h2>
-    <div class="space-y-4">
-        <div class="flex gap-4">
-            <UButton
-                color="primary"
-                icon="i-heroicons-arrow-down-tray"
-                @click="downloadBackup"
-            >
-                下载备份
-            </UButton>
-            <UButton
-                color="warning"
-                variant="solid"
-                icon="i-heroicons-arrow-up-tray"
-                @click="triggerDatabaseUpload"
-            >
-                恢复数据库
-            </UButton>
-        </div>
-        <div class="text-yellow-400 text-sm max-h-16 overflow-y-auto bg-gray-800/50 rounded p-2">
-            🔔：SQLite一键备份恢复，因兼容问题，不支持云端的PostgreSQL/MySQL数据库，如有使用云端数据库，请前往云服务端来备份和恢复
-        </div>
-        <input
-            type="file"
-            ref="databaseFileInput"
-            accept=".zip"
-            class="hidden"
-            @change="handleDatabaseUpload"
-        />
-    </div>
-                </div>
+
             
  
         
@@ -1233,7 +1209,7 @@ const avatarSrc = computed(() => {
 const setActive = async (name: 'system' | 'user' | 'site' | 'notify' | 'db' | 'site-register' | 'site-pwa' | 'site-github-card' | 'site-github-login' | 'site-announcement' | 'site-music' | 'site-default-theme' | 'site-configs' | 'comments' | 'email') => {
   await nextTick()
   const el = document.getElementById(`${name}-section`)
-  el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  el?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
   if (window.innerWidth < 768) sidebarOpen.value = false
 }
 
@@ -1246,11 +1222,11 @@ const theme = computed(() => {
   if (panelTheme.value === 'light') {
     return {
       sidebarBg: 'bg-white/90',
-      headerBg: 'bg-white/80',
-      bottomBg: 'bg-white/80',
-      cardBg: 'bg-white/80',
-      subtleBg: 'bg-gray-100',
-      border: 'border-gray-200',
+      headerBg: 'bg-white',
+      bottomBg: 'bg-white',
+      cardBg: 'bg-white',
+      subtleBg: 'bg-white',
+      border: 'border-gray-300',
       text: 'text-slate-900',
       sidebarText: 'text-slate-900',
       mutedText: 'text-slate-700',
@@ -2706,3 +2682,4 @@ const themeOptions = [
     display: none;
 }
 </style>
+const cardCls = 'rounded-2xl border shadow-2xl'

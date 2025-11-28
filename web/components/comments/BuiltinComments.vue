@@ -1,6 +1,6 @@
 <template>
   <div class="builtin-comments">
-    <div class="waline-wrapper p-3 rounded-lg" :class="themeBg">
+    <div class="waline-wrapper p-3 rounded-lg border" :class="[themeBg, themeBorder]">
       <div class="text-sm mb-2" :class="themeText">评论</div>
       <div v-if="siteConfig?.commentEmailEnabled" class="text-xs mb-2" :class="themeMuted">新评论或回复会发送通知邮件</div>
       <div class="space-y-3 mb-4">
@@ -16,7 +16,7 @@
       </div>
 
       <div v-if="rootComments.length" class="space-y-4">
-        <div v-for="c in rootComments" :key="c.id" class="rounded-md p-3" :class="themeItem">
+        <div v-for="c in rootComments" :key="c.id" class="rounded-md p-3 border" :class="[themeItem, themeBorder]">
           <div class="text-xs flex items-center justify-between" :class="themeMuted">
             <span>{{ c.nick || '匿名' }}</span>
             <span>{{ formatDate(c.created_at) }}</span>
@@ -26,8 +26,8 @@
             <UButton size="xs" variant="ghost" @click="startReply(c.id, c.nick || '匿名')">回复</UButton>
             <UButton v-if="isAdmin" size="xs" color="red" variant="ghost" @click="confirmDelete(c.id)">删除</UButton>
           </div>
-          <div v-if="childrenMap[c.id]?.length" class="mt-3 pl-4 border-l border-white/10 space-y-2">
-            <div v-for="child in childrenMap[c.id]" :key="child.id" class="rounded-md p-3" :class="themeItem">
+          <div v-if="childrenMap[c.id]?.length" class="mt-3 pl-4 border-l space-y-2" :class="childBorder">
+            <div v-for="child in childrenMap[c.id]" :key="child.id" class="rounded-md p-3 border" :class="[themeItem, themeBorder]">
               <div class="text-xs flex items-center justify-between" :class="themeMuted">
                 <span>{{ child.nick || '匿名' }}</span>
                 <span>{{ formatDate(child.created_at) }}</span>
@@ -41,7 +41,7 @@
           </div>
         </div>
       </div>
-      <div v-else class="text-xs text-gray-400">暂无评论</div>
+      <div v-else class="text-xs" :class="themeMuted">暂无评论</div>
     </div>
     <UModal v-model="showConfirm">
       <div class="p-4">
@@ -57,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch, computed, nextTick } from 'vue'
 import { useToast } from '#ui/composables/useToast'
 import { getRequest, postRequest, deleteRequest } from '~/utils/api'
 import { useUserStore } from '~/store/user'
@@ -77,15 +77,18 @@ const user = useUserStore()
 const isAdmin = computed(() => !!(user.user as any)?.is_admin)
 
 const isDark = ref(false)
-const themeBg = computed(() => (isDark.value ? 'bg-[rgba(36,43,50,0.35)]' : 'bg-white'))
+const themeBg = computed(() => (isDark.value ? 'bg-[rgba(24,28,32,0.95)]' : 'bg-white'))
+const themeBorder = computed(() => (isDark.value ? 'border-white/20' : 'border-black'))
 const themeText = computed(() => (isDark.value ? 'text-gray-200' : 'text-[#111]'))
 const themeMuted = computed(() => (isDark.value ? 'text-gray-400' : 'text-gray-500'))
-const themeItem = computed(() => (isDark.value ? 'bg-[rgba(36,43,50,0.25)]' : 'bg-white'))
+const themeItem = computed(() => (isDark.value ? 'bg-[rgba(24,28,32,0.7)]' : 'bg-white'))
+const childBorder = computed(() => (isDark.value ? 'border-white/20' : 'border-black'))
 const inputBaseLight = 'border border-black rounded ring-0 focus:ring-0 focus:border-black'
-const inputNickClass = computed(() => (nickError.value ? 'ring-1 ring-red-500' : (isDark.value ? '' : `bg-gray-50 ${inputBaseLight}`)))
-const inputMailClass = computed(() => (mailError.value ? 'ring-1 ring-red-500' : (isDark.value ? '' : `bg-gray-50 ${inputBaseLight}`)))
-const inputLinkClass = computed(() => (isDark.value ? '' : `bg-white ${inputBaseLight}`))
-const textareaClass = computed(() => (isDark.value ? '' : `bg-white ${inputBaseLight}`))
+const inputDark = 'bg-[rgba(24,28,32,0.85)] text-white border border-white/20 rounded focus:ring-0 focus:border-primary-400 placeholder:text-gray-400'
+const inputNickClass = computed(() => (nickError.value ? 'ring-1 ring-red-500' : (isDark.value ? inputDark : `bg-gray-50 ${inputBaseLight}`)))
+const inputMailClass = computed(() => (mailError.value ? 'ring-1 ring-red-500' : (isDark.value ? inputDark : `bg-gray-50 ${inputBaseLight}`)))
+const inputLinkClass = computed(() => (isDark.value ? inputDark : `bg-white ${inputBaseLight}`))
+const textareaClass = computed(() => (isDark.value ? inputDark : `bg-white ${inputBaseLight}`))
 
 const load = async () => {
   try {
@@ -122,13 +125,11 @@ const submit = async () => {
     if (res && res.code === 1) {
       content.value = ''
       replyTo.value = null
-      // 立即插入到本地列表，避免空白
       comments.value = [...comments.value, res.data]
-      // 并滚动到最新评论
-      nextTick(() => {
-        const el = document.querySelector(`.content-container[data-msg-id="${props.messageId}"]`)
-        el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      })
+      await load()
+      await nextTick()
+      const el = document.querySelector(`.content-container[data-msg-id="${props.messageId}"]`)
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       useToast().add({ title: '已发布', color: 'green' })
     } else {
       useToast().add({ title: '发布失败', description: res?.msg, color: 'red' })
@@ -144,7 +145,7 @@ const formatDate = (s: string) => {
 }
 
 onMounted(load)
-onMounted(() => { isDark.value = document.documentElement.classList.contains('dark') })
+onMounted(() => { isDark.value = document.documentElement.classList.contains('dark') || String((props.siteConfig || {}).defaultContentTheme || 'dark') === 'dark' })
 watch(() => props.messageId, load)
 
 const startReply = (id: number, nickName: string) => {
@@ -196,7 +197,6 @@ const childrenMap = computed<Record<number, any[]>>(() => {
 </script>
 
 <style scoped>
-.waline-wrapper { border: 1px solid rgba(255,255,255,0.06); }
 </style>
 
  

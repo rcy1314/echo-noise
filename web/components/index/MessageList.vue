@@ -462,32 +462,43 @@ const initFancybox = () => {
 const toggleComment = async (msgId: number) => {
   if (activeCommentId.value === msgId) {
     activeCommentId.value = null;
-  } else {
-    activeCommentId.value = msgId;
-    await nextTick();
-    if (useWaline.value && window.Waline) {
-      const el = document.querySelector(`#waline-${msgId}`);
-      if (el) {
-        window.Waline.init({
-          el: `#waline-${msgId}`,
-          serverURL: props.siteConfig.walineServerURL,
-          path: `messages/${msgId}`,
-          reaction: false,
-          meta: ["nick", "mail", "link"],
-          requiredMeta: ["mail", "nick"],
-          pageview: true,
-          search: false,
-          wordLimit: 200,
-          pageSize: 5,
-          avatar: "monsterid",
-          emoji: ["https://unpkg.com/@waline/emojis@1.2.0/tieba"],
-          imageUploader: false,
-          copyright: false,
-          dark: 'html[class="dark"]',
-        });
-      } else {
-        console.error(`评论容器 #waline-${msgId} 未找到`);
-      }
+    return;
+  }
+  activeCommentId.value = msgId;
+  await nextTick();
+  // 内置评论：滚动并聚焦输入框，确保可见
+  if ((props.siteConfig?.commentSystem || 'waline') === 'builtin') {
+    const container = document.querySelector(`.content-container[data-msg-id="${msgId}"] .builtin-comments`);
+    if (container) {
+      container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const ta = container.querySelector('textarea');
+      (ta as HTMLTextAreaElement | null)?.focus?.();
+    }
+    return;
+  }
+  // Waline：初始化第三方评论
+  if (useWaline.value && window.Waline) {
+    const el = document.querySelector(`#waline-${msgId}`);
+    if (el) {
+      window.Waline.init({
+        el: `#waline-${msgId}`,
+        serverURL: props.siteConfig.walineServerURL,
+        path: `messages/${msgId}`,
+        reaction: false,
+        meta: ["nick", "mail", "link"],
+        requiredMeta: ["mail", "nick"],
+        pageview: true,
+        search: false,
+        wordLimit: 200,
+        pageSize: 5,
+        avatar: "monsterid",
+        emoji: ["https://unpkg.com/@waline/emojis@1.2.0/tieba"],
+        imageUploader: false,
+        copyright: false,
+        dark: 'html[class="dark"]',
+      });
+    } else {
+      console.error(`评论容器 #waline-${msgId} 未找到`);
     }
   }
 };
