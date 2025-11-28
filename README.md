@@ -26,9 +26,22 @@
 严格意义上属于重构，且前端后端都需要重构，保留原有的API等不变，首页、后台页需要定制化修改
 
 - 重构后台界面（包括ui重构、配色可自定义等）
+
 - 建立单独的登录注册页面，增加验证机制，增加github一键登录注册
+
 - 增加忘记密码邮件SMTP回复系统
+
 - 增加修改用户权限设置
+
+- 增加音乐设置组件
+
+  ![1764316056461](https://s2.loli.net/2025/11/28/og15GV7eHjBfFcI.png)
+
+  ![1764316038281](https://s2.loli.net/2025/11/28/hmWMKvg4ZaiIJDR.png)
+
+- 内置评论代替远程评论，内置评论调用smtp回复评论
+
+  ![1764316124235](https://s2.loli.net/2025/11/28/bcjsEDBx5iSPHGK.png)
 
 ![ktRvYcdiy6Gu3pS](https://s2.loli.net/2025/11/27/ktRvYcdiy6Gu3pS.png)
 
@@ -276,7 +289,16 @@ docker run -d \
 docker-compose up -d
 ```
 
+无缓存构建
+
+```
+docker compose build --no-cache my-app && docker compose up -d 
+```
+
+
+
 #### 镜像构建目标说明
+
 - `final`（不带 MCP，轻量）：仅包含后端与前端静态资源，无 Node.js 运行时。
   - 手动构建示例：`docker build -t ech0-noise:nomcp .`
 - `final-mcp`（带 MCP）：安装 `nodejs`，复制 `mcp/server.bundle.mjs`，容器内同时启动 MCP 与后端。
@@ -1653,8 +1675,9 @@ exports.actions = [{
 - [x] 实现 Markdown 连续图片宫格渲染
 - [x] MCP模式（搜索、写入等）AI发布写入
 - [x] 页面加载过渡优化
-- [ ] 后台增加音乐板块配置并集成到前端
-- [ ] 内置评论系统并可选远程评论系统
+- [x] 后台增加音乐板块配置并集成到前端
+- [x] 内置评论系统并可选远程评论系统
+- [ ] 增加好友系统，可在前端首页作为组件展示（方向为后台页申请后自动拉取信息并展示）
 - [ ] 增加点赞组件（接入SMTP反馈）
 - [ ] 增加在线聊天组件（实时接收反馈、支持md写法）
 - [ ] 增加友情链接组件（底部或侧栏）

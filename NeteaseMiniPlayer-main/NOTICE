@@ -1,0 +1,57 @@
+NeteaseMiniPlayer v2 (NMP/NMPv2)
+Copyright 2025 BHCN STUDIO & 北海的佰川（ImBHCN[numakkiyu]）
+
+This product includes software developed by the NeteaseMiniPlayer v2 project
+(https://github.com/numakkiuyu/NeteaseMiniPlayer).
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+================================================================================
+
+This software contains the following third-party components:
+
+1. NeteaseCloudMusicApi
+   - Description: 网易云音乐 Node.js API service (archived/not maintained)
+   - License: MIT License
+   - Copyright: Binaryify and contributors
+   - Source: https://github.com/Binaryify/NeteaseCloudMusicApi
+   - Note: This repository is no longer maintained as of 2024. See related news:
+     https://www.landiannews.com/archives/101953.html
+     https://www.ithome.com/0/746/942.htm
+
+================================================================================
+
+ATTRIBUTION NOTICES:
+
+NeteaseMiniPlayer v2 (NMP/NMPv2) is a modern, lightweight music player application
+built with enhanced features and improved architecture compared to its predecessor.
+
+This project was originally built upon the NeteaseCloudMusicApi service, which
+provided access to NetEase Cloud Music's API endpoints. We acknowledge and thank
+the contributors of the NeteaseCloudMusicApi project for their excellent foundational work.
+
+================================================================================
+
+DISCLAIMER:
+
+This software is provided "AS IS" without warranty of any kind. The authors
+and contributors disclaim all warranties, express or implied, including but
+not limited to the warranties of merchantability, fitness for a particular
+purpose, and non-infringement.
+
+This project is not affiliated with, endorsed by, or sponsored by NetEase, Inc.
+or NetEase Cloud Music. All trademarks, service marks, and company names are
+the property of their respective owners.
+
+Users are responsible for ensuring compliance with NetEase Cloud Music's terms
+of service and applicable laws when using this software.

@@ -275,6 +275,10 @@ const renderMarkdown = async (markdown: string) => {
         initializeZoom();
         console.log('Rendering complete.');
         emit('rendered');
+        const proc = (window as any).processNMPv2Shortcodes
+        if (proc && previewElement.value) {
+          proc(previewElement.value)
+        }
         
         // 绑定标签点击事件
         const tags = previewElement.value?.querySelectorAll('.clickable-tag');

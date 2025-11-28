@@ -72,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject, provide, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, inject, provide, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute } from '#imports'
 import AddForm from '@/components/index/AddForm.vue'
 import MessageList from '@/components/index/MessageList.vue'
@@ -225,6 +225,20 @@ const frontendConfig = ref({
     musicAutoplay: false,
     musicDefaultMinimized: true,
     musicEmbed: false
+})
+
+const initNMP = async () => {
+  await nextTick()
+  const nmp = (window as any).NeteaseMiniPlayer
+  if (nmp && typeof nmp.init === 'function') {
+    nmp.init()
+  }
+}
+
+watch(() => frontendConfig.value.musicEnabled, async (enabled) => {
+  if (enabled) {
+    await initNMP()
+  }
 })
 
 const backgroundStyle = computed(() => ({
@@ -544,6 +558,9 @@ onMounted(async () => {
     
     // 关键内容优先加载
     await fetchConfig()
+    if (frontendConfig.value.musicEnabled) {
+      await initNMP()
+    }
     
     // 非关键内容延迟加载
     requestIdleCallback(async () => {

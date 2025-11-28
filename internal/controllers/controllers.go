@@ -445,130 +445,17 @@ func UpdateSetting(c *gin.Context) {
 		return
 	}
 
-	// 解析前端传来的配置
 	var setting dto.SettingDto
 	if err := c.ShouldBindJSON(&setting); err != nil {
 		c.JSON(http.StatusOK, dto.Fail[string](models.InvalidRequestBodyMessage))
 		return
 	}
 
-	// 只更新传递的字段，未传递的字段保持原值
 	oldSetting.AllowRegistration = setting.AllowRegistration
 
-	// 合并前端配置
-	var frontendSettings map[string]interface{}
-	if setting.FrontendSettings.SiteTitle == "" &&
-		setting.FrontendSettings.SubtitleText == "" &&
-		setting.FrontendSettings.AvatarURL == "" &&
-		setting.FrontendSettings.Username == "" &&
-		setting.FrontendSettings.Description == "" &&
-		len(setting.FrontendSettings.Backgrounds) == 0 &&
-		setting.FrontendSettings.CardFooterTitle == "" &&
-		setting.FrontendSettings.CardFooterLink == "" &&
-		setting.FrontendSettings.PageFooterHTML == "" &&
-		setting.FrontendSettings.RSSTitle == "" &&
-		setting.FrontendSettings.RSSDescription == "" &&
-		setting.FrontendSettings.RSSAuthorName == "" &&
-		setting.FrontendSettings.RSSFaviconURL == "" &&
-		setting.FrontendSettings.WalineServerURL == "" &&
-		setting.FrontendSettings.EnableGithubCard == nil {
-		// 前端未传递 frontendSettings，自动从数据库读取
-		var config models.SiteConfig
-		if err := db.Table("site_configs").First(&config).Error; err == nil {
-			frontendSettings = map[string]interface{}{
-				"siteTitle":        config.SiteTitle,
-				"subtitleText":     config.SubtitleText,
-				"avatarURL":        config.AvatarURL,
-				"username":         config.Username,
-				"description":      config.Description,
-				"backgrounds":      config.GetBackgroundsList(),
-				"cardFooterTitle":  config.CardFooterTitle,
-				"cardFooterLink":   config.CardFooterLink,
-				"pageFooterHTML":   config.PageFooterHTML,
-				"rssTitle":         config.RSSTitle,
-				"rssDescription":   config.RSSDescription,
-				"rssAuthorName":    config.RSSAuthorName,
-				"rssFaviconURL":    config.RSSFaviconURL,
-				"walineServerURL":  config.WalineServerURL,
-				"enableGithubCard": config.EnableGithubCard,
-				// PWA 设置（直接从数据库配置）
-				"pwaEnabled":          config.PwaEnabled,
-				"pwaTitle":            config.PwaTitle,
-				"pwaDescription":      config.PwaDescription,
-				"pwaIconURL":          config.PwaIconURL,
-				"defaultContentTheme": config.ContentThemeDefault,
-				"announcementText":    config.AnnouncementText,
-				"announcementEnabled": config.AnnouncementEnabled,
-			}
-		}
-	} else {
+	frontendSettings := setting.FrontendSettings
+	if frontendSettings == nil {
 		frontendSettings = map[string]interface{}{}
-		if setting.FrontendSettings.SiteTitle != "" {
-			frontendSettings["siteTitle"] = setting.FrontendSettings.SiteTitle
-		}
-		if setting.FrontendSettings.SubtitleText != "" {
-			frontendSettings["subtitleText"] = setting.FrontendSettings.SubtitleText
-		}
-		if setting.FrontendSettings.AvatarURL != "" {
-			frontendSettings["avatarURL"] = setting.FrontendSettings.AvatarURL
-		}
-		if setting.FrontendSettings.Username != "" {
-			frontendSettings["username"] = setting.FrontendSettings.Username
-		}
-		if setting.FrontendSettings.Description != "" {
-			frontendSettings["description"] = setting.FrontendSettings.Description
-		}
-		if len(setting.FrontendSettings.Backgrounds) > 0 {
-			frontendSettings["backgrounds"] = setting.FrontendSettings.Backgrounds
-		}
-		if setting.FrontendSettings.CardFooterTitle != "" {
-			frontendSettings["cardFooterTitle"] = setting.FrontendSettings.CardFooterTitle
-		}
-		if setting.FrontendSettings.CardFooterLink != "" {
-			frontendSettings["cardFooterLink"] = setting.FrontendSettings.CardFooterLink
-		}
-		if setting.FrontendSettings.PageFooterHTML != "" {
-			frontendSettings["pageFooterHTML"] = setting.FrontendSettings.PageFooterHTML
-		}
-		if setting.FrontendSettings.RSSTitle != "" {
-			frontendSettings["rssTitle"] = setting.FrontendSettings.RSSTitle
-		}
-		if setting.FrontendSettings.RSSDescription != "" {
-			frontendSettings["rssDescription"] = setting.FrontendSettings.RSSDescription
-		}
-		if setting.FrontendSettings.RSSAuthorName != "" {
-			frontendSettings["rssAuthorName"] = setting.FrontendSettings.RSSAuthorName
-		}
-		if setting.FrontendSettings.RSSFaviconURL != "" {
-			frontendSettings["rssFaviconURL"] = setting.FrontendSettings.RSSFaviconURL
-		}
-		if setting.FrontendSettings.WalineServerURL != "" {
-			frontendSettings["walineServerURL"] = setting.FrontendSettings.WalineServerURL
-		}
-		if setting.FrontendSettings.EnableGithubCard != nil {
-			frontendSettings["enableGithubCard"] = *setting.FrontendSettings.EnableGithubCard
-		}
-		if setting.FrontendSettings.PwaEnabled != nil {
-			frontendSettings["pwaEnabled"] = *setting.FrontendSettings.PwaEnabled
-		}
-		if setting.FrontendSettings.PwaTitle != nil {
-			frontendSettings["pwaTitle"] = *setting.FrontendSettings.PwaTitle
-		}
-		if setting.FrontendSettings.PwaDescription != nil {
-			frontendSettings["pwaDescription"] = *setting.FrontendSettings.PwaDescription
-		}
-		if setting.FrontendSettings.PwaIconURL != nil {
-			frontendSettings["pwaIconURL"] = *setting.FrontendSettings.PwaIconURL
-		}
-		if setting.FrontendSettings.DefaultContentTheme != nil {
-			frontendSettings["defaultContentTheme"] = *setting.FrontendSettings.DefaultContentTheme
-		}
-		if setting.FrontendSettings.AnnouncementText != "" {
-			frontendSettings["announcementText"] = setting.FrontendSettings.AnnouncementText
-		}
-		if setting.FrontendSettings.AnnouncementEnabled != nil {
-			frontendSettings["announcementEnabled"] = *setting.FrontendSettings.AnnouncementEnabled
-		}
 	}
 
 	settingMap := map[string]interface{}{
@@ -603,16 +490,6 @@ func UpdateSetting(c *gin.Context) {
 		settingMap["smtpTLS"] = *setting.SmtpTLS
 	}
 
-	if v, ok := settingMap["smtpEnabled"].(bool); !ok || !v {
-		host, _ := settingMap["smtpHost"].(string)
-		port, _ := settingMap["smtpPort"].(int)
-		user, _ := settingMap["smtpUser"].(string)
-		pass, _ := settingMap["smtpPass"].(string)
-		enc, _ := settingMap["smtpEncryption"].(string)
-		if host != "" && port > 0 && user != "" && pass != "" && (enc == "ssl" || enc == "tls") {
-			settingMap["smtpEnabled"] = true
-		}
-	}
 	if err := services.UpdateFrontendSetting(0, settingMap); err != nil {
 		c.JSON(http.StatusOK, dto.Fail[string]("保存前端配置失败: "+err.Error()))
 		return
@@ -726,6 +603,35 @@ func PostComment(c *gin.Context) {
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{"code": 1, "data": comment, "msg": "评论已发布"})
+}
+
+// 删除评论（管理员）
+func DeleteComment(c *gin.Context) {
+	msgIDStr := c.Param("id")
+	cidStr := c.Param("cid")
+	msgID, err1 := strconv.ParseUint(msgIDStr, 10, 64)
+	cid, err2 := strconv.ParseUint(cidStr, 10, 64)
+	if err1 != nil || err2 != nil || msgID == 0 || cid == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "无效的ID"})
+		return
+	}
+	isAdmin, _ := c.Get("is_admin")
+	if b, ok := isAdmin.(bool); !ok || !b {
+		c.JSON(http.StatusForbidden, gin.H{"code": 0, "msg": "无权限"})
+		return
+	}
+	db, _ := database.GetDB()
+	// 确认评论属于该消息
+	var cm models.Comment
+	if err := db.First(&cm, cid).Error; err != nil || cm.MessageID != uint(msgID) {
+		c.JSON(http.StatusNotFound, gin.H{"code": 0, "msg": "评论不存在"})
+		return
+	}
+	if err := db.Delete(&cm).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "msg": "删除失败"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 1, "msg": "已删除"})
 }
 
 // 动态生成 Web Manifest

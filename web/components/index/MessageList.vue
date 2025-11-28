@@ -1538,6 +1538,10 @@ const footerConfig = computed(() => ({
 :global(html:not(.dark)) :deep(.wl-content),
 :global(html:not(.dark)) :deep(.wl-content p),
 :global(html:not(.dark)) :deep(.wl-content *) { color: #111 !important; }
+:global(html:not(.dark)) :deep(.wl-comment .wl-content) { color: #111 !important; }
+:global(html:not(.dark)) :deep(.wl-comment .wl-meta) { color: #666 !important; }
+:global(html:not(.dark)) :deep(.wl-comment .wl-meta > span),
+:global(html:not(.dark)) :deep(.wl-comment .wl-meta > a) { color: #666 !important; }
 :global(html:not(.dark)) :deep(.wl-comment .wl-meta .wl-like),
 :global(html:not(.dark)) :deep(.wl-comment .wl-meta .wl-reply) { color: #666 !important; }
 :global(html:not(.dark)) :deep(.wl-comment .wl-meta .wl-like:hover),
@@ -1558,16 +1562,16 @@ const footerConfig = computed(() => ({
   z-index: 1;
 }
 /* 添加评论内容文本颜色 */
-:deep(.wl-comment .wl-content) {
+:global(html.dark) :deep(.wl-comment .wl-content) {
   color: #fff !important;
 }
 
-:deep(.wl-comment .wl-meta) {
+:global(html.dark) :deep(.wl-comment .wl-meta) {
   color: #fff !important;
 }
 
-:deep(.wl-comment .wl-meta > span),
-:deep(.wl-comment .wl-meta > a) {
+:global(html.dark) :deep(.wl-comment .wl-meta > span),
+:global(html.dark) :deep(.wl-comment .wl-meta > a) {
   color: #fff !important;
 }
 /* 移除 markdown 图片的 hover 效果 */

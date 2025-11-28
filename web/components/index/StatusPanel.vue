@@ -65,7 +65,7 @@
             </button>
             <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('email')">
               <UIcon name="i-heroicons-envelope" class="w-5 h-5 text-indigo-300" />
-              <span class="text-sm text中心">邮件设置</span>
+              <span class="text-sm text-center">邮件设置</span>
             </button>
             <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('admin-users')">
               <UIcon name="i-heroicons-shield-check" class="w-5 h-5 text-indigo-300" />
@@ -92,16 +92,19 @@
           </div>
         </div>
       </aside>
-      <main class="flex flex-col flex-1 h-full md:ml-72" :class="theme.text">
+      <main class="flex flex-col flex-1 h-full md:ml-72 min-h-screen" :class="theme.text">
         <div class="md:hidden flex items-center justify-between px-4 py-3 border-b" :class="[theme.headerBg, theme.border, theme.text]">
           <div class="flex items-center gap-2">
             <button class="p-2 rounded-lg bg-slate-800/70 shadow" @click="sidebarOpen = !sidebarOpen"><UIcon name="i-heroicons-bars-3" class="w-5 h-5" /></button>
             <span class="font-semibold">系统管理面板</span>
           </div>
-          <UButton variant="soft" :color="panelTheme === 'light' ? 'gray' : 'white'" class="shadow" @click="$router.push('/')">返回首页</UButton>
+          <div class="flex items-center gap-2">
+            <UButton variant="soft" :color="panelTheme === 'light' ? 'gray' : 'white'" class="shadow" @click="$router.push('/')">返回首页</UButton>
+            <UButton v-if="isLogin" icon="i-heroicons-power" color="red" variant="solid" @click="handleLogout">退出登录</UButton>
+          </div>
         </div>
         <div v-if="sidebarOpen" class="fixed inset-0 bg-black/40 md:hidden" @click="sidebarOpen=false"></div>
-        <div class="flex-1 overflow-y-auto p-4 flex flex-col w-full" :class="isAdmin ? 'gap-4' : 'gap-0'">
+        <div class="flex-1 overflow-y-auto p-4 pb-24 flex flex-col w-full" :class="isAdmin ? 'gap-4' : 'gap-0'">
           <div class="col-span-12">
             <h1 class="text-2xl md:text-3xl font-bold text-center" :class="theme.text">系统管理面板</h1>
           </div>
@@ -201,8 +204,8 @@
                       <USwitch v-model="frontendConfig.musicDefaultMinimized" />
                     </div>
                     <div class="flex items-center gap-2 md:col-span-2">
-                      <span class="text-sm" :class="theme.mutedText">嵌入模式</span>
-                      <USwitch v-model="frontendConfig.musicEmbed" />
+                      <span class="text-sm" :class="theme.mutedText">展示模式</span>
+                      <USelect v-model="musicEmbedMode" :options="[{label:'嵌入',value:'embed'},{label:'浮动',value:'float'}]" />
                     </div>
                   </div>
                   <div class="flex justify-end gap-2">
@@ -668,87 +671,34 @@
           </div>
 
         </div>
-        <div class="border-t px-4 py-3 flex justify-between items-center" :class="[theme.bottomBg, theme.border, theme.text]">
-          <UButton icon="i-heroicons-arrow-left" variant="soft" :color="panelTheme === 'light' ? 'gray' : 'white'" class="shadow" @click="$router.push('/')">返回首页</UButton>
-          <div v-if="isLogin" class="flex gap-2">
-            <UButton color="gray" variant="soft" class="shadow" @click="handleLogout">退出登录</UButton>
-          </div>
-          <div v-else class="flex gap-2">
-            <UButton color="primary" @click="showLoginModal = true; authmode = true">登录</UButton>
-            <UButton color="secondary" @click="showLoginModal = true; authmode = false">注册</UButton>
-          </div>
-        </div>
+        
       </main>
-            <div v-if="false" class="hidden w-[800px] max-w-[95%] bg-[#1a1b2e]/80 backdrop-blur-md rounded-lg shadow-xl p-6">
-                <h1 class="text-3xl font-bold text-center mb-8" :class="theme.text">系统管理面板</h1>
-                 <!-- 添加版本信息和检测按钮 -->
-                 <div class="text-center mb-6 flex items-center justify-center gap-2">
-    <span class="text-gray-300">当前版本: latest</span>
-    <UButton
-        size="xs"
-        color="gray"
-        variant="ghost"
-        :loading="versionInfo.checking"
-        @click="checkVersion"
-    >
-        {{ versionInfo.checking ? '检测中...' : '检查版本发布时间' }}
-    </UButton>
-</div>
-                <!-- 更新提示 -->
-                <div v-if="versionInfo.hasUpdate" class="text-center mb-6">
-    <div class="flex items-center justify-center gap-2 text-orange-400">
-        <UIcon name="i-heroicons-arrow-up-circle" class="w-5 h-5" />
-        <span>发现版本最近更新（于 {{ versionInfo.latestVersion }}）</span>
-        <a 
-            href="https://hub.docker.com/r/noise233/echo-noise/tags" 
-            target="_blank"
-            class="text-blue-400 hover:text-blue-300 ml-2"
+      <div class="hidden md:flex fixed bottom-0 left-0 right-0 md:left-72 z-40 border-t px-3 py-3 justify-between items-center" :class="[theme.bottomBg, theme.border]">
+        <UButton
+          icon="i-heroicons-arrow-left"
+          :color="panelTheme === 'light' ? 'gray' : 'white'"
+          variant="soft"
+          @click="$router.push('/')"
         >
-            查看详情
-        </a>
-    </div>
-</div>
-
-                <!-- 系统状态卡片 -->
-                <div class="rounded-lg p-4 mb-6" :class="theme.cardBg">
-                    <h2 class="text-xl font-semibold mb-4" :class="theme.text">系统状态</h2>
-                    <div class="grid gap-4">
-                        <div class="flex justify-between items-center">
-                            <span :class="theme.mutedText">系统管理员</span>
-                            <span class="font-medium" :class="theme.text">{{ userStore?.status?.username }}</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span :class="theme.mutedText">当前用户</span>
-                            <span class="font-medium" :class="theme.text">
-                                {{ isLogin ? userStore.user?.username : "未登录" }}
-                            </span>
-                        </div>
-                     
-                        <div class="flex justify-between items-center">
-                            <span :class="theme.mutedText">笔记总数</span>
-                            <span class="font-medium" :class="theme.text">{{ userStore?.status?.total_messages }} 条</span>
-                        </div>
- 
-    <div class="min-h-screen w-screen bg-[#0b0c15]">
-        <div class="min-h-screen w-full">
-            <aside
-                class="w-72 h-screen overflow-y-auto backdrop-blur-md flex flex-col fixed left-0 top-0 z-40 border-r"
-                :class="[theme.sidebarBg, theme.border]"
-            >
-                <div class="p-4">
-                    <h1 class="text-2xl font-bold text-white mb-4 text-center">系统管理面板</h1>
-                    <div class="space-y-2">
-                        <UButton class="w-full" color="gray" variant="soft" @click="scrollTo('section-status')">系统状态</UButton>
-                        <UButton class="w-full" color="gray" variant="soft" @click="scrollTo('section-user')">用户信息</UButton>
-                        <UButton class="w-full" color="gray" variant="soft" @click="scrollTo('section-site')">网站配置</UButton>
-                        <UButton class="w-full" color="gray" variant="soft" @click="scrollTo('section-notify')">推送配置</UButton>
-                        <UButton class="w-full" color="gray" variant="soft" @click="scrollTo('section-db')">数据库管理</UButton>
-                        <UButton class="w-full" color="gray" variant="soft" @click="scrollTo('site-music-section')">音乐设置</UButton>
-                    </div>
-                </div>
-            </aside>
-            <main class="flex flex-col h-screen overflow-y-auto md:ml-72 p-4">
-                <div class="w-full max-w-[1100px] mx-auto rounded-lg shadow-lg p-6" :class="[theme.cardBg, theme.border]">
+          返回首页
+        </UButton>
+        <div v-if="isLogin">
+          <UButton
+            icon="i-heroicons-power"
+            color="red"
+            variant="solid"
+            @click="handleLogout"
+          >
+            退出登录
+          </UButton>
+        </div>
+        <div v-else class="flex gap-2">
+          <UButton color="primary" @click="showLoginModal = true; authmode = true">登录</UButton>
+          <UButton color="secondary" @click="showLoginModal = true; authmode = false">注册</UButton>
+        </div>
+      </div>
+      <div v-if="false">
+            
                     <div id="section-version" class="mb-6">
                         <div class="text-center mb-6 flex items-center justify-center gap-2">
                             <span class="text-gray-300">当前版本: latest</span>
@@ -1044,8 +994,8 @@
                       <USwitch v-model="frontendConfig.musicDefaultMinimized" />
                     </div>
                     <div class="flex items-center gap-3">
-                      <span class="text-sm" :class="theme.mutedText">嵌入模式</span>
-                      <USwitch v-model="frontendConfig.musicEmbed" />
+                      <span class="text-sm" :class="theme.mutedText">展示模式</span>
+                      <USelect v-model="musicEmbedMode" :options="[{label:'嵌入',value:'embed'},{label:'浮动',value:'float'}]" />
                     </div>
                   </div>
                   <div class="text-xs mt-2" :class="theme.mutedText">保存后首页自动刷新显示播放器；歌单与单曲任选其一</div>
@@ -1192,48 +1142,13 @@
             @change="handleDatabaseUpload"
         />
     </div>
-</div>
-<!-- 底部操作栏 -->
-<div class="sticky bottom-0 left-0 right-0 bg-[#1a1b2e]/70 backdrop-blur-md border-t mt-2 p-3 flex justify-between items-center">
-                    <UButton
-                        icon="i-heroicons-arrow-left"
-                        variant="ghost"
-                        color="white"
-                        @click="$router.push('/')"
-                        class="text-white hover:text-black"
-                    >
-                        返回首页
-                    </UButton>
-                    <div v-if="isLogin">
-                        <UButton
-                            icon="i-heroicons-power"
-                            color="red"
-                            variant="ghost"
-                            @click="handleLogout"
-                        >
-                            退出登录
-                        </UButton>
-                    </div>
-                    <div v-else class="flex gap-2">
-                        <UButton
-                            color="primary"
-                            @click="showLoginModal = true; authmode = true"
-                        >
-                            登录
-                        </UButton>
-                        <UButton
-                            color="secondary"
-                            @click="showLoginModal = true; authmode = false"
-                        >
-                            注册
-                        </UButton>
-                    </div>
                 </div>
-                </div>
-            </main>
+            
  
-        </div>
+        
+        
 
+      </div>
     <!-- 登录模态框 -->
     <UModal v-model="showLoginModal">
         <div class="bg-gray-800 p-6 rounded-lg">
@@ -1282,6 +1197,7 @@
             @change="handleFileUpload"
         />
   
+    </div>
 </template>
 
 <script setup lang="ts">
@@ -2050,13 +1966,14 @@ const frontendConfig = reactive({
     rssDescription: '',
     rssAuthorName: '',
     rssFaviconURL: '',
-    walineServerURL: '',
-    commentEnabled: false,
-    commentSystem: 'waline',
-    commentEmailEnabled: false,
-    githubOAuthEnabled: false,
-    githubClientId: '',
-    githubCallbackURL: '',
+  walineServerURL: '',
+  commentEnabled: false,
+  commentSystem: 'waline',
+  commentEmailEnabled: false,
+  githubOAuthEnabled: false,
+  githubClientId: '',
+  githubClientSecret: '',
+  githubCallbackURL: '',
     enableGithubCard: false,
     // PWA 设置
     pwaEnabled: true,
@@ -2142,6 +2059,8 @@ const defaultConfig = {
     walineServerURL: '请前往waline官网https://waline.js.org查看部署配置',
     githubOAuthEnabled: false,
     githubClientId: '',
+    githubClientSecret: '',
+    
     githubCallbackURL: '',
     // PWA 设置默认值（为空时回退到站点设置）
     pwaEnabled: true,
@@ -2186,7 +2105,7 @@ const fetchConfig = async () => {
             const settings = data.data.frontendSettings;
             
             // 遍历配置项进行更新（布尔型键需强制转换）
-            const booleanKeys = ['enableGithubCard', 'pwaEnabled', 'announcementEnabled', 'musicEnabled', 'musicLyric', 'musicAutoplay', 'musicDefaultMinimized', 'musicEmbed', 'commentEnabled', 'commentEmailEnabled']
+            const booleanKeys = ['enableGithubCard', 'pwaEnabled', 'announcementEnabled', 'musicEnabled', 'musicLyric', 'musicAutoplay', 'musicDefaultMinimized', 'musicEmbed', 'commentEnabled', 'commentEmailEnabled', 'githubOAuthEnabled']
             Object.keys(frontendConfig).forEach(key => {
                 if (key === 'backgrounds') {
                     const serverBackgrounds = settings[key];
@@ -2452,11 +2371,16 @@ const toggleMusic = async (enabled: boolean) => {
   }
   await saveMusicConfig()
 }
+const musicEmbedMode = computed({
+  get: () => (frontendConfig.musicEmbed ? 'embed' : 'float'),
+  set: (v: string) => { (frontendConfig as any).musicEmbed = (v === 'embed') }
+})
 
 const saveGithubOAuthConfig = async () => {
   try {
     await saveConfigItem('githubOAuthEnabled')
     await saveConfigItem('githubClientId')
+    await saveConfigItem('githubClientSecret')
     await saveConfigItem('githubCallbackURL')
     useToast().add({ title: '成功', description: 'GitHub 登录配置已保存', color: 'green' })
   } catch (error: any) {

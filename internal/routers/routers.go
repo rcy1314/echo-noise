@@ -130,6 +130,8 @@ func SetupRouter() *gin.Engine {
 	// 评论系统（内置）公共路由
 	api.GET("/messages/:id/comments", controllers.GetComments)
 	api.POST("/messages/:id/comments", controllers.PostComment)
+	// 评论删除（管理员）
+	authRoutes.DELETE("/messages/:id/comments/:cid", controllers.DeleteComment)
 	// 添加推送配置路由
 	notify := authRoutes.Group("/notify")
 	{
