@@ -21,6 +21,7 @@ import (
 	"github.com/lin-snow/ech0/internal/models"
 	"github.com/lin-snow/ech0/internal/repository"
 	"github.com/lin-snow/ech0/internal/services"
+	"github.com/lin-snow/ech0/internal/syncmanager"
 )
 
 func checkUser(c *gin.Context) (*models.User, error) {
@@ -490,6 +491,13 @@ func UpdateSetting(c *gin.Context) {
 		settingMap["smtpTLS"] = *setting.SmtpTLS
 	}
 
+	if setting.StorageEnabled != nil {
+		settingMap["storageEnabled"] = *setting.StorageEnabled
+	}
+	if setting.StorageConfig != nil {
+		settingMap["storageConfig"] = setting.StorageConfig
+	}
+
 	if err := services.UpdateFrontendSetting(0, settingMap); err != nil {
 		c.JSON(http.StatusOK, dto.Fail[string]("保存前端配置失败: "+err.Error()))
 		return
@@ -784,6 +792,9 @@ func UpdateMessage(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 1, "msg": "更新成功"})
+
+	// 即时模式触发云同步（防抖）
+	syncmanager.Trigger()
 }
 
 // 更新消息置顶状态
@@ -1401,6 +1412,9 @@ func PostMessage(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, dto.OK(message, "发布成功"))
+
+	// 即时模式触发云同步（防抖）
+	syncmanager.Trigger()
 }
 
 // 上传视频

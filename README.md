@@ -39,6 +39,12 @@
 
   ![1764316124235](https://s2.loli.net/2025/11/28/bcjsEDBx5iSPHGK.png)
 
+- 增加数据库![1764341189272](https://s2.loli.net/2025/11/28/bue4xoDIpN91UEZ.png)
+
+  
+
+  
+
 ![ktRvYcdiy6Gu3pS](https://s2.loli.net/2025/11/27/ktRvYcdiy6Gu3pS.png)
 
 ![HsU4pjcBS1OXVYo](https://s2.loli.net/2025/11/27/HsU4pjcBS1OXVYo.png)
@@ -49,7 +55,45 @@
 
 [TOC]
 
+云存储功能概览
 
+- 云存储自动同步开关与模式已加入“云存储接入（R2/S3）”模块，包含：
+  - 自动同步开关： 自动同步至云端
+  - 模式选择： 即时 或 定时
+  - 定时间隔：分钟数
+  - 状态显示： 上次同步时间
+  - 操作按钮： 立即同步
+  - 位置： web/components/index/StatusPanel.vue:695-715 ；数据加载与保存在 web/components/index/StatusPanel.vue:2663-2690、2699-2706、2681-2694 中
+    后端实现
+- 站点配置新增字段：
+  - StorageAutoSyncEnabled 、 StorageSyncMode 、 StorageSyncIntervalMinute 、 StorageLastSyncTime
+  - 位置： internal/models/models.go:120-144 附近
+- 配置读写支持上述字段：
+  - 返回前端： internal/services/setting_service.go:85-106 的 storageConfig 中增加了 autoSyncEnabled/syncMode/syncIntervalMinute/lastSyncTime
+  - 保存更新： internal/services/setting_service.go:342-369 完成解析与赋值
+- 同步管理器：
+  - 包路径： internal/syncmanager/auto_sync.go:1-135
+  - 即时模式：防抖 15 秒触发云端备份上传
+  - 定时模式：按 StorageSyncIntervalMinute 启动 goroutine 周期任务
+  - 同步逻辑：打包 backup.zip （含 database.db 、 images/ 、 video/ ），用后端预签名上传至 R2/S3，并记录 StorageLastSyncTime
+  - 配置变更后自动重新应用： internal/services/setting_service.go:433-436
+- 立即同步接口与路由：
+  - 控制器： internal/controllers/backup.go:379-401 新增 HandleBackupSyncNow
+  - 路由： internal/routers/routers.go:156-158 增加 POST /api/backup/storage/sync-now
+- 即时模式触发点：
+  - 发布与更新消息后触发同步防抖： internal/controllers/controllers.go:793-794、1410-1412
+- 前端操作：
+  - 打开“云存储接入（R2/S3）”
+  - 启用“云存储接入”开关并填写 provider/endpoint/region/bucket/accessKey/secretKey/publicBaseURL
+  - 开启“自动同步至云端”，选择模式：
+    - 即时：对消息发布/更新自动触发，防抖合并 15 秒内的变更
+    - 定时：设置间隔分钟数，后台按间隔自动备份上传
+  - 随时点击“立即同步”执行一次上传；“上次同步”显示最近成功时间
+- 后端约束：
+  - R2 强制路径风格；S3 可选路径风格： web/components/index/StatusPanel.vue:682-685、2699-2706
+  - 自动同步依赖云存储启用与必要字段完整，否则不会启动
+    注意事项
+- R2/S3 是对象存储，仅用于备份与资源存储；不适合作为在线事务数据库。若希望“数据在云端即时可读写”，建议把 DB_TYPE 切换至云数据库（Postgres/MySQL）。
 
 <details>
 <summary><h2>✅ 更新状况【点击查看】</h2></summary>

@@ -1,11 +1,8 @@
 <template>
  
-    <div class="min-h-screen w-full overflow-x-hidden" :class="theme.pageBg">
-        <div class="min-h-screen w-full">
-      <aside
-        class="w-72 h-screen overflow-y-auto backdrop-blur-md flex flex-col fixed left-0 top-0 z-40 transition-transform duration-300 border-r"
-        :class="[{ 'translate-x-0': sidebarOpen, '-translate-x-full md:translate-x-0': !sidebarOpen }, theme.sidebarBg, theme.border, theme.sidebarText]"
-      >
+    <div class="relative min-h-screen w-full overflow-x-hidden" :class="theme.pageBg">
+      <div class="min-h-screen w-full">
+        <aside class="w-72 h-screen overflow-y-auto backdrop-blur-md flex flex-col fixed left-0 top-0 z-40 transition-transform duration-300 md:transition-none border-r" :class="[{ 'translate-x-0': sidebarOpen, '-translate-x-full md:translate-x-0': !sidebarOpen }, theme.sidebarBg, theme.border, theme.sidebarText]">
         <div class="px-4 py-4 border-b border-slate-700/40 flex flex-col items-center gap-2">
           <img :src="avatarSrc" class="w-14 h-14 rounded-full ring-2 ring-indigo-400/60 shadow-lg object-cover" alt="avatar" />
           <div class="w-full text-center">
@@ -14,70 +11,70 @@
           </div>
         </div>
         <nav class="flex-1 overflow-y-auto px-2 py-3 space-y-2">
-          <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('system')">
+          <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('system', $event)">
             <UIcon name="i-heroicons-cpu-chip" class="w-5 h-5 text-indigo-300" />
             <span class="text-sm text-center">系统信息</span>
           </button>
-          <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('user')">
+          <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('user', $event)">
             <UIcon name="i-heroicons-user-circle" class="w-5 h-5 text-indigo-300" />
             <span class="text-sm text-center">用户信息</span>
           </button>
-          <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('site')">
+          <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('site', $event)">
             <UIcon name="i-heroicons-wrench-screwdriver" class="w-5 h-5 text-indigo-300" />
             <span class="text-sm text-center">网站配置</span>
           </button>
           <div v-if="isAdmin" class="space-y-2">
-            <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('site-register')">
+            <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('site-register', $event)">
               <UIcon name="i-heroicons-user-plus" class="w-5 h-5 text-indigo-300" />
               <span class="text-sm text-center">注册开关</span>
             </button>
-            <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('site-pwa')">
+            <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('site-pwa', $event)">
               <UIcon name="i-heroicons-rocket-launch" class="w-5 h-5 text-indigo-300" />
               <span class="text-sm text-center">PWA 模式</span>
             </button>
-            <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('site-github-card')">
+            <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('site-github-card', $event)">
               <UIcon name="i-mdi-github" class="w-5 h-5 text-indigo-300" />
               <span class="text-sm text-center">GitHub 卡片</span>
             </button>
-            <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('site-github-login')">
+            <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('site-github-login', $event)">
               <UIcon name="i-mdi-github" class="w-5 h-5 text-indigo-300" />
               <span class="text-sm text-center">GitHub 登录</span>
             </button>
-            <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('site-announcement')">
+            <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('site-announcement', $event)">
               <UIcon name="i-heroicons-megaphone" class="w-5 h-5 text-indigo-300" />
               <span class="text-sm text-center">公告栏</span>
             </button>
-            <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('site-music')">
+            <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('site-music', $event)">
               <UIcon name="i-heroicons-musical-note" class="w-5 h-5 text-indigo-300" />
               <span class="text-sm text-center">音乐配置</span>
             </button>
-            <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('site-default-theme')">
+            <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('site-default-theme', $event)">
               <UIcon name="i-heroicons-swatch" class="w-5 h-5 text-indigo-300" />
               <span class="text-sm text-center">默认主题</span>
             </button>
-            <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('site-configs')">
+            <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('site-configs', $event)">
               <UIcon name="i-heroicons-cog-6-tooth" class="w-5 h-5 text-indigo-300" />
               <span class="text-sm text-center">站点文案</span>
             </button>
-            <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('comments')">
+            <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('comments', $event)">
               <UIcon name="i-heroicons-chat-bubble-left-right" class="w-5 h-5 text-indigo-300" />
               <span class="text-sm text-center">评论系统</span>
             </button>
-            <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('email')">
+            <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('email', $event)">
               <UIcon name="i-heroicons-envelope" class="w-5 h-5 text-indigo-300" />
               <span class="text-sm text-center">邮件设置</span>
             </button>
-            <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('admin-users')">
+            <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('admin-users', $event)">
               <UIcon name="i-heroicons-shield-check" class="w-5 h-5 text-indigo-300" />
               <span class="text-sm text-center">管理员用户</span>
             </button>
           </div>
-          <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('notify')">
+          <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('notify', $event)">
             <UIcon name="i-heroicons-bell-alert" class="w-5 h-5 text-indigo-300" />
             <span class="text-sm text-center">推送配置</span>
           </button>
-          <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('db')">
-            <UIcon name="i-heroicons-database" class="w-5 h-5 text-indigo-300" />
+          <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('db', $event)">
+            <UIcon name="i-heroicons-circle-stack" class="w-5 h-5 text-indigo-300" />
             <span class="text-sm text-center">数据库管理</span>
           </button>
         </nav>
@@ -92,7 +89,7 @@
           </div>
         </div>
       </aside>
-      <main class="flex flex-col flex-1 h-full md:ml-72 min-h-screen overflow-y-auto" :class="theme.text">
+        <main class="w-full min-h-screen md:pl-72 overflow-y-auto" :class="theme.text">
         <div class="md:hidden flex items-center justify-between px-4 py-3 border-b rounded-b-2xl" :class="[theme.headerBg, theme.border, theme.text]">
           <div class="flex items-center gap-2">
             <button class="p-2 rounded-lg bg-slate-800/70 shadow" @click="sidebarOpen = !sidebarOpen"><UIcon name="i-heroicons-bars-3" class="w-5 h-5" /></button>
@@ -147,62 +144,7 @@
             </div>
           </div>
           
-          <div id="site-music-section" class="col-span-12">
-            <div :class="[theme.cardBg, theme.border, cardCls]">
-              <div class="flex items-center justify-between px-4 py-3">
-                <div class="font-semibold flex items-center gap-2" :class="theme.text">
-                  <UIcon name="i-heroicons-musical-note" class="w-5 h-5" />
-                  <span>音乐配置</span>
-                </div>
-                <div class="flex items-center gap-3">
-                  <UToggle v-model="frontendConfig.musicEnabled" />
-                  <UButton color="green" @click="saveMusicConfig" class="shadow">保存</UButton>
-                </div>
-              </div>
-              <div class="px-4 pb-4">
-                <div class="rounded-lg p-4 space-y-4" :class="theme.subtleBg">
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <label class="text-sm mb-1 block" :class="theme.mutedText">歌单 ID</label>
-                      <UInput v-model="frontendConfig.musicPlaylistId" placeholder="网易云歌单ID（可选）" />
-                    </div>
-                    <div>
-                      <label class="text-sm mb-1 block" :class="theme.mutedText">歌曲 ID</label>
-                      <UInput v-model="frontendConfig.musicSongId" placeholder="网易云歌曲ID（可选）" />
-                    </div>
-                    <div>
-                      <label class="text-sm mb-1 block" :class="theme.mutedText">位置</label>
-                      <USelect v-model="frontendConfig.musicPosition" :options="[{label:'左下',value:'bottom-left'},{label:'右下',value:'bottom-right'}]" />
-                    </div>
-                    <div>
-                      <label class="text-sm mb-1 block" :class="theme.mutedText">主题</label>
-                      <USelect v-model="frontendConfig.musicTheme" :options="[{label:'自动',value:'auto'},{label:'深色',value:'dark'},{label:'浅色',value:'light'}]" />
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-sm" :class="theme.mutedText">显示歌词</span>
-                      <USwitch v-model="frontendConfig.musicLyric" />
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-sm" :class="theme.mutedText">自动播放</span>
-                      <USwitch v-model="frontendConfig.musicAutoplay" />
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-sm" :class="theme.mutedText">默认最小化</span>
-                      <USwitch v-model="frontendConfig.musicDefaultMinimized" />
-                    </div>
-                    <div class="flex items-center gap-2 md:col-span-2">
-                      <span class="text-sm" :class="theme.mutedText">展示模式</span>
-                      <USelect v-model="musicEmbedMode" :options="[{label:'嵌入',value:'embed'},{label:'浮动',value:'float'}]" />
-                    </div>
-                  </div>
-                  <div class="flex justify-end gap-2">
-                    <UButton variant="soft" color="gray" @click="resetMusicConfig">重置</UButton>
-                    <UButton color="green" @click="saveMusicConfig">保存</UButton>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          
 
           <div id="user-section" class="col-span-12" v-if="isLogin">
             <div class="rounded-xl border shadow-xl" :class="[theme.cardBg, theme.border]">
@@ -347,6 +289,62 @@
                     <UButton color="primary" class="shadow" @click="saveConfigItem('announcementText')">保存公告文本</UButton>
                   </div>
                 </div>
+                <div id="site-music-section" class="col-span-12 mt-4">
+                  <div :class="[theme.cardBg, theme.border, cardCls]">
+                    <div class="flex items-center justify-between px-4 py-3">
+                      <div class="font-semibold flex items-center gap-2" :class="theme.text">
+                        <UIcon name="i-heroicons-musical-note" class="w-5 h-5" />
+                        <span>音乐配置</span>
+                      </div>
+                      <div class="flex items-center gap-3">
+                        <UToggle v-model="frontendConfig.musicEnabled" />
+                        <UButton color="green" @click="saveMusicConfig" class="shadow">保存</UButton>
+                      </div>
+                    </div>
+                    <div class="px-4 pb-4">
+                      <div class="rounded-lg p-4 space-y-4" :class="theme.subtleBg">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label class="text-sm mb-1 block" :class="theme.mutedText">歌单 ID</label>
+                            <UInput v-model="frontendConfig.musicPlaylistId" placeholder="网易云歌单ID（可选）" />
+                          </div>
+                          <div>
+                            <label class="text-sm mb-1 block" :class="theme.mutedText">歌曲 ID</label>
+                            <UInput v-model="frontendConfig.musicSongId" placeholder="网易云歌曲ID（可选）" />
+                          </div>
+                          <div>
+                            <label class="text-sm mb-1 block" :class="theme.mutedText">位置</label>
+                            <USelect v-model="frontendConfig.musicPosition" :options="[{label:'左下',value:'bottom-left'},{label:'右下',value:'bottom-right'}]" />
+                          </div>
+                          <div>
+                            <label class="text-sm mb-1 block" :class="theme.mutedText">主题</label>
+                            <USelect v-model="frontendConfig.musicTheme" :options="[{label:'自动',value:'auto'},{label:'深色',value:'dark'},{label:'浅色',value:'light'}]" />
+                          </div>
+                          <div class="flex items-center gap-2">
+                            <span class="text-sm" :class="theme.mutedText">显示歌词</span>
+                            <USwitch v-model="frontendConfig.musicLyric" />
+                          </div>
+                          <div class="flex items-center gap-2">
+                            <span class="text-sm" :class="theme.mutedText">自动播放</span>
+                            <USwitch v-model="frontendConfig.musicAutoplay" />
+                          </div>
+                          <div class="flex items-center gap-2">
+                            <span class="text-sm" :class="theme.mutedText">默认最小化</span>
+                            <USwitch v-model="frontendConfig.musicDefaultMinimized" />
+                          </div>
+                          <div class="flex items-center gap-2 md:col-span-2">
+                            <span class="text-sm" :class="theme.mutedText">展示模式</span>
+                            <USelect v-model="musicEmbedMode" :options="[{label:'嵌入',value:'embed'},{label:'浮动',value:'float'}]" />
+                          </div>
+                        </div>
+                        <div class="flex justify-end gap-2">
+                          <UButton variant="soft" color="gray" @click="resetMusicConfig">重置</UButton>
+                          <UButton color="green" @click="saveMusicConfig">保存</UButton>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 <div id="site-default-theme-section" class="flex items-center rounded-lg p-3 justify-between" :class="theme.subtleBg">
                   <div class="flex items-center gap-2" :class="theme.text"><UIcon name="i-heroicons-swatch" class="w-4 h-4" /> <span>默认主题色</span></div>
                   <div class="flex items-center gap-4">
@@ -422,12 +420,18 @@
                   <span class="whitespace-nowrap">评论系统</span>
                 </div>
                 <div class="flex items-center gap-3">
-                  <UToggle v-model="frontendConfig.commentEmailEnabled" />
+                  <span class="text-sm" :class="theme.mutedText">状态</span>
+                  <span :class="[frontendConfig.commentEnabled ? 'text-green-400' : 'text-red-400', 'text-sm']">{{ frontendConfig.commentEnabled ? '已启用' : '未启用' }}</span>
+                  <UToggle v-model="frontendConfig.commentEnabled" />
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm" :class="theme.mutedText">邮件通知</span>
+                    <UToggle v-model="frontendConfig.commentEmailEnabled" :disabled="!frontendConfig.commentEnabled" />
+                  </div>
                   <UButton color="green" @click="saveCommentConfig" class="shadow">保存</UButton>
                 </div>
               </div>
               <div class="px-4 pb-4">
-                <CommentsSettings v-model:config="frontendConfig" />
+                <CommentsSettings v-model:config="frontendConfig" :theme="theme" />
               </div>
             </div>
           </div>
@@ -555,9 +559,20 @@
                   <UIcon name="i-heroicons-bell-alert" class="w-5 h-5" />
                   <span>推送配置</span>
                 </div>
+                <div class="flex items-center gap-3">
+                  <span class="text-sm" :class="theme.mutedText">状态</span>
+                  <span :class="[frontendConfig.notifyEnabled ? 'text-green-400' : 'text-red-400', 'text-sm']">{{ frontendConfig.notifyEnabled ? '已启用' : '未启用' }}</span>
+                  <USwitch v-model="frontendConfig.notifyEnabled" color="primary" size="lg" />
+                  <div class="flex items-center gap-2">
+                    <URadio v-model="frontendConfig.notifyEnabled" :value="true" />
+                    <span :class="frontendConfig.notifyEnabled ? theme.text : 'text-gray-400'">开启</span>
+                    <URadio v-model="frontendConfig.notifyEnabled" :value="false" />
+                    <span :class="!frontendConfig.notifyEnabled ? theme.text : 'text-gray-400'">关闭</span>
+                  </div>
+                </div>
               </div>
               <div class="px-4 pb-4">
-                <NotifyPanel v-model:config="notifyConfig" :immediate="true" :subtleBg="theme.subtleBg" :text="theme.text" :mutedText="theme.mutedText" />
+                <NotifyPanel v-model:config="notifyConfig" :immediate="true" :subtleBg="theme.subtleBg" :text="theme.text" :mutedText="theme.mutedText" :disabled="!frontendConfig.notifyEnabled" />
               </div>
             </div>
           </div>
@@ -570,21 +585,31 @@
                   <UIcon name="i-mdi-github" class="w-5 h-5" />
                   <span>GitHub 登录</span>
                 </div>
-                <USwitch v-model="frontendConfig.githubOAuthEnabled" />
+                <div class="flex items-center gap-3">
+                  <span class="text-sm" :class="theme.mutedText">状态</span>
+                  <span :class="[frontendConfig.githubOAuthEnabled ? 'text-green-400' : 'text-red-400', 'text-sm']">{{ frontendConfig.githubOAuthEnabled ? '已启用' : '未启用' }}</span>
+                  <USwitch v-model="frontendConfig.githubOAuthEnabled" color="primary" size="lg" />
+                  <div class="hidden md:flex items-center gap-2">
+                    <URadio v-model="frontendConfig.githubOAuthEnabled" :value="true" />
+                    <span :class="frontendConfig.githubOAuthEnabled ? theme.text : 'text-gray-400'">开启</span>
+                    <URadio v-model="frontendConfig.githubOAuthEnabled" :value="false" />
+                    <span :class="!frontendConfig.githubOAuthEnabled ? theme.text : 'text-gray-400'">关闭</span>
+                  </div>
+                </div>
               </div>
               <div class="px-4 pb-4 space-y-3">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <div class="text-sm mb-2" :class="theme.text">Client ID</div>
-                    <UInput v-model="frontendConfig.githubClientId" placeholder="GitHub OAuth App Client ID" />
+                    <UInput v-model="frontendConfig.githubClientId" placeholder="GitHub OAuth App Client ID" :disabled="!frontendConfig.githubOAuthEnabled" />
                   </div>
                   <div>
                     <div class="text-sm mb-2" :class="theme.text">Client Secret</div>
-                    <UInput v-model="frontendConfig.githubClientSecret" type="password" placeholder="GitHub OAuth App Client Secret" />
+                    <UInput v-model="frontendConfig.githubClientSecret" type="password" placeholder="GitHub OAuth App Client Secret" :disabled="!frontendConfig.githubOAuthEnabled" />
                   </div>
                   <div class="md:col-span-2">
                     <div class="text-sm mb-2" :class="theme.text">回调地址</div>
-                    <UInput v-model="frontendConfig.githubCallbackURL" placeholder="例如 https://your.domain.com/oauth/github/callback" />
+                    <UInput v-model="frontendConfig.githubCallbackURL" placeholder="例如 https://your.domain.com/oauth/github/callback" :disabled="!frontendConfig.githubOAuthEnabled" />
                   </div>
                 </div>
                 <div class="flex justify-end gap-2">
@@ -601,75 +626,113 @@
             <div class="rounded-xl border shadow-xl" :class="[theme.cardBg, theme.border]">
               <div class="flex items-center justify-between px-4 py-3">
                 <div class="font-semibold flex items-center gap-2" :class="theme.text">
-                  <UIcon name="i-heroicons-database" class="w-5 h-5" />
-                  <span>数据库管理</span>
+                  <UIcon name="i-heroicons-circle-stack" class="w-5 h-5 text-indigo-300" />
+                  <span>本地数据库管理配置</span>
+                  <span class="ml-2 text-xs px-2 py-1 rounded" :class="theme.subtleBg">当前 DB：{{ dbTypeLabel }}</span>
+                </div>
+                <div class="flex gap-2 flex-wrap justify-end items-center">
+                  <UButton color="primary" icon="i-heroicons-arrow-down-tray" :disabled="dbType !== 'sqlite'" @click="downloadBackup">下载本地备份</UButton>
+                  <UButton color="warning" variant="soft" icon="i-heroicons-arrow-up-tray" :disabled="dbType !== 'sqlite'" @click="triggerDatabaseUpload">恢复本地数据库</UButton>
+                  <input type="file" ref="databaseFileInput" accept=".zip" class="hidden" @change="handleDatabaseUpload" />
                 </div>
               </div>
               <div class="px-4 pb-4 space-y-4">
-                <div class="flex gap-4 flex-wrap">
-                  <UButton color="primary" icon="i-heroicons-arrow-down-tray" class="shadow ring-1 ring-inset ring-primary-400 text-white" @click="downloadBackup">下载备份</UButton>
-                  <UButton color="warning" variant="solid" icon="i-heroicons-arrow-up-tray" class="shadow ring-1 ring-inset ring-warning-400 text-white transition-colors duration-200 hover:opacity-90" @click="triggerDatabaseUpload">恢复数据库</UButton>
-                </div>
-                <div class="text-yellow-400 text-sm max-h-16 overflow-y-auto rounded p-2" :class="theme.subtleBg">🔔：SQLite一键备份恢复，云端数据库请在服务端操作</div>
+                <div class="text-yellow-400 text-sm rounded p-2" :class="theme.subtleBg">🔔：仅针对 SQLite 本地数据库；{{ dbType !== 'sqlite' ? '当前为云/外部数据库，请在服务端操作' : '可在此下载与恢复本地备份' }}</div>
                 <input type="file" ref="databaseFileInput" accept=".zip" class="hidden" @change="handleDatabaseUpload" />
 
                 <div class="rounded-lg p-3" :class="theme.subtleBg">
-                  <div class="font-semibold mb-2" :class="theme.text">云存储接入（R2/S3）</div>
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div class="flex items-center gap-2">
-                      <span class="text-sm" :class="theme.mutedText">启用</span>
+                  <div class="font-semibold mb-2 flex items-center justify-between" :class="theme.text">
+                    <span>云存储接入（R2/S3）</span>
+                    <div class="flex items-center gap-3">
+                      <span class="text-sm" :class="theme.mutedText">状态</span>
+                      <span :class="[storageEnabled ? 'text-green-400' : 'text-red-400', 'text-sm']">{{ storageEnabled ? '已启用' : '未启用' }}</span>
                       <USwitch v-model="storageEnabled" />
+                      <div class="flex items-center gap-2">
+                        <URadio v-model="storageEnabled" :value="true" />
+                        <span :class="storageEnabled ? theme.text : 'text-gray-400'">开启</span>
+                        <URadio v-model="storageEnabled" :value="false" />
+                        <span :class="!storageEnabled ? theme.text : 'text-gray-400'">关闭</span>
+                      </div>
                     </div>
+                  </div>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    
                     <div>
                       <label class="text-sm mb-1 block" :class="theme.mutedText">提供方</label>
-                      <USelect v-model="storageConfig.provider" :options="[{label:'S3',value:'s3'},{label:'R2',value:'r2'}]" />
+                      <USelect v-model="storageConfig.provider" :options="[{label:'S3',value:'s3'},{label:'R2',value:'r2'}]" :disabled="!storageEnabled" />
                     </div>
                     <div>
                       <label class="text-sm mb-1 block" :class="theme.mutedText">Endpoint</label>
-                      <UInput v-model="storageConfig.endpoint" placeholder="https://..." />
+                      <UInput v-model="storageConfig.endpoint" placeholder="https://..." :disabled="!storageEnabled" />
                     </div>
                     <div>
                       <label class="text-sm mb-1 block" :class="theme.mutedText">Region</label>
-                      <UInput v-model="storageConfig.region" placeholder="auto 或区域名" />
+                      <UInput v-model="storageConfig.region" placeholder="auto 或区域名" :disabled="!storageEnabled" />
                     </div>
                     <div>
                       <label class="text-sm mb-1 block" :class="theme.mutedText">Bucket</label>
-                      <UInput v-model="storageConfig.bucket" placeholder="bucket 名称" />
+                      <UInput v-model="storageConfig.bucket" placeholder="bucket 名称" :disabled="!storageEnabled" />
                     </div>
                     <div>
                       <label class="text-sm mb-1 block" :class="theme.mutedText">Access Key</label>
-                      <UInput v-model="storageConfig.accessKey" />
+                      <UInput v-model="storageConfig.accessKey" :disabled="!storageEnabled" />
                     </div>
                     <div>
                       <label class="text-sm mb-1 block" :class="theme.mutedText">Secret Key</label>
-                      <UInput v-model="storageConfig.secretKey" type="password" />
+                      <UInput v-model="storageConfig.secretKey" type="password" :disabled="!storageEnabled" />
                     </div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-sm" :class="theme.mutedText">PathStyle</span>
-                      <USwitch v-model="storageConfig.usePathStyle" />
+                    <div class="flex items-center gap-2" v-if="storageConfig.provider === 's3'">
+                      <span class="text-sm" :class="theme.mutedText">使用路径风格地址</span>
+                      <USwitch v-model="storageConfig.usePathStyle" :disabled="!storageEnabled" />
                     </div>
                     <div class="md:col-span-2">
                       <label class="text-sm mb-1 block" :class="theme.mutedText">公共访问前缀</label>
-                      <UInput v-model="storageConfig.publicBaseURL" placeholder="https://bucket.example.com/" />
+                      <UInput v-model="storageConfig.publicBaseURL" placeholder="https://bucket.example.com/" :disabled="!storageEnabled" />
                     </div>
                   </div>
                   <div class="flex justify-end gap-2 mt-2">
                     <UButton variant="soft" color="gray" @click="loadStorageConfig">刷新</UButton>
                     <UButton color="green" @click="saveStorageConfig">保存</UButton>
                   </div>
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                    <div>
-                      <label class="text-sm mb-1 block" :class="theme.mutedText">上传URL（预签名）</label>
-                      <UInput v-model="uploadURL" placeholder="粘贴R2/S3预签名上传URL" />
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                      <div class="md:col-span-2 flex flex-wrap items-center gap-4">
+                        <div class="flex items-center gap-2">
+                          <span class="text-sm" :class="theme.mutedText">自动同步至云端</span>
+                          <USwitch v-model="storageAutoSyncEnabled" :disabled="!(storageEnabled && storageConfig.provider && storageConfig.endpoint && storageConfig.bucket && storageConfig.accessKey && storageConfig.secretKey)" />
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <span class="text-sm" :class="theme.mutedText">模式</span>
+                          <USelect v-model="storageSyncMode" :options="[{label:'即时',value:'instant'},{label:'定时',value:'scheduled'}]" :disabled="!storageAutoSyncEnabled || !(storageEnabled && storageConfig.provider && storageConfig.endpoint && storageConfig.bucket && storageConfig.accessKey && storageConfig.secretKey)" />
+                        </div>
+                        <div class="flex items-center gap-2" v-if="storageSyncMode==='scheduled'">
+                          <span class="text-sm" :class="theme.mutedText">间隔(分钟)</span>
+                          <UInput v-model.number="storageSyncIntervalMinute" type="number" min="1" class="w-24" :disabled="!storageAutoSyncEnabled || !(storageEnabled && storageConfig.provider && storageConfig.endpoint && storageConfig.bucket && storageConfig.accessKey && storageConfig.secretKey)" />
+                        </div>
+                        <div class="flex items-center gap-3 ml-auto">
+                          <span class="text-sm" :class="theme.mutedText">上次同步</span>
+                          <span class="text-sm" :class="theme.text">{{ lastCloudSyncText || '—' }}</span>
+                          <UButton color="primary" :disabled="!storageAutoSyncEnabled || !(storageEnabled && storageConfig.provider && storageConfig.endpoint && storageConfig.bucket && storageConfig.accessKey && storageConfig.secretKey)" @click="syncNow">立即同步</UButton>
+                        </div>
+                      </div>
+                      <div>
+                        <label class="text-sm mb-1 block" :class="theme.mutedText">上传URL（预签名）</label>
+                        <div class="flex gap-2">
+                          <UInput v-model="uploadURL" placeholder="粘贴R2/S3预签名上传URL" class="flex-1" />
+                          <UButton :disabled="!storageEnabled" @click="generateUploadPresign">生成</UButton>
+                        </div>
+                      </div>
+                      <div>
+                        <label class="text-sm mb-1 block" :class="theme.mutedText">下载URL（预签名）</label>
+                        <div class="flex gap-2">
+                          <UInput v-model="downloadURL" placeholder="粘贴R2/S3预签名下载URL" class="flex-1" />
+                          <UButton :disabled="!storageEnabled" @click="generateDownloadPresign">生成</UButton>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label class="text-sm mb-1 block" :class="theme.mutedText">下载URL（预签名）</label>
-                      <UInput v-model="downloadURL" placeholder="粘贴R2/S3预签名下载URL" />
-                    </div>
-                  </div>
                   <div class="flex justify-end gap-2 mt-2">
                     <UButton color="primary" @click="uploadCloudBackup">上传备份到云</UButton>
                     <UButton color="warning" @click="restoreCloudBackup">从云恢复备份</UButton>
+                    <UButton color="blue" variant="solid" :disabled="!storageEnabled || !storageConfig.publicBaseURL" @click="restoreFromConfiguredCloud">按配置恢复</UButton>
                   </div>
                 </div>
               </div>
@@ -679,11 +742,11 @@
         </div>
         
       </main>
-      <div class="hidden md:flex fixed bottom-0 left-0 right-0 md:left-72 z-50 border-t px-3 py-3 justify-between items-center backdrop-blur-md shadow-xl" :class="[theme.bottomBg, theme.border]">
+      <div v-show="showBottomBar" class="flex fixed bottom-0 left-0 right-0 md:left-72 z-50 border-t px-3 py-3 justify-between items-center backdrop-blur-md shadow-xl" :class="[theme.bottomBg, theme.border]">
         <UButton
           icon="i-heroicons-arrow-left"
-          :color="panelTheme === 'light' ? 'gray' : 'white'"
-          variant="soft"
+          :color="panelTheme === 'light' ? 'gray' : (panelTheme === 'midnight' ? 'blue' : (panelTheme === 'slate' ? 'slate' : 'gray'))"
+          :variant="panelTheme === 'light' ? 'soft' : 'solid'"
           @click="$router.push('/')"
           class="shadow ring-1 ring-inset ring-slate-400/30 transition hover:opacity-90"
         >
@@ -952,7 +1015,7 @@
                 </div>
 
                 <!-- 音乐配置 -->
-                <div id="site-music-section" class="rounded p-4 mb-4" :class="[theme.cardBg]">
+                <div id="site-music-legacy-section" class="rounded p-4 mb-4" :class="[theme.cardBg]">
                   <div class="flex justify-between items-center mb-3">
                     <span :class="theme.text">音乐播放器</span>
                     <div class="flex items-center gap-2">
@@ -1169,7 +1232,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, computed, onMounted, nextTick } from 'vue'
+import { ref, reactive, watch, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import type { UserToLogin, UserToRegister } from '~/types/models'
 import { useUser } from '~/composables/useUser'
 import { useUserStore } from '~/store/user'
@@ -1179,6 +1242,8 @@ import NotifyPanel from './NotifyPanel.vue'
 import CommentsSettings from '~/components/admin/CommentsSettings.vue'
 import { getRequest, putRequest, postRequest, deleteRequest } from '~/utils/api'
  
+const cardCls = 'rounded-2xl border shadow-2xl'
+
 const scrollTo = (id: string) => {
     const el = document.getElementById(id)
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -1206,16 +1271,30 @@ const avatarSrc = computed(() => {
   return '/favicon.ico'
 })
 
-const setActive = async (name: 'system' | 'user' | 'site' | 'notify' | 'db' | 'site-register' | 'site-pwa' | 'site-github-card' | 'site-github-login' | 'site-announcement' | 'site-music' | 'site-default-theme' | 'site-configs' | 'comments' | 'email') => {
+const setActive = async (name: 'system' | 'user' | 'site' | 'notify' | 'db' | 'site-register' | 'site-pwa' | 'site-github-card' | 'site-github-login' | 'site-announcement' | 'site-music' | 'site-default-theme' | 'site-configs' | 'comments' | 'email', evt?: MouseEvent) => {
   await nextTick()
   const el = document.getElementById(`${name}-section`)
-  el?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+  if (!el) return
+  el.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' })
   if (window.innerWidth < 768) sidebarOpen.value = false
 }
 
 onMounted(() => {
   if (typeof window !== 'undefined' && window.innerWidth < 768) sidebarOpen.value = false
   loadStorageConfig()
+})
+
+const showBottomBar = ref(true)
+const updateBottomBarVisibility = () => {
+  if (typeof window === 'undefined') return
+  showBottomBar.value = window.innerWidth >= 768
+}
+onMounted(() => {
+  updateBottomBarVisibility()
+  if (typeof window !== 'undefined') window.addEventListener('resize', updateBottomBarVisibility)
+})
+onUnmounted(() => {
+  if (typeof window !== 'undefined') window.removeEventListener('resize', updateBottomBarVisibility)
 })
 
 const theme = computed(() => {
@@ -1298,6 +1377,7 @@ const theme = computed(() => {
     navBtnHoverBg: 'hover:bg-slate-700/70'
   }
 })
+
 
 const saveAdminTheme = async () => {
   localStorage.setItem('adminTheme', panelTheme.value)
@@ -1557,7 +1637,7 @@ const filteredUsers = computed<any[]>(() => {
 const refreshUsers = async () => {
   await userStore.getStatus()
 }
-const showUsers = ref(true)
+const showUsers = ref(false)
 const confirmToggleAdmin = async (u: any) => {
   try {
     const name = u.username ?? u.Username
@@ -1941,6 +2021,7 @@ const frontendConfig = reactive({
   githubClientId: '',
   githubClientSecret: '',
   githubCallbackURL: '',
+  notifyEnabled: false,
     enableGithubCard: false,
     // PWA 设置
     pwaEnabled: true,
@@ -2035,8 +2116,8 @@ const defaultConfig = {
     pwaIconURL: ''
     ,defaultContentTheme: 'dark'
     ,announcementText: '欢迎访问我的说说笔记！'
-    ,announcementEnabled: true
-    ,musicEnabled: false
+  ,announcementEnabled: true
+  ,musicEnabled: false
     ,musicPlaylistId: '2141128031'
     ,musicSongId: ''
     ,musicPosition: 'bottom-left'
@@ -2071,7 +2152,7 @@ const fetchConfig = async () => {
             const settings = data.data.frontendSettings;
             
             // 遍历配置项进行更新（布尔型键需强制转换）
-            const booleanKeys = ['enableGithubCard', 'pwaEnabled', 'announcementEnabled', 'musicEnabled', 'musicLyric', 'musicAutoplay', 'musicDefaultMinimized', 'musicEmbed', 'commentEnabled', 'commentEmailEnabled', 'githubOAuthEnabled']
+            const booleanKeys = ['enableGithubCard', 'pwaEnabled', 'announcementEnabled', 'musicEnabled', 'musicLyric', 'musicAutoplay', 'musicDefaultMinimized', 'musicEmbed', 'commentEnabled', 'commentEmailEnabled', 'githubOAuthEnabled', 'notifyEnabled']
             Object.keys(frontendConfig).forEach(key => {
                 if (key === 'backgrounds') {
                     const serverBackgrounds = settings[key];
@@ -2513,6 +2594,11 @@ onMounted(async () => {
     }
 });
 const databaseFileInput = ref<HTMLInputElement | null>(null)
+const dbType = ref<'sqlite'|'postgres'|'mysql'|'other'>('sqlite')
+const dbTypeLabel = computed(() => {
+  const map: Record<string, string> = { sqlite: 'SQLite', postgres: 'Postgres', mysql: 'MySQL', other: '其它' }
+  return map[dbType.value] || dbType.value
+})
 
 const downloadBackup = async () => {
     try {
@@ -2598,6 +2684,10 @@ const storageConfig = reactive({
   usePathStyle: true,
   publicBaseURL: ''
 })
+const storageAutoSyncEnabled = ref(false)
+const storageSyncMode = ref<'instant'|'scheduled'>('instant')
+const storageSyncIntervalMinute = ref(15)
+const lastCloudSyncText = ref('')
 const uploadURL = ref('')
 const downloadURL = ref('')
 const loadStorageConfig = async () => {
@@ -2605,6 +2695,8 @@ const loadStorageConfig = async () => {
     const res = await fetch('/api/frontend/config', { credentials: 'include' })
     const data = await res.json()
     if (data?.code === 1) {
+      const dt = (data.data.dbType || 'sqlite').toLowerCase()
+      dbType.value = (dt === 'sqlite' || dt === 'postgres' || dt === 'mysql') ? dt as any : 'other'
       storageEnabled.value = !!data.data.storageEnabled
       const sc = data.data.storageConfig || {}
       storageConfig.provider = sc.provider || ''
@@ -2615,6 +2707,10 @@ const loadStorageConfig = async () => {
       storageConfig.secretKey = sc.secretKey || ''
       storageConfig.usePathStyle = !!sc.usePathStyle
       storageConfig.publicBaseURL = sc.publicBaseURL || ''
+      storageAutoSyncEnabled.value = !!sc.autoSyncEnabled
+      storageSyncMode.value = (sc.syncMode || 'instant')
+      storageSyncIntervalMinute.value = Number(sc.syncIntervalMinute || 15)
+      lastCloudSyncText.value = (sc.lastSyncTime || '').replace('T',' ').replace('Z','')
     }
   } catch {}
 }
@@ -2622,7 +2718,7 @@ const saveStorageConfig = async () => {
   try {
     const payload: any = {
       storageEnabled: storageEnabled.value,
-      storageConfig: { ...storageConfig }
+      storageConfig: { ...storageConfig, autoSyncEnabled: storageAutoSyncEnabled.value, syncMode: storageSyncMode.value, syncIntervalMinute: storageSyncIntervalMinute.value }
     }
     const res = await fetch('/api/settings', { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
     const data = await res.json()
@@ -2635,6 +2731,30 @@ const saveStorageConfig = async () => {
     useToast().add({ title: '保存失败', description: e.message, color: 'red' })
   }
 }
+
+const syncNow = async () => {
+  try {
+    const res = await fetch('/api/backup/storage/sync-now', { method: 'POST', credentials: 'include' })
+    const data = await res.json()
+    if (data?.code === 1) {
+      useToast().add({ title: '已同步到云端', color: 'green' })
+      await loadStorageConfig()
+    } else {
+      throw new Error(data?.msg || '同步失败')
+    }
+  } catch (e: any) {
+    useToast().add({ title: '同步失败', description: e.message, color: 'red' })
+  }
+}
+
+watch(() => storageConfig.provider, (pv) => {
+  if (pv === 'r2') {
+    storageConfig.usePathStyle = true
+    if (!storageConfig.region) storageConfig.region = 'auto'
+  } else if (pv === 's3') {
+    if (storageConfig.usePathStyle === undefined) storageConfig.usePathStyle = false
+  }
+})
 const uploadCloudBackup = async () => {
   try {
     const url = uploadURL.value.trim()
@@ -2653,6 +2773,47 @@ const restoreCloudBackup = async () => {
   try {
     const url = downloadURL.value.trim()
     if (!url) throw new Error('请填写预签名下载URL')
+    const res = await postRequest<any>('backup/storage/restore', { downloadURL: url }, { credentials: 'include' })
+    if (res?.code === 1) {
+      useToast().add({ title: '云备份恢复成功', color: 'green' })
+    } else {
+      throw new Error(res?.msg || '恢复失败')
+    }
+  } catch (e: any) {
+    useToast().add({ title: '恢复失败', description: e.message, color: 'red' })
+  }
+}
+const generateUploadPresign = async () => {
+  try {
+    const res = await postRequest<any>('backup/storage/presign/upload', { objectKey: 'backup.zip', contentType: 'application/zip', expiresSeconds: 3600 }, { credentials: 'include' })
+    if (res?.code === 1 && res?.data?.url) {
+      uploadURL.value = res.data.url
+      useToast().add({ title: '生成上传预签名成功', color: 'green' })
+    } else {
+      throw new Error(res?.msg || '生成失败')
+    }
+  } catch (e: any) {
+    useToast().add({ title: '生成失败', description: e.message, color: 'red' })
+  }
+}
+const generateDownloadPresign = async () => {
+  try {
+    const res = await postRequest<any>('backup/storage/presign/download', { objectKey: 'backup.zip', expiresSeconds: 3600 }, { credentials: 'include' })
+    if (res?.code === 1 && res?.data?.url) {
+      downloadURL.value = res.data.url
+      useToast().add({ title: '生成下载预签名成功', color: 'green' })
+    } else {
+      throw new Error(res?.msg || '生成失败')
+    }
+  } catch (e: any) {
+    useToast().add({ title: '生成失败', description: e.message, color: 'red' })
+  }
+}
+const restoreFromConfiguredCloud = async () => {
+  try {
+    const base = (storageConfig.publicBaseURL || '').trim()
+    if (!base) throw new Error('请先在配置中填写公共访问前缀')
+    const url = (base.endsWith('/') ? base : base + '/') + 'backup.zip'
     const res = await postRequest<any>('backup/storage/restore', { downloadURL: url }, { credentials: 'include' })
     if (res?.code === 1) {
       useToast().add({ title: '云备份恢复成功', color: 'green' })
@@ -2682,4 +2843,3 @@ const themeOptions = [
     display: none;
 }
 </style>
-const cardCls = 'rounded-2xl border shadow-2xl'

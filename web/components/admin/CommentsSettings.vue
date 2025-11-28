@@ -1,14 +1,8 @@
 <template>
-  <div id="site-comments-section" class="flex items-center rounded-lg p-3 justify-between" :class="subtleBg">
-    <div class="flex items-center gap-2" :class="textCls"><UIcon name="i-heroicons-chat-bubble-bottom-center-text" class="w-4 h-4" /> <span>评论系统</span></div>
-    <div class="flex items-center gap-3 w-full justify-end">
-      <UToggle v-model="local.commentEnabled" />
+  <div id="site-comments-section" class="flex flex-wrap items-center rounded-lg p-3 justify-between gap-3" :class="theme?.subtleBg || subtleBg">
+    <div class="flex flex-wrap items-center gap-3 w-full justify-end">
       <USelect v-model="local.commentSystem" :options="[{label:'内置',value:'builtin'},{label:'Waline',value:'waline'}]" />
-      <UInput v-if="local.commentSystem === 'waline'" v-model="local.walineServerURL" placeholder="Waline 地址" class="w-[280px]" />
-      <div class="flex items-center gap-2">
-        <span class="text-sm" :class="mutedText">邮件通知</span>
-        <USwitch v-model="local.commentEmailEnabled" />
-      </div>
+      <UInput v-if="local.commentSystem === 'waline'" v-model="local.walineServerURL" :ui="{base: theme?.text}" placeholder="Waline 地址" class="w-full md:w-[280px]" />
       <UButton color="green" @click="save" class="shadow">保存</UButton>
     </div>
   </div>
@@ -18,7 +12,7 @@
 import { reactive, watch, computed } from 'vue'
 import { useToast } from '#imports'
 
-const props = defineProps<{ config: any }>()
+const props = defineProps<{ config: any, theme?: Record<string, string> }>()
 const emit = defineEmits<{ (e: 'update:config', v: any): void }>()
 
 const local = reactive({
@@ -40,13 +34,13 @@ const subtleBg = computed(() => 'bg-gray-800')
 const mutedText = computed(() => 'text-slate-400')
 const textCls = computed(() => 'text-white')
 
-const save = async () => {
-  try {
-    const payload = {
-      frontendSettings: {
-        commentEnabled: !!local.commentEnabled,
+  const save = async () => {
+    try {
+      const payload = {
+        frontendSettings: {
+        commentEnabled: !!props.config?.commentEnabled,
         commentSystem: String(local.commentSystem || 'waline'),
-        commentEmailEnabled: !!local.commentEmailEnabled,
+        commentEmailEnabled: !!props.config?.commentEmailEnabled,
         walineServerURL: String(local.walineServerURL || '')
       }
     }

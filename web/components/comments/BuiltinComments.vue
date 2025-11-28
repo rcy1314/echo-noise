@@ -57,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed, nextTick } from 'vue'
+import { ref, onMounted, watch, computed, nextTick, inject, onBeforeUnmount } from 'vue'
 import { useToast } from '#ui/composables/useToast'
 import { getRequest, postRequest, deleteRequest } from '~/utils/api'
 import { useUserStore } from '~/store/user'
@@ -76,7 +76,10 @@ const deleteId = ref<number | null>(null)
 const user = useUserStore()
 const isAdmin = computed(() => !!(user.user as any)?.is_admin)
 
-const isDark = ref(false)
+// 主题注入，严格跟随页面当前模式
+const injectedTheme = inject('contentTheme', ref('light')) as any
+const isDark = computed(() => String(injectedTheme?.value || 'light') === 'dark' || document.documentElement.classList.contains('dark'))
+
 const themeBg = computed(() => (isDark.value ? 'bg-[rgba(24,28,32,0.95)]' : 'bg-white'))
 const themeBorder = computed(() => (isDark.value ? 'border-white/20' : 'border-black'))
 const themeText = computed(() => (isDark.value ? 'text-gray-200' : 'text-[#111]'))
@@ -94,7 +97,9 @@ const load = async () => {
   try {
     const res = await getRequest<any>(`messages/${props.messageId}/comments`, undefined, { credentials: 'include' })
     if (res && res.code === 1) {
-      comments.value = res.data || []
+      const list = Array.isArray(res.data) ? res.data : []
+      // 保持按时间正序或倒序，后端若未排序则按 created_at 排序
+      comments.value = list.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
     } else {
       comments.value = []
     }
@@ -145,7 +150,14 @@ const formatDate = (s: string) => {
 }
 
 onMounted(load)
-onMounted(() => { isDark.value = document.documentElement.classList.contains('dark') || String((props.siteConfig || {}).defaultContentTheme || 'dark') === 'dark' })
+// 监听来自父级的刷新事件（每次展开评论时确保重新拉取）
+const handler = () => load()
+onMounted(() => {
+  window.addEventListener(`refresh-comments-${props.messageId}`, handler)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener(`refresh-comments-${props.messageId}`, handler)
+})
 watch(() => props.messageId, load)
 
 const startReply = (id: number, nickName: string) => {

@@ -5,7 +5,7 @@
         </div>
 
         <!-- 配置列表 -->
-        <div class="space-y-4">
+        <div class="space-y-4" :class="props.disabled ? 'opacity-60 pointer-events-none' : ''">
             <!-- Webhook配置 -->
             <div class="rounded p-3" :class="subtleBg">
                 <div class="flex justify-between items-center mb-2">
@@ -200,13 +200,14 @@
         </div>
 
         <!-- 测试按钮区域 -->
-        <div class="mt-4 flex flex-wrap gap-2">
+        <div class="mt-4 flex flex-wrap gap-2" :class="props.disabled ? 'opacity-60 pointer-events-none' : ''">
     <UButton
         v-for="type in notifyTypes"
         :key="type"
         @click="testNotify(type)"
         class="flex-grow sm:flex-grow-0"
         variant="solid"
+        :disabled="props.disabled"
     >
         测试{{ getNotifyTypeName(type) }}
     </UButton>
@@ -228,6 +229,7 @@ const props = defineProps<{
     subtleBg?: string;
     text?: string;
     mutedText?: string;
+    disabled?: boolean;
 }>();
 
 // 添加类型定义

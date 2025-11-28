@@ -3,10 +3,17 @@ package services
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/lin-snow/ech0/internal/database"
 	"github.com/lin-snow/ech0/internal/models"
+	"github.com/lin-snow/ech0/internal/syncmanager"
 )
 
 // GetFrontendConfig 获取前端配置
@@ -28,8 +35,15 @@ func GetFrontendConfig() (map[string]interface{}, error) {
 		allowReg = setting.AllowRegistration
 	}
 
+	// 读取 DB 类型
+	dbType := os.Getenv("DB_TYPE")
+	if dbType == "" {
+		dbType = "sqlite"
+	}
+
 	configMap := map[string]interface{}{
 		"allowRegistration": allowReg,
+		"dbType":            dbType,
 		"frontendSettings": map[string]interface{}{
 			"siteTitle":        config.SiteTitle,
 			"subtitleText":     config.SubtitleText,
@@ -78,14 +92,28 @@ func GetFrontendConfig() (map[string]interface{}, error) {
 		},
 		"storageEnabled": config.StorageEnabled,
 		"storageConfig": map[string]interface{}{
-			"provider":      choose(config.StorageProvider, ""),
-			"endpoint":      choose(config.StorageEndpoint, ""),
-			"region":        choose(config.StorageRegion, ""),
-			"bucket":        choose(config.StorageBucket, ""),
-			"accessKey":     choose(config.StorageAccessKey, ""),
-			"secretKey":     choose(config.StorageSecretKey, ""),
-			"usePathStyle":  config.StorageUsePathStyle,
-			"publicBaseURL": choose(config.StoragePublicBaseURL, ""),
+			"provider":        choose(config.StorageProvider, ""),
+			"endpoint":        choose(config.StorageEndpoint, ""),
+			"region":          choose(config.StorageRegion, ""),
+			"bucket":          choose(config.StorageBucket, ""),
+			"accessKey":       choose(config.StorageAccessKey, ""),
+			"secretKey":       choose(config.StorageSecretKey, ""),
+			"usePathStyle":    config.StorageUsePathStyle,
+			"publicBaseURL":   choose(config.StoragePublicBaseURL, ""),
+			"autoSyncEnabled": config.StorageAutoSyncEnabled,
+			"syncMode":        choose(config.StorageSyncMode, "instant"),
+			"syncIntervalMinute": func() int {
+				if config.StorageSyncIntervalMinute > 0 {
+					return config.StorageSyncIntervalMinute
+				}
+				return 15
+			}(),
+			"lastSyncTime": func() string {
+				if config.StorageLastSyncTime != nil {
+					return config.StorageLastSyncTime.Format(time.RFC3339)
+				}
+				return ""
+			}(),
 		},
 		"smtpEnabled":    config.SmtpEnabled,
 		"smtpDriver":     config.SmtpDriver,
@@ -333,6 +361,65 @@ func UpdateFrontendSetting(userID uint, settingMap map[string]interface{}) error
 		}
 	}
 
+	if v, ok := settingMap["storageEnabled"].(bool); ok {
+		config.StorageEnabled = v
+	}
+	if sc, ok := settingMap["storageConfig"].(map[string]interface{}); ok {
+		if pv, ok := sc["provider"].(string); ok {
+			config.StorageProvider = pv
+		}
+		if v, ok := sc["endpoint"].(string); ok {
+			config.StorageEndpoint = v
+		}
+		if v, ok := sc["region"].(string); ok {
+			config.StorageRegion = v
+		}
+		if v, ok := sc["bucket"].(string); ok {
+			config.StorageBucket = v
+		}
+		if v, ok := sc["accessKey"].(string); ok {
+			config.StorageAccessKey = v
+		}
+		if v, ok := sc["secretKey"].(string); ok {
+			config.StorageSecretKey = v
+		}
+		if v, ok := sc["usePathStyle"].(bool); ok {
+			config.StorageUsePathStyle = v
+		}
+		if v, ok := sc["publicBaseURL"].(string); ok {
+			config.StoragePublicBaseURL = v
+		}
+		if vb, ok := sc["autoSyncEnabled"].(bool); ok {
+			config.StorageAutoSyncEnabled = vb
+		} else if vs, ok := sc["autoSyncEnabled"].(string); ok {
+			config.StorageAutoSyncEnabled = (vs == "true")
+		}
+		if v, ok := sc["syncMode"].(string); ok {
+			if v == "instant" || v == "scheduled" {
+				config.StorageSyncMode = v
+			}
+		}
+		if vi, ok := sc["syncIntervalMinute"].(float64); ok {
+			config.StorageSyncIntervalMinute = int(vi)
+		} else if vi2, ok := sc["syncIntervalMinute"].(int); ok {
+			config.StorageSyncIntervalMinute = vi2
+		} else if vs, ok := sc["syncIntervalMinute"].(string); ok {
+			if n, err := strconv.Atoi(vs); err == nil {
+				config.StorageSyncIntervalMinute = n
+			}
+		}
+	}
+
+	if config.StorageProvider == "r2" {
+		config.StorageUsePathStyle = true
+	}
+	if config.StorageEnabled {
+		if config.StorageProvider == "" || config.StorageEndpoint == "" || config.StorageBucket == "" || config.StorageAccessKey == "" || config.StorageSecretKey == "" {
+			tx.Rollback()
+			return fmt.Errorf("云存储配置不完整")
+		}
+	}
+
 	if v, ok := settingMap["smtpEnabled"].(bool); ok {
 		config.SmtpEnabled = v
 	}
@@ -387,6 +474,45 @@ func UpdateFrontendSetting(userID uint, settingMap map[string]interface{}) error
 	if err := tx.Table("site_configs").Save(&config).Error; err != nil {
 		tx.Rollback()
 		return fmt.Errorf("更新配置失败: %v", err)
+	}
+
+	// 同步配置到自动同步管理器
+	// 注意：仅在服务进程内触发，不影响数据库事务
+	// 读取最新配置并传入管理器
+	db.Table("site_configs").First(&config)
+	// 调用同步管理器进行配置
+	syncmanager.Configure(config)
+
+	if config.StorageEnabled {
+		dbType := os.Getenv("DB_TYPE")
+		if dbType == "" {
+			dbType = "sqlite"
+		}
+		if dbType == "sqlite" {
+			base := strings.TrimSpace(config.StoragePublicBaseURL)
+			if base != "" {
+				url := strings.TrimRight(base, "/") + "/database.db"
+				client := &http.Client{Timeout: 60 * time.Second}
+				resp, err := client.Get(url)
+				if err == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+					defer resp.Body.Close()
+					tempFile := filepath.Join(os.TempDir(), "cloud_database.db")
+					out, err := os.Create(tempFile)
+					if err == nil {
+						_, _ = io.Copy(out, resp.Body)
+						out.Close()
+						dbPath := os.Getenv("DB_PATH")
+						if dbPath == "" {
+							dbPath = "/app/data/noise.db"
+						}
+						_ = os.MkdirAll(filepath.Dir(dbPath), 0755)
+						_ = copyFile(tempFile, dbPath)
+						_ = os.Remove(tempFile)
+						_ = database.ReconnectDB()
+					}
+				}
+			}
+		}
 	}
 
 	// 提交事务
@@ -481,4 +607,21 @@ func choose(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	return err
 }

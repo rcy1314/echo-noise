@@ -235,9 +235,41 @@ const initNMP = async () => {
   }
 }
 
+const loadNMPAssets = async (): Promise<boolean> => {
+  if (typeof window === 'undefined') return false
+  // 如果已经存在并且全局对象可用，直接返回
+  if ((window as any).NeteaseMiniPlayer) return true
+  const head = document.head
+  const body = document.body
+  // 样式按需注入（本地资源，避免外链失败）
+  const cssId = 'nmp-css'
+  if (!document.getElementById(cssId)) {
+    const link = document.createElement('link')
+    link.id = cssId
+    link.rel = 'stylesheet'
+    link.href = '/NeteaseMiniPlayer/netease-mini-player-v2.css'
+    head.appendChild(link)
+  }
+  // 脚本按需注入
+  const scriptId = 'nmp-js'
+  if (!document.getElementById(scriptId)) {
+    return await new Promise<boolean>((resolve) => {
+      const script = document.createElement('script')
+      script.id = scriptId
+      script.src = '/NeteaseMiniPlayer/netease-mini-player-v2.js'
+      script.defer = true
+      script.onload = () => resolve(!!(window as any).NeteaseMiniPlayer)
+      script.onerror = () => resolve(false)
+      body.appendChild(script)
+    })
+  }
+  return !!(window as any).NeteaseMiniPlayer
+}
+
 watch(() => frontendConfig.value.musicEnabled, async (enabled) => {
   if (enabled) {
-    await initNMP()
+    const ok = await loadNMPAssets()
+    if (ok) await initNMP()
   }
 })
 

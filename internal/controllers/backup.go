@@ -17,6 +17,9 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/lin-snow/ech0/internal/database"
+    "github.com/lin-snow/ech0/internal/storage"
+    "github.com/lin-snow/ech0/internal/models"
+    "github.com/lin-snow/ech0/internal/syncmanager"
 )
 
 func isAdmin(c *gin.Context) bool {
@@ -396,6 +399,109 @@ func HandleBackupRestore(c *gin.Context) {
 		"msg":           "数据恢复成功",
 		"shouldRefresh": true,
 	})
+}
+
+func HandleBackupPresignUpload(c *gin.Context) {
+    if !isAdmin(c) {
+        c.JSON(http.StatusForbidden, gin.H{"code": 0, "msg": "需要管理员权限"})
+        return
+    }
+    var req struct {
+        ObjectKey      string `json:"objectKey"`
+        ExpiresSeconds int    `json:"expiresSeconds"`
+        ContentType    string `json:"contentType"`
+    }
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "请求参数错误"})
+        return
+    }
+    if req.ObjectKey == "" {
+        req.ObjectKey = "backup.zip"
+    }
+    if req.ContentType == "" {
+        req.ContentType = "application/zip"
+    }
+    if req.ExpiresSeconds <= 0 {
+        req.ExpiresSeconds = 3600
+    }
+
+    db, _ := database.GetDB()
+    var cfg models.SiteConfig
+    if err := db.Table("site_configs").First(&cfg).Error; err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "msg": "读取站点配置失败"})
+        return
+    }
+    if !cfg.StorageEnabled || cfg.StorageBucket == "" || cfg.StorageAccessKey == "" || cfg.StorageSecretKey == "" || cfg.StorageEndpoint == "" {
+        c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "云存储未启用或配置不完整"})
+        return
+    }
+    url, err := storage.PresignUpload(cfg, cfg.StorageBucket, req.ObjectKey, time.Duration(req.ExpiresSeconds)*time.Second, req.ContentType)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "msg": "生成预签名上传URL失败: " + err.Error()})
+        return
+    }
+    c.JSON(http.StatusOK, gin.H{"code": 1, "data": gin.H{"url": url}})
+}
+
+func HandleBackupPresignDownload(c *gin.Context) {
+    if !isAdmin(c) {
+        c.JSON(http.StatusForbidden, gin.H{"code": 0, "msg": "需要管理员权限"})
+        return
+    }
+    var req struct {
+        ObjectKey      string `json:"objectKey"`
+        ExpiresSeconds int    `json:"expiresSeconds"`
+    }
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "请求参数错误"})
+        return
+    }
+    if req.ObjectKey == "" {
+        req.ObjectKey = "backup.zip"
+    }
+    if req.ExpiresSeconds <= 0 {
+        req.ExpiresSeconds = 3600
+    }
+
+    db, _ := database.GetDB()
+    var cfg models.SiteConfig
+    if err := db.Table("site_configs").First(&cfg).Error; err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "msg": "读取站点配置失败"})
+        return
+    }
+    if !cfg.StorageEnabled || cfg.StorageBucket == "" || cfg.StorageAccessKey == "" || cfg.StorageSecretKey == "" || cfg.StorageEndpoint == "" {
+        c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "云存储未启用或配置不完整"})
+        return
+    }
+    url, err := storage.PresignDownload(cfg, cfg.StorageBucket, req.ObjectKey, time.Duration(req.ExpiresSeconds)*time.Second)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "msg": "生成预签名下载URL失败: " + err.Error()})
+        return
+    }
+    c.JSON(http.StatusOK, gin.H{"code": 1, "data": gin.H{"url": url}})
+}
+
+// 立即执行云端同步（备份到 R2/S3）
+func HandleBackupSyncNow(c *gin.Context) {
+    if !isAdmin(c) {
+        c.JSON(http.StatusForbidden, gin.H{"code": 0, "msg": "需要管理员权限"})
+        return
+    }
+    db, _ := database.GetDB()
+    var cfg models.SiteConfig
+    if err := db.Table("site_configs").First(&cfg).Error; err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "msg": "读取站点配置失败"})
+        return
+    }
+    if !cfg.StorageEnabled {
+        c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "云存储未启用"})
+        return
+    }
+    if err := syncmanager.SyncNow(); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "msg": "同步失败: " + err.Error()})
+        return
+    }
+    c.JSON(http.StatusOK, gin.H{"code": 1, "msg": "已同步到云端"})
 }
 func backupPostgres(tempDir string) error {
 	dumpFile := filepath.Join(tempDir, "database.sql")

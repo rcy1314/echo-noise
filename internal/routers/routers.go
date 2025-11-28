@@ -61,6 +61,7 @@ func SetupRouter() *gin.Engine {
 
 	r.Use(cors.New(corsConfig))
 
+	// 使用固定的 ./public 作为静态目录
 	r.Use(static.Serve("/", static.LocalFile("./public", true)))
 	r.Static("/api/images", "./data/images")
 	r.Static("/video", "./data/video")
@@ -153,6 +154,9 @@ func SetupRouter() *gin.Engine {
 		backup.POST("/restore", controllers.HandleBackupRestore)
 		backup.POST("/storage/upload", controllers.HandleBackupUploadToURL)
 		backup.POST("/storage/restore", controllers.HandleBackupRestoreFromURL)
+		backup.POST("/storage/presign/upload", controllers.HandleBackupPresignUpload)
+		backup.POST("/storage/presign/download", controllers.HandleBackupPresignDownload)
+		backup.POST("/storage/sync-now", controllers.HandleBackupSyncNow)
 	}
 
 	// 图片上传路由

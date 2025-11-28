@@ -127,6 +127,11 @@ type SiteConfig struct {
 	StorageSecretKey     string `gorm:"type:varchar(191)"`
 	StorageUsePathStyle  bool   `gorm:"default:true"`
 	StoragePublicBaseURL string `gorm:"type:varchar(191)"`
+	// 云存储自动同步
+	StorageAutoSyncEnabled    bool       `gorm:"default:false"`
+	StorageSyncMode           string     `gorm:"type:varchar(20)"` // instant 或 scheduled
+	StorageSyncIntervalMinute int        `gorm:"default:15"`
+	StorageLastSyncTime       *time.Time `json:"storageLastSyncTime"`
 	// 音乐播放器配置（NeteaseMiniPlayer）
 	MusicEnabled          bool   `gorm:"default:false"`
 	MusicPlaylistId       string `gorm:"type:varchar(50)"`
