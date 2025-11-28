@@ -45,6 +45,19 @@
       :site-config="frontendConfig"
       :target-message-id="targetMessageId" 
       />
+      <!-- 音乐播放器容器（浮动或嵌入） -->
+      <div
+        v-if="frontendConfig.musicEnabled"
+        class="netease-mini-player"
+        :data-playlist-id="frontendConfig.musicPlaylistId || ''"
+        :data-song-id="frontendConfig.musicSongId || ''"
+        :data-position="frontendConfig.musicPosition || 'bottom-left'"
+        :data-theme="frontendConfig.musicTheme || 'auto'"
+        :data-lyric="frontendConfig.musicLyric ? 'true' : 'false'"
+        :data-default-minimized="frontendConfig.musicDefaultMinimized ? 'true' : 'false'"
+        :data-embed="frontendConfig.musicEmbed ? 'true' : 'false'"
+        :data-autoplay="frontendConfig.musicAutoplay ? 'true' : 'false'"
+      />
       </UContainer>
   <Notification />
   <!-- 添加搜索模态框组件 -->
@@ -201,7 +214,17 @@ const frontendConfig = ref({
     commentEnabled: false,
     commentSystem: 'waline',
     commentEmailEnabled: false,
-    walineServerURL: ''
+    walineServerURL: '',
+    // 音乐配置
+    musicEnabled: false,
+    musicPlaylistId: '2141128031',
+    musicSongId: '',
+    musicPosition: 'bottom-left',
+    musicTheme: 'auto',
+    musicLyric: true,
+    musicAutoplay: false,
+    musicDefaultMinimized: true,
+    musicEmbed: false
 })
 
 const backgroundStyle = computed(() => ({
@@ -256,7 +279,17 @@ const defaultConfig = {
     commentEnabled: false,
     commentSystem: 'waline',
     commentEmailEnabled: false,
-    walineServerURL: ''
+    walineServerURL: '',
+    // 音乐默认配置
+    musicEnabled: false,
+    musicPlaylistId: '2141128031',
+    musicSongId: '',
+    musicPosition: 'bottom-left',
+    musicTheme: 'auto',
+    musicLyric: true,
+    musicAutoplay: false,
+    musicDefaultMinimized: true,
+    musicEmbed: false
 };
 
 // 修改 fetchConfig 方法
@@ -266,7 +299,7 @@ const fetchConfig = async () => {
         const res = await getRequest<any>('frontend/config', undefined, { credentials: 'include' })
         if (res && res.code === 1 && res.data && res.data.frontendSettings) {
             const settings = res.data.frontendSettings
-            const booleanKeys = ['enableGithubCard', 'pwaEnabled', 'announcementEnabled', 'commentEnabled', 'commentEmailEnabled']
+            const booleanKeys = ['enableGithubCard', 'pwaEnabled', 'announcementEnabled', 'commentEnabled', 'commentEmailEnabled', 'musicEnabled', 'musicLyric', 'musicAutoplay', 'musicDefaultMinimized', 'musicEmbed']
             Object.keys(frontendConfig.value).forEach(key => {
                 if (settings[key] !== null && settings[key] !== undefined) {
                     if (key === 'backgrounds' && Array.isArray(settings[key])) {

@@ -1,4 +1,5 @@
 <template>
+ 
     <div class="min-h-screen w-screen" :class="theme.pageBg">
         <div class="min-h-screen w-full">
       <aside
@@ -727,11 +728,83 @@
                             <span :class="theme.mutedText">笔记总数</span>
                             <span class="font-medium" :class="theme.text">{{ userStore?.status?.total_messages }} 条</span>
                         </div>
+ 
+    <div class="min-h-screen w-screen bg-[#0b0c15]">
+        <div class="min-h-screen w-full">
+            <aside
+                class="w-72 h-screen overflow-y-auto backdrop-blur-md flex flex-col fixed left-0 top-0 z-40 border-r"
+                :class="[theme.sidebarBg, theme.border]"
+            >
+                <div class="p-4">
+                    <h1 class="text-2xl font-bold text-white mb-4 text-center">系统管理面板</h1>
+                    <div class="space-y-2">
+                        <UButton class="w-full" color="gray" variant="soft" @click="scrollTo('section-status')">系统状态</UButton>
+                        <UButton class="w-full" color="gray" variant="soft" @click="scrollTo('section-user')">用户信息</UButton>
+                        <UButton class="w-full" color="gray" variant="soft" @click="scrollTo('section-site')">网站配置</UButton>
+                        <UButton class="w-full" color="gray" variant="soft" @click="scrollTo('section-notify')">推送配置</UButton>
+                        <UButton class="w-full" color="gray" variant="soft" @click="scrollTo('section-db')">数据库管理</UButton>
+                        <UButton class="w-full" color="gray" variant="soft" @click="scrollTo('site-music-section')">音乐设置</UButton>
                     </div>
                 </div>
+            </aside>
+            <main class="flex flex-col h-screen overflow-y-auto md:ml-72 p-4">
+                <div class="w-full max-w-[1100px] mx-auto rounded-lg shadow-lg p-6" :class="[theme.cardBg, theme.border]">
+                    <div id="section-version" class="mb-6">
+                        <div class="text-center mb-6 flex items-center justify-center gap-2">
+                            <span class="text-gray-300">当前版本: latest</span>
+                            <UButton
+                                size="xs"
+                                color="gray"
+                                variant="ghost"
+                                :loading="versionInfo.checking"
+                                @click="checkVersion"
+                            >
+                                {{ versionInfo.checking ? '检测中...' : '检查版本发布时间' }}
+                            </UButton>
+                        </div>
+                        <div v-if="versionInfo.hasUpdate" class="text-center mb-6">
+                            <div class="flex items-center justify-center gap-2 text-orange-400">
+                                <UIcon name="i-heroicons-arrow-up-circle" class="w-5 h-5" />
+                                <span>发现版本最近更新（于 {{ versionInfo.latestVersion }}）</span>
+                                <a 
+                                    href="https://hub.docker.com/r/noise233/echo-noise/tags" 
+                                    target="_blank"
+                                    class="text-blue-400 hover:text-blue-300 ml-2"
+                                >
+                                    查看详情
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="section-status" class="bg-gray-700 rounded-lg p-4 mb-6">
+                        <h2 class="text-xl font-semibold text-white mb-4">系统状态</h2>
+                        <div class="grid gap-4">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-300">系统管理员</span>
+                                <span class="text-white font-medium">{{ userStore?.status?.username }}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-300">当前用户</span>
+                                <span class="text-white font-medium">
+                                    {{ isLogin ? userStore.user?.username : "未登录" }}
+                                </span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-300">笔记总数</span>
+                                <span class="text-white font-medium">{{ userStore?.status?.total_messages }} 条</span>
+                            </div>
+                        </div>
+                    </div>
+                <!-- 添加版本信息和检测按钮 -->
+                
                   <!-- 用户信息配置面板 -->
+ 
                 <div v-if="isLogin" class="rounded-lg p-4 mb-6" :class="theme.cardBg">
                     <h2 class="text-xl font-semibold mb-4" :class="theme.text">用户信息配置</h2>
+ 
+                <div id="section-user" v-if="isLogin" class="bg-gray-700 rounded-lg p-4 mb-6">
+                    <h2 class="text-xl font-semibold text-white mb-4">用户信息配置</h2>
+ 
                     <div class="space-y-4">
                         <!-- 用户名修改 -->
                         <div class="bg-gray-800 rounded p-3">
@@ -834,7 +907,7 @@
                     </div>
                 </div>
                                <!-- 网站配置区域 -->
-                <div v-if="isAdmin" class="bg-gray-700 rounded-lg p-4 mb-6">
+                <div id="section-site" v-if="isAdmin" class="bg-gray-700 rounded-lg p-4 mb-6">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-semibold" :class="theme.text">网站配置</h2>
                     </div>
@@ -904,21 +977,79 @@
                         </div>
                     </div>
 
-                    <!-- 默认主题色设置 -->
-                    <div class="flex items-center bg-gray-800 rounded p-3 mb-4 justify-between">
-                        <span :class="theme.text">默认主题色</span>
-                        <div class="flex items-center gap-4">
-                            <div class="flex items-center">
-                                <URadio v-model="frontendConfig.defaultContentTheme" value="dark" class="mr-2" />
-                                <span :class="frontendConfig.defaultContentTheme === 'dark' ? theme.text : 'text-gray-400'">暗黑</span>
-                            </div>
-                            <div class="flex items-center">
-                                <URadio v-model="frontendConfig.defaultContentTheme" value="light" class="mr-2" />
-                                <span :class="frontendConfig.defaultContentTheme === 'light' ? theme.text : 'text-gray-400'">白天</span>
-                            </div>
-                            <UButton color="green" @click="saveConfigItem('defaultContentTheme')">保存</UButton>
+                <!-- 默认主题色设置 -->
+                <div class="flex items-center bg-gray-800 rounded p-3 mb-4 justify-between">
+                    <span :class="theme.text">默认主题色</span>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center">
+                            <URadio v-model="frontendConfig.defaultContentTheme" value="dark" class="mr-2" />
+                            <span :class="frontendConfig.defaultContentTheme === 'dark' ? theme.text : 'text-gray-400'">暗黑</span>
                         </div>
+                        <div class="flex items-center">
+                            <URadio v-model="frontendConfig.defaultContentTheme" value="light" class="mr-2" />
+                            <span :class="frontendConfig.defaultContentTheme === 'light' ? theme.text : 'text-gray-400'">白天</span>
+                        </div>
+                        <UButton color="green" @click="saveConfigItem('defaultContentTheme')">保存</UButton>
                     </div>
+                </div>
+
+                <!-- 音乐配置 -->
+                <div id="site-music-section" class="rounded p-4 mb-4" :class="[theme.cardBg]">
+                  <div class="flex justify-between items-center mb-3">
+                    <span :class="theme.text">音乐播放器</span>
+                    <div class="flex items-center gap-2">
+                      <UButton :color="frontendConfig.musicEnabled ? 'gray' : 'green'" variant="soft" @click="toggleMusic(true)">开启</UButton>
+                      <UButton color="red" variant="soft" @click="toggleMusic(false)">关闭</UButton>
+                      <UToggle v-model="frontendConfig.musicEnabled" />
+                      <UButton color="green" @click="saveMusicConfig">保存</UButton>
+                      <UButton variant="soft" color="gray" @click="resetMusicConfig">重置</UButton>
+                    </div>
+                  </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label :class="[theme.mutedText, 'text-sm mb-1 block']">歌单 ID</label>
+                      <UInput v-model="frontendConfig.musicPlaylistId" placeholder="如 14273792576" />
+                    </div>
+                    <div>
+                      <label :class="[theme.mutedText, 'text-sm mb-1 block']">单曲 ID</label>
+                      <UInput v-model="frontendConfig.musicSongId" placeholder="可选，优先歌单" />
+                    </div>
+                    <div>
+                      <label :class="[theme.mutedText, 'text-sm mb-1 block']">显示位置</label>
+                      <USelect v-model="frontendConfig.musicPosition" :options="[
+                        {label:'左下角',value:'bottom-left'},
+                        {label:'右下角',value:'bottom-right'},
+                        {label:'左上角',value:'top-left'},
+                        {label:'右上角',value:'top-right'}
+                      ]" />
+                    </div>
+                    <div>
+                      <label :class="[theme.mutedText, 'text-sm mb-1 block']">主题风格</label>
+                      <USelect v-model="frontendConfig.musicTheme" :options="[
+                        {label:'自动',value:'auto'},
+                        {label:'浅色',value:'light'},
+                        {label:'深色',value:'dark'}
+                      ]" />
+                    </div>
+                    <div class="flex items-center gap-3">
+                      <span class="text-sm" :class="theme.mutedText">显示歌词</span>
+                      <USwitch v-model="frontendConfig.musicLyric" />
+                    </div>
+                    <div class="flex items-center gap-3">
+                      <span class="text-sm" :class="theme.mutedText">自动播放</span>
+                      <USwitch v-model="frontendConfig.musicAutoplay" />
+                    </div>
+                    <div class="flex items-center gap-3">
+                      <span class="text-sm" :class="theme.mutedText">默认最小化</span>
+                      <USwitch v-model="frontendConfig.musicDefaultMinimized" />
+                    </div>
+                    <div class="flex items-center gap-3">
+                      <span class="text-sm" :class="theme.mutedText">嵌入模式</span>
+                      <USwitch v-model="frontendConfig.musicEmbed" />
+                    </div>
+                  </div>
+                  <div class="text-xs mt-2" :class="theme.mutedText">保存后首页自动刷新显示播放器；歌单与单曲任选其一</div>
+                </div>
 
                     <!-- 配置展示/编辑表单 -->
                     <div class="space-y-4">
@@ -1014,11 +1145,93 @@
                         保存所有更改
                     </UButton>
                 </div>
+ 
                 
                 
 <!-- 底部操作栏 -->
                 
             </div>
+ 
+                 <!-- 推送配置面板 -->
+                 <div id="section-notify" class="mb-6">
+                    <NotifyPanel
+                        v-if="isAdmin"
+                        v-model:config="notifyConfig"
+                        :immediate="true" 
+                    />
+                 </div>
+<!-- 数据库管理面板 -->
+<div id="section-db" v-if="isAdmin" class="bg-gray-700 rounded-lg p-4 mb-6">
+    <h2 class="text-xl font-semibold text-white mb-4">数据库管理</h2>
+    <div class="space-y-4">
+        <div class="flex gap-4">
+            <UButton
+                color="primary"
+                icon="i-heroicons-arrow-down-tray"
+                @click="downloadBackup"
+            >
+                下载备份
+            </UButton>
+            <UButton
+                color="warning"
+                variant="solid"
+                icon="i-heroicons-arrow-up-tray"
+                @click="triggerDatabaseUpload"
+            >
+                恢复数据库
+            </UButton>
+        </div>
+        <div class="text-yellow-400 text-sm max-h-16 overflow-y-auto bg-gray-800/50 rounded p-2">
+            🔔：SQLite一键备份恢复，因兼容问题，不支持云端的PostgreSQL/MySQL数据库，如有使用云端数据库，请前往云服务端来备份和恢复
+        </div>
+        <input
+            type="file"
+            ref="databaseFileInput"
+            accept=".zip"
+            class="hidden"
+            @change="handleDatabaseUpload"
+        />
+    </div>
+</div>
+<!-- 底部操作栏 -->
+<div class="sticky bottom-0 left-0 right-0 bg-[#1a1b2e]/70 backdrop-blur-md border-t mt-2 p-3 flex justify-between items-center">
+                    <UButton
+                        icon="i-heroicons-arrow-left"
+                        variant="ghost"
+                        color="white"
+                        @click="$router.push('/')"
+                        class="text-white hover:text-black"
+                    >
+                        返回首页
+                    </UButton>
+                    <div v-if="isLogin">
+                        <UButton
+                            icon="i-heroicons-power"
+                            color="red"
+                            variant="ghost"
+                            @click="handleLogout"
+                        >
+                            退出登录
+                        </UButton>
+                    </div>
+                    <div v-else class="flex gap-2">
+                        <UButton
+                            color="primary"
+                            @click="showLoginModal = true; authmode = true"
+                        >
+                            登录
+                        </UButton>
+                        <UButton
+                            color="secondary"
+                            @click="showLoginModal = true; authmode = false"
+                        >
+                            注册
+                        </UButton>
+                    </div>
+                </div>
+                </div>
+            </main>
+ 
         </div>
 
     <!-- 登录模态框 -->
@@ -1078,8 +1291,15 @@ import { useUser } from '~/composables/useUser'
 import { useUserStore } from '~/store/user'
 import { useToast } from '#ui/composables/useToast'
 import NotifyPanel from './NotifyPanel.vue'
+ 
 import CommentsSettings from '~/components/admin/CommentsSettings.vue'
 import { getRequest, putRequest, postRequest, deleteRequest } from '~/utils/api'
+ 
+const scrollTo = (id: string) => {
+    const el = document.getElementById(id)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+ 
 
 // 新用户注册开关相关
 const registerEnabled = ref(true);
@@ -1932,7 +2152,7 @@ const defaultConfig = {
     ,announcementText: '欢迎访问我的说说笔记！'
     ,announcementEnabled: true
     ,musicEnabled: false
-    ,musicPlaylistId: ''
+    ,musicPlaylistId: '2141128031'
     ,musicSongId: ''
     ,musicPosition: 'bottom-left'
     ,musicTheme: 'auto'
@@ -2217,6 +2437,20 @@ const resetMusicConfig = () => {
   ;(frontendConfig as any).musicAutoplay = defaultConfig.musicAutoplay
   ;(frontendConfig as any).musicDefaultMinimized = defaultConfig.musicDefaultMinimized
   ;(frontendConfig as any).musicEmbed = defaultConfig.musicEmbed
+}
+
+const toggleMusic = async (enabled: boolean) => {
+  ;(frontendConfig as any).musicEnabled = enabled
+  if (enabled) {
+    if (!(frontendConfig as any).musicPlaylistId) {
+      ;(frontendConfig as any).musicPlaylistId = '2141128031'
+    }
+    ;(frontendConfig as any).musicPosition = 'bottom-left'
+    ;(frontendConfig as any).musicDefaultMinimized = true
+    ;(frontendConfig as any).musicAutoplay = false
+    ;(frontendConfig as any).musicTheme = 'auto'
+  }
+  await saveMusicConfig()
 }
 
 const saveGithubOAuthConfig = async () => {

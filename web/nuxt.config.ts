@@ -3,6 +3,7 @@ export default defineNuxtConfig({
     head: {
       link: [
         { rel: 'stylesheet', href: 'https://www.noisework.cn/css/APlayer.min.css' },
+        { rel: 'stylesheet', href: 'https://api.hypcvgm.top/NeteaseMiniPlayer/netease-mini-player-v2.css' },
         { rel: 'stylesheet', href: 'https://unpkg.com/@waline/client@v3/dist/waline.css' },
         { rel: 'stylesheet', href: 'https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css' },
         { rel: 'icon', href: '/favicon.ico' },
@@ -12,6 +13,7 @@ export default defineNuxtConfig({
         { src: 'https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js', body: true },
         { src: 'https://cdn.jsdelivr.net/npm/aplayer@1.10.1/dist/APlayer.min.js', body: true },
         { src: 'https://cdn.jsdelivr.net/npm/meting@2.0.1/dist/Meting.min.js', body: true },
+        { src: 'https://api.hypcvgm.top/NeteaseMiniPlayer/netease-mini-player-v2.js', body: true, defer: true },
         { 
           src: 'https://unpkg.com/@waline/client@v3/dist/waline.js',
           body: true,
