@@ -66,16 +66,26 @@ func CreateMessage(message *models.Message) error {
 }
 
 // DeleteMessage 根据 ID 删除留言
+// 级联删除关联的内置评论
 func DeleteMessage(id uint) error {
-	var message models.Message
-	result := database.DB.Delete(&message, id)
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound // 如果没有找到记录
-	}
-	return nil
+    tx := database.DB.Begin()
+    // 先删除关联评论
+    if err := tx.Where("message_id = ?", id).Delete(&models.Comment{}).Error; err != nil {
+        tx.Rollback()
+        return err
+    }
+    // 再删除消息本身
+    var message models.Message
+    result := tx.Delete(&message, id)
+    if result.Error != nil {
+        tx.Rollback()
+        return result.Error
+    }
+    if result.RowsAffected == 0 {
+        tx.Rollback()
+        return gorm.ErrRecordNotFound
+    }
+    return tx.Commit().Error
 }
 // UpdateMessageContent 更新留言内容
 func UpdateMessageContent(id uint, content string) error {

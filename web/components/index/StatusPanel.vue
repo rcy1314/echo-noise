@@ -92,7 +92,7 @@
           </div>
         </div>
       </aside>
-      <main class="flex flex-col flex-1 h-full md:ml-72 min-h-screen" :class="theme.text">
+      <main class="flex flex-col flex-1 h-full md:ml-72 min-h-screen overflow-y-auto" :class="theme.text">
         <div class="md:hidden flex items-center justify-between px-4 py-3 border-b" :class="[theme.headerBg, theme.border, theme.text]">
           <div class="flex items-center gap-2">
             <button class="p-2 rounded-lg bg-slate-800/70 shadow" @click="sidebarOpen = !sidebarOpen"><UIcon name="i-heroicons-bars-3" class="w-5 h-5" /></button>
@@ -104,7 +104,7 @@
           </div>
         </div>
         <div v-if="sidebarOpen" class="fixed inset-0 bg-black/40 md:hidden" @click="sidebarOpen=false"></div>
-        <div class="flex-1 overflow-y-auto p-4 pb-24 flex flex-col w-full" :class="isAdmin ? 'gap-4' : 'gap-0'">
+        <div class="flex-1 p-4 pb-24 flex flex-col w-full" :class="isAdmin ? 'gap-4' : 'gap-0'">
           <div class="col-span-12">
             <h1 class="text-2xl md:text-3xl font-bold text-center" :class="theme.text">系统管理面板</h1>
           </div>
@@ -1102,14 +1102,6 @@
                 
             </div>
  
-                 <!-- 推送配置面板 -->
-                 <div id="section-notify" class="mb-6">
-                    <NotifyPanel
-                        v-if="isAdmin"
-                        v-model:config="notifyConfig"
-                        :immediate="true" 
-                    />
-                 </div>
 <!-- 数据库管理面板 -->
 <div id="section-db" v-if="isAdmin" class="bg-gray-700 rounded-lg p-4 mb-6">
     <h2 class="text-xl font-semibold text-white mb-4">数据库管理</h2>
@@ -1949,7 +1941,6 @@ const configLabels = {
     rssAuthorName: 'RSS 作者',
     rssFaviconURL: 'RSS 图标链接',
     walineServerURL: 'Waline 评论服务器地址',
-    announcementText: '公告栏文本'
 }
 
 const frontendConfig = reactive({
@@ -2024,7 +2015,6 @@ const editItem = reactive({
     rssAuthorName: false,
     rssFaviconURL: false,
     walineServerURL: false,
-    announcementText: false
 })
 
 // 更新默认配置

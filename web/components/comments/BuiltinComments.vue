@@ -4,10 +4,6 @@
       <div class="text-sm mb-2" :class="themeText">评论</div>
       <div v-if="siteConfig?.commentEmailEnabled" class="text-xs mb-2" :class="themeMuted">新评论或回复会发送通知邮件</div>
       <div class="space-y-3 mb-4">
-        <div class="flex items-center justify-between">
-          <div class="text-xs" :class="themeMuted">当前评论关联内容</div>
-          <UButton size="xs" variant="ghost" icon="i-heroicons-link" @click="scrollToMessage">定位到内容</UButton>
-        </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           <UInput v-model="nick" placeholder="昵称" :class="inputNickClass" />
           <UInput v-model="mail" placeholder="邮箱" :class="inputMailClass" />
