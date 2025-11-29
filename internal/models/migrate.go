@@ -174,9 +174,9 @@ https://s2.loli.net/2025/03/27/y67m2k5xcSdTsHN.jpg`
 				updates["pwa_icon_url"] = config.RSSFaviconURL
 			}
 			// 默认内容主题
-			if config.ContentThemeDefault == "" {
-				updates["content_theme_default"] = "dark"
-			}
+            if config.ContentThemeDefault == "" {
+                updates["content_theme_default"] = "light"
+            }
 			// 公告栏默认文本
 			if config.AnnouncementText == "" {
 				updates["announcement_text"] = defaultConfig.AnnouncementText

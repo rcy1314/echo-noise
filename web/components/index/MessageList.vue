@@ -102,19 +102,10 @@
                 </button>
               </div>
             </div>
-            <!-- 评论区域 -->
-            <div v-show="activeCommentId === msg.id" class="mt-4" :class="commentThemeClass">
-              <template v-if="siteConfig?.commentEnabled === true">
-                <template v-if="(siteConfig?.commentSystem || 'waline') === 'builtin'">
-                  <BuiltinComments :message-id="msg.id" :site-config="siteConfig" />
-                </template>
-                <template v-else-if="useWaline">
-                  <div :id="`waline-${msg.id}`"></div>
-                </template>
-                <template v-else>
-                  <div class="text-xs opacity-70">未配置评论系统</div>
-                </template>
-              </template>
+            <!-- 评论区域（仅默认展开有评论的消息；无评论默认折叠） -->
+            <div v-if="(expandedCommentsMap[msg.id] || activeCommentId === msg.id) && isCommentEnabled" :id="`comment-container-${msg.id}`" class="mt-4" :class="commentThemeClass" style="position: relative;">
+              <BuiltinComments v-if="isBuiltin && apiReachable" :key="(commentRefreshKey[msg.id] || 0)" :message-id="msg.id" :site-config="siteConfig" :show-input="activeCommentId === msg.id" />
+              <div v-else-if="useWaline && apiReachable" :id="`waline-${msg.id}`"></div>
             </div>
           </div>
         </div>
@@ -230,7 +221,7 @@
 import { useMessageStore } from "~/store/message";
 import { useUserStore } from "~/store/user";
 import MarkdownRenderer from "~/components/index/MarkdownRenderer.vue";
-import BuiltinComments from "~/components/comments/BuiltinComments.vue";
+import BuiltinComments from '../comments/BuiltinComments.vue'
 const contentTheme = inject('contentTheme', ref<string>(typeof window !== 'undefined' ? (localStorage.getItem('contentTheme') || 'dark') : 'dark'))
 const listThemeClass = computed(() => contentTheme.value === 'dark' ? 'bg-[rgba(36,43,50,0.95)] text-white' : 'bg-white text-black')
 const listThemeTextClass = computed(() => contentTheme.value === 'dark' ? 'text-white' : 'text-black')
@@ -321,10 +312,29 @@ watch(() => props.targetMessageId, async (newId) => {
 }, { immediate: true });
 
 const BASE_API = useRuntimeConfig().public.baseApi || '/api';
+const apiReachable = ref(true)
+const checkApi = async () => {
+  try {
+    const res = await fetch(`${BASE_API}/status`, { credentials: 'include' })
+    apiReachable.value = !!res && res.ok
+  } catch {
+    apiReachable.value = false
+  }
+}
 const { deleteMessage } = useMessage();
 const message = useMessageStore();
 
 const activeCommentId = ref<number | null>(null);
+const commentRefreshKey = ref<Record<number, number>>({});
+const expandedCommentsMap = ref<Record<number, boolean>>({});
+const isCommentEnabled = computed(() => {
+  const v: any = (props.siteConfig as any)?.commentEnabled
+  return v === true || v === 'true'
+})
+const isBuiltin = computed(() => {
+  const s: any = props.siteConfig || {}
+  return String(s.commentSystem || 'waline').toLowerCase() === 'builtin'
+})
 const userStore = useUserStore();
 const isLogin = computed(() => userStore.isLogin);
 const openInNewTab = (url: string) => {
@@ -460,14 +470,18 @@ const initFancybox = () => {
 };
 
 const toggleComment = async (msgId: number) => {
-  if (activeCommentId.value === msgId) {
-    activeCommentId.value = null;
-    return;
+  const isShown = !!(expandedCommentsMap.value[msgId] || activeCommentId.value === msgId)
+  if (isShown) {
+    expandedCommentsMap.value[msgId] = false
+    if (activeCommentId.value === msgId) activeCommentId.value = null
+    return
   }
-  activeCommentId.value = msgId;
+  activeCommentId.value = msgId
   await nextTick();
-  // 内置评论：滚动并聚焦输入框，确保可见
+  commentRefreshKey.value[msgId] = (commentRefreshKey.value[msgId] || 0) + 1;
+  expandedCommentsMap.value[msgId] = true;
   if ((props.siteConfig?.commentSystem || 'waline') === 'builtin') {
+    window.dispatchEvent(new Event(`refresh-comments-${msgId}`));
     const container = document.querySelector(`.content-container[data-msg-id="${msgId}"] .builtin-comments`);
     if (container) {
       container.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -614,6 +628,7 @@ watch(() => message.messages, () => {
 const route = useRoute();
 onMounted(async () => {
   try {
+    await checkApi()
     // 获取路由中的消息ID
     const messageId = route.hash.split('/messages/').pop();
     
@@ -683,6 +698,55 @@ onMounted(async () => {
     await nextTick();
     checkContentHeight();
     initFancybox();
+
+    // 默认仅展开已有评论的消息
+    try {
+      const tasks = (message.messages || []).map(async (m: any) => {
+        try {
+          let js: any = null
+          const resp1 = await fetch(`${BASE_API}/messages/${m.id}/comments`, { credentials: 'include', headers: { 'Accept': 'application/json' } });
+          if (resp1 && resp1.ok) {
+            js = await resp1.json();
+          } else {
+            const resp2 = await fetch(`http://localhost:1315/api/messages/${m.id}/comments`, { credentials: 'include', headers: { 'Accept': 'application/json' } });
+            if (resp2 && resp2.ok) js = await resp2.json();
+          }
+          const count = js && Array.isArray(js.data) ? js.data.length : 0;
+          if (count > 0) expandedCommentsMap.value[m.id] = true;
+        } catch {}
+      });
+      await Promise.allSettled(tasks);
+      await nextTick();
+      // 初始化 Waline 对于默认展开的项
+      if (useWaline.value && window.Waline) {
+        (message.messages || []).forEach((m: any) => {
+          if (expandedCommentsMap.value[m.id]) {
+            const el = document.querySelector(`#waline-${m.id}`);
+            if (el) {
+              try {
+                window.Waline.init({
+                  el: `#waline-${m.id}`,
+                  serverURL: props.siteConfig.walineServerURL,
+                  path: `messages/${m.id}`,
+                  reaction: false,
+                  meta: ["nick", "mail", "link"],
+                  requiredMeta: ["mail", "nick"],
+                  pageview: true,
+                  search: false,
+                  wordLimit: 200,
+                  pageSize: 5,
+                  avatar: "monsterid",
+                  emoji: ["https://unpkg.com/@waline/emojis@1.2.0/tieba"],
+                  imageUploader: false,
+                  copyright: false,
+                  dark: 'html[class="dark"]',
+                });
+              } catch {}
+            }
+          }
+        });
+      }
+    } catch {}
     
   } catch (error) {
     console.error('初始化失败:', error);
@@ -717,6 +781,21 @@ watch(() => route.hash, async (newHash) => {
           message.total = data.data.total || 0;
           message.hasMore = (message.messages.length < message.total);
           message.page = 1;
+          // 重置并计算默认展开状态
+          expandedCommentsMap.value = {};
+          try {
+            const tasks = (message.messages || []).map(async (m: any) => {
+              try {
+                const resp = await fetch(`${BASE_API}/messages/${m.id}/comments`, { credentials: 'include', headers: { 'Accept': 'application/json' } });
+                if (resp.ok) {
+                  const js = await resp.json();
+                  const count = Array.isArray(js.data) ? js.data.length : 0;
+                  if (count > 0) expandedCommentsMap.value[m.id] = true;
+                }
+              } catch {}
+            });
+            await Promise.allSettled(tasks);
+          } catch {}
         }
       }
     }

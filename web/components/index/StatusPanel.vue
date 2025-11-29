@@ -589,7 +589,8 @@
                   <span class="text-sm" :class="theme.mutedText">状态</span>
                   <span :class="[frontendConfig.githubOAuthEnabled ? 'text-green-400' : 'text-red-400', 'text-sm']">{{ frontendConfig.githubOAuthEnabled ? '已启用' : '未启用' }}</span>
                   <USwitch v-model="frontendConfig.githubOAuthEnabled" color="primary" size="lg" />
-                  <div class="hidden md:flex items-center gap-2">
+                  <UToggle v-model="frontendConfig.githubOAuthEnabled" />
+                  <div class="flex items-center gap-2">
                     <URadio v-model="frontendConfig.githubOAuthEnabled" :value="true" />
                     <span :class="frontendConfig.githubOAuthEnabled ? theme.text : 'text-gray-400'">开启</span>
                     <URadio v-model="frontendConfig.githubOAuthEnabled" :value="false" />
@@ -1252,7 +1253,7 @@ const scrollTo = (id: string) => {
 
 // 新用户注册开关相关
 const registerEnabled = ref(true);
-const sidebarOpen = ref(true)
+const sidebarOpen = ref(typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
 const panelTheme = ref<'dark' | 'midnight' | 'slate' | 'light'>(
   (typeof window !== 'undefined' && (localStorage.getItem('adminTheme') as any)) || 'dark'
 )
@@ -1280,11 +1281,10 @@ const setActive = async (name: 'system' | 'user' | 'site' | 'notify' | 'db' | 's
 }
 
 onMounted(() => {
-  if (typeof window !== 'undefined' && window.innerWidth < 768) sidebarOpen.value = false
   loadStorageConfig()
 })
 
-const showBottomBar = ref(true)
+const showBottomBar = ref(typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
 const updateBottomBarVisibility = () => {
   if (typeof window === 'undefined') return
   showBottomBar.value = window.innerWidth >= 768
@@ -1996,7 +1996,6 @@ const configLabels = {
     rssDescription: 'RSS 描述',
     rssAuthorName: 'RSS 作者',
     rssFaviconURL: 'RSS 图标链接',
-    walineServerURL: 'Waline 评论服务器地址',
 }
 
 const frontendConfig = reactive({
@@ -2028,7 +2027,7 @@ const frontendConfig = reactive({
     pwaTitle: '',
     pwaDescription: '',
     pwaIconURL: '',
-    defaultContentTheme: 'dark',
+    defaultContentTheme: 'light',
     announcementText: '',
     announcementEnabled: true,
     // 音乐播放器
@@ -2114,7 +2113,7 @@ const defaultConfig = {
     pwaTitle: '',
     pwaDescription: '',
     pwaIconURL: ''
-    ,defaultContentTheme: 'dark'
+    ,defaultContentTheme: 'light'
     ,announcementText: '欢迎访问我的说说笔记！'
   ,announcementEnabled: true
   ,musicEnabled: false

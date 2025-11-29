@@ -567,7 +567,7 @@ func getDefaultConfig() map[string]interface{} {
 			"pwaTitle":            "",
 			"pwaDescription":      "",
 			"pwaIconURL":          "",
-			"defaultContentTheme": "dark",
+			"defaultContentTheme": "light",
 			"announcementText":    "欢迎访问我的说说笔记！",
 			"announcementEnabled": true,
 			// 音乐播放器默认关闭，但默认位置为左下角并最小化

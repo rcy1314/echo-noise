@@ -55,7 +55,7 @@ export default defineNuxtConfig({
   },
   // 添加以下配置
   nitro: {
-    preset: 'node-server',
+    preset: 'static',
     devProxy: {
       '/api': {
         target: 'http://localhost:1315/api',
@@ -81,7 +81,7 @@ export default defineNuxtConfig({
     payloadExtraction: false
   },
   devServer: {
-    port: 3000,
+    port: 1314,
     host: '0.0.0.0'
   },
   ssr: false,

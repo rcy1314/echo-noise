@@ -357,17 +357,23 @@ watch(() => contentTheme && contentTheme.value, () => {
   line-height: 1.6;
 }
 
-.markdown-preview h1,
-.markdown-preview h2,
-.markdown-preview h3,
-.markdown-preview h4,
-.markdown-preview h5,
-.markdown-preview h6 {
-  color: rgb(251, 247, 247);
-}
+/* 主题化整体与标题颜色（容器自身带主题类） */
+.markdown-preview.theme-dark { color: rgb(227, 220, 220) !important; }
+.markdown-preview.theme-light { color: #111111 !important; }
+.markdown-preview.theme-dark h1,
+.markdown-preview.theme-dark h2,
+.markdown-preview.theme-dark h3,
+.markdown-preview.theme-dark h4,
+.markdown-preview.theme-dark h5,
+.markdown-preview.theme-dark h6 { color: rgb(251, 247, 247) !important; }
+.markdown-preview.theme-light h1,
+.markdown-preview.theme-light h2,
+.markdown-preview.theme-light h3,
+.markdown-preview.theme-light h4,
+.markdown-preview.theme-light h5,
+.markdown-preview.theme-light h6 { color: #111111 !important; }
 
 .markdown-preview p {
-  color: rgb(227, 220, 220);
   margin: 0.5em 0;
   line-height: 1.6;
 }
