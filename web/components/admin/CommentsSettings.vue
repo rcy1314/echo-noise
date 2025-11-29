@@ -38,7 +38,7 @@ import { reactive, watch, computed } from 'vue'
 import { useToast } from '#imports'
 
 const props = defineProps<{ config: any, theme?: Record<string, string> }>()
-const emit = defineEmits<{ (e: 'update:config', v: any): void }>()
+const emit = defineEmits<{ (e: 'update:config', v: any): void, (e: 'comment-system-changed', v: string): void }>()
 
 const local = reactive({
   commentEnabled: false,
@@ -69,6 +69,10 @@ watch(() => props.config, (v: any) => {
   local.commentEmailReplyTemplateHTML = String(v.commentEmailReplyTemplateHTML || '')
   local.commentEmailAdminTemplateHTML = String(v.commentEmailAdminTemplateHTML || '')
 }, { immediate: true, deep: true })
+
+watch(() => local.commentSystem, (v) => {
+  emit('comment-system-changed', String(v || ''))
+})
 
 const subtleBg = computed(() => 'bg-gray-800')
 const mutedText = computed(() => 'text-slate-400')

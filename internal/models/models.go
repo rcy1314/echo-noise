@@ -140,9 +140,11 @@ type SiteConfig struct {
 	MusicTheme            string `gorm:"type:varchar(20)"` // auto/light/dark
 	MusicLyric            bool   `gorm:"default:true"`
 	MusicAutoplay         bool   `gorm:"default:false"`
-	MusicDefaultMinimized bool   `gorm:"default:true"`
-	MusicEmbed            bool   `gorm:"default:false"`
-	// 评论系统配置
+    MusicDefaultMinimized bool   `gorm:"default:true"`
+    MusicEmbed            bool   `gorm:"default:false"`
+    MusicCssCdnURL        string `gorm:"type:varchar(255)"`
+    MusicJsCdnURL         string `gorm:"type:varchar(255)"`
+    // 评论系统配置
     CommentEnabled      bool   `gorm:"default:false"`
     CommentSystem       string `gorm:"type:varchar(20)"` // builtin/waline/none/other
     CommentEmailEnabled bool   `gorm:"default:false"`

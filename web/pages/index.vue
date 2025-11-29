@@ -224,7 +224,9 @@ const frontendConfig = ref({
     musicLyric: true,
     musicAutoplay: false,
     musicDefaultMinimized: true,
-    musicEmbed: false
+    musicEmbed: false,
+    musicCssCdnURL: '',
+    musicJsCdnURL: ''
 })
 
 const initNMP = async () => {
@@ -247,7 +249,10 @@ const loadNMPAssets = async (): Promise<boolean> => {
     const link = document.createElement('link')
     link.id = cssId
     link.rel = 'stylesheet'
-    link.href = '/NeteaseMiniPlayer/netease-mini-player-v2.css'
+    const cssCdn = (frontendConfig.value as any).musicCssCdnURL || ''
+    const localCss = '/NeteaseMiniPlayer/netease-mini-player-v2.css'
+    link.href = (cssCdn && cssCdn.trim() !== '') ? cssCdn.trim() : localCss
+    link.onerror = () => { link.href = localCss }
     head.appendChild(link)
   }
   // 脚本按需注入
@@ -256,10 +261,20 @@ const loadNMPAssets = async (): Promise<boolean> => {
     return await new Promise<boolean>((resolve) => {
       const script = document.createElement('script')
       script.id = scriptId
-      script.src = '/NeteaseMiniPlayer/netease-mini-player-v2.js'
+      const jsCdn = (frontendConfig.value as any).musicJsCdnURL || ''
+      const localJs = '/NeteaseMiniPlayer/netease-mini-player-v2.js'
+      script.src = (jsCdn && jsCdn.trim() !== '') ? jsCdn.trim() : localJs
       script.defer = true
       script.onload = () => resolve(!!(window as any).NeteaseMiniPlayer)
-      script.onerror = () => resolve(false)
+      script.onerror = () => {
+        if (script.src !== localJs) {
+          script.src = localJs
+          script.onload = () => resolve(!!(window as any).NeteaseMiniPlayer)
+          script.onerror = () => resolve(false)
+          return
+        }
+        resolve(false)
+      }
       body.appendChild(script)
     })
   }
@@ -335,7 +350,9 @@ const defaultConfig = {
     musicLyric: true,
     musicAutoplay: false,
     musicDefaultMinimized: true,
-    musicEmbed: false
+    musicEmbed: false,
+    musicCssCdnURL: '',
+    musicJsCdnURL: ''
 };
 
 // 修改 fetchConfig 方法

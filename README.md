@@ -31,15 +31,15 @@
 
 - 增加忘记密码邮件SMTP回复系统
 
-- 增加修改用户权限设置
+- 增加修改用户信息权限设置，可设置管理权限和删除用户
 
-- 增加音乐设置组件
+- 增加音乐设置组件，外挂NeteaseCloudMusicApi
 
 - 内置评论代替远程评论，内置评论调用smtp回复评论
 
   ![1764316124235](https://s2.loli.net/2025/11/28/bcjsEDBx5iSPHGK.png)
 
-- 增加数据库![1764341189272](https://s2.loli.net/2025/11/28/bue4xoDIpN91UEZ.png)
+- 增加数据库云存储R2/S3接入，支持备份上次、自动同步![1764341189272](https://s2.loli.net/2025/11/28/bue4xoDIpN91UEZ.png)
 
   
 

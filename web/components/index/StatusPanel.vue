@@ -306,31 +306,53 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div>
                             <label class="text-sm mb-1 block" :class="theme.mutedText">歌单 ID</label>
-                            <UInput v-model="frontendConfig.musicPlaylistId" placeholder="网易云歌单ID（可选）" />
+                            <UInput v-model="frontendConfig.musicPlaylistId" :disabled="(frontendConfig.musicSongId || '').trim() !== ''" placeholder="如 14273792576" />
                           </div>
                           <div>
                             <label class="text-sm mb-1 block" :class="theme.mutedText">歌曲 ID</label>
-                            <UInput v-model="frontendConfig.musicSongId" placeholder="网易云歌曲ID（可选）" />
+                            <UInput v-model="frontendConfig.musicSongId" :disabled="(frontendConfig.musicPlaylistId || '').trim() !== ''" placeholder="可选，优先歌单" />
                           </div>
                           <div>
-                            <label class="text-sm mb-1 block" :class="theme.mutedText">位置</label>
-                            <USelect v-model="frontendConfig.musicPosition" :options="[{label:'左下',value:'bottom-left'},{label:'右下',value:'bottom-right'}]" />
+                            <label class="text-sm mb-1 block" :class="theme.mutedText">显示位置</label>
+                            <USelect v-model="frontendConfig.musicPosition" :disabled="musicEmbedMode==='embed'" :options="[
+                              {label:'左下角',value:'bottom-left'},
+                              {label:'右下角',value:'bottom-right'},
+                              {label:'左上角',value:'top-left'},
+                              {label:'右上角',value:'top-right'}
+                            ]" />
                           </div>
                           <div>
                             <label class="text-sm mb-1 block" :class="theme.mutedText">主题</label>
                             <USelect v-model="frontendConfig.musicTheme" :options="[{label:'自动',value:'auto'},{label:'深色',value:'dark'},{label:'浅色',value:'light'}]" />
                           </div>
-                          <div class="flex items-center gap-2">
-                            <span class="text-sm" :class="theme.mutedText">显示歌词</span>
-                            <USwitch v-model="frontendConfig.musicLyric" />
+                          <div>
+                            <label class="text-sm mb-1 block" :class="theme.mutedText">CDN 源</label>
+                            <USelect v-model="musicCdnPreset" :options="[
+                              {label:'官方 CDN',value:'hypcvgm'},
+                              {label:'jsDelivr',value:'jsdelivr'},
+                              {label:'unpkg',value:'unpkg'},
+                              {label:'自定义',value:'custom'}
+                            ]" />
                           </div>
-                          <div class="flex items-center gap-2">
-                            <span class="text-sm" :class="theme.mutedText">自动播放</span>
-                            <USwitch v-model="frontendConfig.musicAutoplay" />
+                          <div v-if="musicCdnPreset==='custom'">
+                            <label class="text-sm mb-1 block" :class="theme.mutedText">CSS CDN 地址</label>
+                            <UInput v-model="frontendConfig.musicCssCdnURL" placeholder="https://api.hypcvgm.top/NeteaseMiniPlayer/netease-mini-player-v2.css" />
                           </div>
-                          <div class="flex items-center gap-2">
-                            <span class="text-sm" :class="theme.mutedText">默认最小化</span>
-                            <USwitch v-model="frontendConfig.musicDefaultMinimized" />
+                          <div v-if="musicCdnPreset==='custom'">
+                            <label class="text-sm mb-1 block" :class="theme.mutedText">JS CDN 地址</label>
+                            <UInput v-model="frontendConfig.musicJsCdnURL" placeholder="https://api.hypcvgm.top/NeteaseMiniPlayer/netease-mini-player-v2.js" />
+                          </div>
+                          <div>
+                            <label class="text-sm mb-1 block" :class="theme.mutedText">显示歌词</label>
+                            <USelect v-model="frontendConfig.musicLyric" :options="[{label:'是',value:true},{label:'否',value:false}]" />
+                          </div>
+                          <div>
+                            <label class="text-sm mb-1 block" :class="theme.mutedText">自动播放</label>
+                            <USelect v-model="frontendConfig.musicAutoplay" :options="[{label:'是',value:true},{label:'否',value:false}]" />
+                          </div>
+                          <div>
+                            <label class="text-sm mb-1 block" :class="theme.mutedText">默认最小化</label>
+                            <USelect v-model="frontendConfig.musicDefaultMinimized" :options="[{label:'是',value:true},{label:'否',value:false}]" />
                           </div>
                           <div class="flex items-center gap-2 md:col-span-2">
                             <span class="text-sm" :class="theme.mutedText">展示模式</span>
@@ -341,6 +363,7 @@
                           <UButton variant="soft" color="gray" @click="resetMusicConfig">重置</UButton>
                           <UButton color="green" @click="saveMusicConfig">保存</UButton>
                         </div>
+                        <div class="text-xs mt-2" :class="theme.mutedText">保存后首页自动刷新显示播放器；歌单与单曲任选其一</div>
                       </div>
                     </div>
                   </div>
@@ -430,8 +453,36 @@
                   <UButton color="green" @click="saveCommentConfig" class="shadow">保存</UButton>
                 </div>
               </div>
-              <div class="px-4 pb-4">
-                <CommentsSettings v-model:config="frontendConfig" :theme="theme" />
+                <div class="px-4 pb-4">
+                <CommentsSettings v-model:config="frontendConfig" :theme="theme" @comment-system-changed="uiCommentSystem = $event" />
+                <div v-if="isAdmin && frontendConfig.commentEnabled && String(uiCommentSystem || frontendConfig.commentSystem).toLowerCase() === 'builtin'" class="mt-4 rounded-lg p-3" :class="theme.subtleBg">
+                  <div class="flex items-center gap-2 mb-2">
+                    <UInput v-model="commentSearch" placeholder="搜索评论内容/昵称/邮箱/网址" class="flex-1" />
+                    <UButton color="primary" variant="soft" @click="loadAdminComments">搜索</UButton>
+                    <UButton variant="soft" :color="showAdminComments ? 'gray' : 'indigo'" @click="toggleAdminComments">{{ showAdminComments ? '折叠' : '展开' }}</UButton>
+                  </div>
+                  <div v-if="showAdminComments" class="space-y-2">
+                    <div v-for="c in adminComments" :key="c.id" class="rounded border px-3 py-2" :class="theme.border">
+                      <div class="flex items-center justify-between gap-2">
+                        <div class="text-sm truncate" :class="theme.text">#{{ c.id }} · {{ c.nick || '匿名' }} · {{ formatDate(c.created_at) }}</div>
+                        <UButton size="xs" variant="ghost" :color="isCommentExpanded(c) ? 'gray' : 'primary'" @click="toggleCommentExpanded(c)">{{ isCommentExpanded(c) ? '收起' : '展开' }}</UButton>
+                      </div>
+                      <div class="mt-1 text-sm truncate" :class="theme.text">{{ c.content }}</div>
+                      <div v-if="isCommentExpanded(c)" class="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                        <div><span :class="theme.mutedText">消息ID</span>：<span :class="theme.text">{{ c.message_id }}</span></div>
+                        <div><span :class="theme.mutedText">父评论ID</span>：<span :class="theme.text">{{ c.parent_id || 0 }}</span></div>
+                        <div><span :class="theme.mutedText">邮箱</span>：<span :class="theme.text">{{ c.mail || '-' }}</span></div>
+                        <div class="md:col-span-3"><span :class="theme.mutedText">网址</span>：<a v-if="c.link" :href="c.link" target="_blank" rel="noopener" class="underline">{{ c.link }}</a><span v-else :class="theme.text">-</span></div>
+                        <div class="md:col-span-3 flex gap-2">
+                          <UButton color="red" variant="soft" @click="adminDeleteComment(c)">删除该评论</UButton>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-if="adminCommentsHasMore" class="flex justify-center">
+                      <UButton variant="soft" @click="loadAdminCommentsMore">加载更多</UButton>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1042,7 +1093,7 @@
                 </div>
 
                 <!-- 音乐配置 -->
-                <div id="site-music-legacy-section" class="rounded p-4 mb-4" :class="[theme.cardBg]">
+                <div v-if="false" id="site-music-legacy-section" class="rounded p-4 mb-4" :class="[theme.cardBg]">
                   <div class="flex justify-between items-center mb-3">
                     <span :class="theme.text">音乐播放器</span>
                     <div class="flex items-center gap-2">
@@ -1053,51 +1104,87 @@
                       <UButton variant="soft" color="gray" @click="resetMusicConfig">重置</UButton>
                     </div>
                   </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                     <div>
-                      <label :class="[theme.mutedText, 'text-sm mb-1 block']">歌单 ID</label>
-                      <UInput v-model="frontendConfig.musicPlaylistId" placeholder="如 14273792576" />
-                    </div>
-                    <div>
-                      <label :class="[theme.mutedText, 'text-sm mb-1 block']">单曲 ID</label>
-                      <UInput v-model="frontendConfig.musicSongId" placeholder="可选，优先歌单" />
-                    </div>
-                    <div>
-                      <label :class="[theme.mutedText, 'text-sm mb-1 block']">显示位置</label>
-                      <USelect v-model="frontendConfig.musicPosition" :options="[
-                        {label:'左下角',value:'bottom-left'},
-                        {label:'右下角',value:'bottom-right'},
-                        {label:'左上角',value:'top-left'},
-                        {label:'右上角',value:'top-right'}
+                      <label :class="[theme.mutedText, 'text-sm mb-1 block']">CDN 源</label>
+                      <USelect v-model="musicCdnPreset" :options="[
+                        {label:'官方 CDN',value:'hypcvgm'},
+                        {label:'jsDelivr',value:'jsdelivr'},
+                        {label:'unpkg',value:'unpkg'},
+                        {label:'自定义',value:'custom'}
                       ]" />
                     </div>
-                    <div>
-                      <label :class="[theme.mutedText, 'text-sm mb-1 block']">主题风格</label>
-                      <USelect v-model="frontendConfig.musicTheme" :options="[
-                        {label:'自动',value:'auto'},
-                        {label:'浅色',value:'light'},
-                        {label:'深色',value:'dark'}
-                      ]" />
+                    <div v-if="musicCdnPreset==='custom'">
+                      <label :class="[theme.mutedText, 'text-sm mb-1 block']">JS CDN 地址</label>
+                      <UInput v-model="frontendConfig.musicJsCdnURL" placeholder="https://api.hypcvgm.top/NeteaseMiniPlayer/netease-mini-player-v2.js" />
                     </div>
-                    <div class="flex items-center gap-3">
-                      <span class="text-sm" :class="theme.mutedText">显示歌词</span>
-                      <USwitch v-model="frontendConfig.musicLyric" />
-                    </div>
-                    <div class="flex items-center gap-3">
-                      <span class="text-sm" :class="theme.mutedText">自动播放</span>
-                      <USwitch v-model="frontendConfig.musicAutoplay" />
-                    </div>
-                    <div class="flex items-center gap-3">
-                      <span class="text-sm" :class="theme.mutedText">默认最小化</span>
-                      <USwitch v-model="frontendConfig.musicDefaultMinimized" />
-                    </div>
-                    <div class="flex items-center gap-3">
-                      <span class="text-sm" :class="theme.mutedText">展示模式</span>
-                      <USelect v-model="musicEmbedMode" :options="[{label:'嵌入',value:'embed'},{label:'浮动',value:'float'}]" />
+                    <div v-if="musicCdnPreset==='custom'">
+                      <label :class="[theme.mutedText, 'text-sm mb-1 block']">CSS CDN 地址</label>
+                      <UInput v-model="frontendConfig.musicCssCdnURL" placeholder="https://api.hypcvgm.top/NeteaseMiniPlayer/netease-mini-player-v2.css" />
                     </div>
                   </div>
-                  <div class="text-xs mt-2" :class="theme.mutedText">保存后首页自动刷新显示播放器；歌单与单曲任选其一</div>
-                </div>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label :class="[theme.mutedText, 'text-sm mb-1 block']">歌单 ID</label>
+                        <UInput v-model="frontendConfig.musicPlaylistId" :disabled="(frontendConfig.musicSongId || '').trim() !== ''" placeholder="如 14273792576" />
+                      </div>
+                      <div>
+                        <label :class="[theme.mutedText, 'text-sm mb-1 block']">单曲 ID</label>
+                        <UInput v-model="frontendConfig.musicSongId" :disabled="(frontendConfig.musicPlaylistId || '').trim() !== ''" placeholder="可选，优先歌单" />
+                      </div>
+                      <div>
+                        <label :class="[theme.mutedText, 'text-sm mb-1 block']">显示位置</label>
+                        <USelect v-model="frontendConfig.musicPosition" :disabled="musicEmbedMode==='embed'" :options="[
+                          {label:'左下角',value:'bottom-left'},
+                          {label:'右下角',value:'bottom-right'},
+                          {label:'左上角',value:'top-left'},
+                          {label:'右上角',value:'top-right'}
+                        ]" />
+                      </div>
+                      <div>
+                        <label :class="[theme.mutedText, 'text-sm mb-1 block']">主题风格</label>
+                        <USelect v-model="frontendConfig.musicTheme" :options="[
+                          {label:'自动',value:'auto'},
+                          {label:'浅色',value:'light'},
+                          {label:'深色',value:'dark'}
+                        ]" />
+                      </div>
+                      <div>
+                        <label :class="[theme.mutedText, 'text-sm mb-1 block']">CDN 源</label>
+                        <USelect v-model="musicCdnPreset" :options="[
+                          {label:'官方 CDN',value:'hypcvgm'},
+                          {label:'jsDelivr',value:'jsdelivr'},
+                          {label:'unpkg',value:'unpkg'},
+                          {label:'自定义',value:'custom'}
+                        ]" />
+                      </div>
+                      <div class="flex items-center gap-3">
+                        <span class="text-sm" :class="theme.mutedText">显示歌词</span>
+                        <USwitch v-model="frontendConfig.musicLyric" />
+                      </div>
+                      <div class="flex items-center gap-3">
+                        <span class="text-sm" :class="theme.mutedText">自动播放</span>
+                        <USwitch v-model="frontendConfig.musicAutoplay" />
+                      </div>
+                      <div class="flex items-center gap-3">
+                        <span class="text-sm" :class="theme.mutedText">默认最小化</span>
+                        <USwitch v-model="frontendConfig.musicDefaultMinimized" />
+                      </div>
+                      <div class="flex items-center gap-3">
+                        <span class="text-sm" :class="theme.mutedText">展示模式</span>
+                        <USelect v-model="musicEmbedMode" :options="[{label:'嵌入',value:'embed'},{label:'浮动',value:'float'}]" />
+                      </div>
+                      <div v-if="musicCdnPreset==='custom'">
+                        <label :class="[theme.mutedText, 'text-sm mb-1 block']">CSS CDN 地址</label>
+                        <UInput v-model="frontendConfig.musicCssCdnURL" placeholder="https://api.hypcvgm.top/NeteaseMiniPlayer/netease-mini-player-v2.css" />
+                      </div>
+                      <div v-if="musicCdnPreset==='custom'">
+                        <label :class="[theme.mutedText, 'text-sm mb-1 block']">JS CDN 地址</label>
+                        <UInput v-model="frontendConfig.musicJsCdnURL" placeholder="https://api.hypcvgm.top/NeteaseMiniPlayer/netease-mini-player-v2.js" />
+                      </div>
+                    </div>
+                    <div class="text-xs mt-2" :class="theme.mutedText">保存后首页自动刷新显示播放器；歌单与单曲任选其一</div>
+                  </div>
 
                     <!-- 配置展示/编辑表单 -->
                     <div class="space-y-4">
@@ -2092,6 +2179,8 @@ const frontendConfig = reactive({
     musicAutoplay: false,
     musicDefaultMinimized: true,
     musicEmbed: false,
+    musicCssCdnURL: '',
+    musicJsCdnURL: '',
 })
 
 // GitHub 链接卡片解析开关的双向绑定（与 frontendConfig.enableGithubCard 同步）
@@ -2177,6 +2266,8 @@ const defaultConfig = {
     ,musicAutoplay: false
     ,musicDefaultMinimized: true
     ,musicEmbed: false
+    ,musicCssCdnURL: 'https://api.hypcvgm.top/NeteaseMiniPlayer/netease-mini-player-v2.css'
+    ,musicJsCdnURL: 'https://api.hypcvgm.top/NeteaseMiniPlayer/netease-mini-player-v2.js'
 }
 // 添加单个配置项保存方法
 
@@ -2188,14 +2279,14 @@ const resetConfigItem = (key: string) => {
 // 修改 fetchConfig 方法// ... existing code ...
 
 const fetchConfig = async () => {
-    try {
-        const response = await fetch('/api/frontend/config', {
-            credentials: 'include',
-            headers: {
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache'
-            }
-        });
+  try {
+      const response = await fetch('/api/frontend/config', {
+          credentials: 'include',
+          headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+          }
+      });
         
         const data = await response.json();
         
@@ -2238,9 +2329,24 @@ const fetchConfig = async () => {
                 ],
                 link: [
                     { rel: 'manifest', href: '/manifest.webmanifest' },
-                    { rel: 'icon', href: icon }
+                    { rel: 'icon', href: icon },
+                    { rel: 'apple-touch-icon', href: icon }
                 ]
             })
+            const css = String((frontendConfig as any).musicCssCdnURL || '').trim()
+            const js = String((frontendConfig as any).musicJsCdnURL || '').trim()
+            if (css || js) applyMusicCdnAssets()
+            const curCss = String((frontendConfig as any).musicCssCdnURL || '').trim().toLowerCase()
+            const curJs = String((frontendConfig as any).musicJsCdnURL || '').trim().toLowerCase()
+            if (curCss.includes('api.hypcvgm.top') && curJs.includes('api.hypcvgm.top')) {
+              musicCdnPreset.value = 'hypcvgm'
+            } else if (curCss.includes('jsdelivr') && curJs.includes('jsdelivr')) {
+              musicCdnPreset.value = 'jsdelivr'
+            } else if (curCss.includes('unpkg') && curJs.includes('unpkg')) {
+              musicCdnPreset.value = 'unpkg'
+            } else {
+              musicCdnPreset.value = 'custom'
+            }
         }
     } catch (error) {
         console.error('获取配置失败:', error);
@@ -2378,6 +2484,102 @@ const saveCommentConfig = async () => {
   }
 }
 
+const commentSearch = ref('')
+const showAdminComments = ref(false)
+const adminComments = ref<any[]>([])
+const adminCommentsPage = ref(1)
+const adminCommentsHasMore = ref(false)
+const expandedCommentsMap = ref<Record<number, boolean>>({})
+const uiCommentSystem = ref(String(((frontendConfig as any).commentSystem || 'waline')))
+const formatDate = (v: any) => {
+  try {
+    const d = new Date(v)
+    if (isNaN(d.getTime())) return String(v)
+    const pad = (n: number) => n.toString().padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  } catch {
+    return String(v)
+  }
+}
+const toggleAdminComments = () => {
+  showAdminComments.value = !showAdminComments.value
+  if (showAdminComments.value) loadAdminComments()
+}
+const isCommentExpanded = (c: any) => {
+  return !!expandedCommentsMap.value[c.id]
+}
+const toggleCommentExpanded = (c: any) => {
+  expandedCommentsMap.value[c.id] = !expandedCommentsMap.value[c.id]
+}
+const loadAdminComments = async () => {
+  try {
+    showAdminComments.value = true
+    adminComments.value.splice(0)
+    adminCommentsPage.value = 1
+    const q = (commentSearch.value || '').trim()
+    const res: any = await getRequest<any>('comments', { q, page: adminCommentsPage.value, pageSize: 30 }, { credentials: 'include' })
+    if (res && res.code === 1) {
+      const items = Array.isArray(res.data?.items) ? res.data.items : []
+      items.forEach((x: any) => adminComments.value.push(x))
+      const total = Number(res.data?.total || 0)
+      adminCommentsHasMore.value = (adminCommentsPage.value * 30) < total
+      if (items.length === 0) {
+        useToast().add({ title: '无结果', description: '未找到匹配评论', color: 'gray' })
+      } else {
+        useToast().add({ title: '已加载', description: `本页 ${items.length} 条${adminCommentsHasMore.value ? '，还有更多' : ''}`, color: 'green' })
+      }
+    } else {
+      throw new Error(res?.msg || '加载失败')
+    }
+  } catch (e: any) {
+    useToast().add({ title: '加载失败', description: e.message, color: 'red' })
+  }
+}
+const loadAdminCommentsMore = async () => {
+  try {
+    adminCommentsPage.value += 1
+    const q = (commentSearch.value || '').trim()
+    const res: any = await getRequest<any>('comments', { q, page: adminCommentsPage.value, pageSize: 30 }, { credentials: 'include' })
+    if (res && res.code === 1) {
+      const items = Array.isArray(res.data?.items) ? res.data.items : []
+      items.forEach((x: any) => adminComments.value.push(x))
+      const total = Number(res.data?.total || 0)
+      adminCommentsHasMore.value = (adminCommentsPage.value * 30) < total
+    } else {
+      throw new Error(res?.msg || '加载失败')
+    }
+  } catch (e: any) {
+    useToast().add({ title: '加载失败', description: e.message, color: 'red' })
+  }
+}
+const adminDeleteComment = async (c: any) => {
+  try {
+    const res: any = await deleteRequest<any>(`messages/${c.message_id}/comments/${c.id}`, undefined, { credentials: 'include' })
+    if (res && res.code === 1) {
+      const idx = adminComments.value.findIndex((x: any) => x.id === c.id)
+      if (idx >= 0) adminComments.value.splice(idx, 1)
+      delete expandedCommentsMap.value[c.id]
+      useToast().add({ title: '成功', description: '已删除该评论', color: 'green' })
+    } else {
+      throw new Error(res?.msg || '删除失败')
+    }
+  } catch (e: any) {
+    useToast().add({ title: '删除失败', description: e.message, color: 'red' })
+  }
+}
+
+watch(() => String((frontendConfig as any).commentSystem || '').toLowerCase(), (sys) => {
+  uiCommentSystem.value = sys
+  if (sys !== 'builtin') {
+    showAdminComments.value = false
+  }
+})
+watch(() => !!(frontendConfig as any).commentEnabled, (enabled) => {
+  if (!enabled) {
+    showAdminComments.value = false
+  }
+})
+
 // 保存 GitHub 卡片解析配置（独立项）
 const saveGithubCardConfig = async () => {
     try {
@@ -2422,7 +2624,9 @@ const saveMusicConfig = async () => {
         musicLyric: !!frontendConfig.musicLyric,
         musicAutoplay: !!frontendConfig.musicAutoplay,
         musicDefaultMinimized: !!frontendConfig.musicDefaultMinimized,
-        musicEmbed: !!frontendConfig.musicEmbed
+        musicEmbed: !!frontendConfig.musicEmbed,
+        musicCssCdnURL: String(frontendConfig.musicCssCdnURL || ''),
+        musicJsCdnURL: String(frontendConfig.musicJsCdnURL || '')
       }
     }
     const response = await fetch('/api/settings', {
@@ -2434,6 +2638,7 @@ const saveMusicConfig = async () => {
     const data = await response.json()
     if (response.ok && data.code === 1) {
       await fetchConfig()
+      applyMusicCdnAssets()
       window.dispatchEvent(new Event('frontend-config-updated'))
       useToast().add({ title: '成功', description: '音乐配置已更新', color: 'green' })
     } else {
@@ -2454,6 +2659,8 @@ const resetMusicConfig = () => {
   ;(frontendConfig as any).musicAutoplay = defaultConfig.musicAutoplay
   ;(frontendConfig as any).musicDefaultMinimized = defaultConfig.musicDefaultMinimized
   ;(frontendConfig as any).musicEmbed = defaultConfig.musicEmbed
+  ;(frontendConfig as any).musicCssCdnURL = defaultConfig.musicCssCdnURL
+  ;(frontendConfig as any).musicJsCdnURL = defaultConfig.musicJsCdnURL
 }
 
 const toggleMusic = async (enabled: boolean) => {
@@ -2466,12 +2673,44 @@ const toggleMusic = async (enabled: boolean) => {
     ;(frontendConfig as any).musicDefaultMinimized = true
     ;(frontendConfig as any).musicAutoplay = false
     ;(frontendConfig as any).musicTheme = 'auto'
+    if (!String((frontendConfig as any).musicCssCdnURL || '').trim()) {
+      ;(frontendConfig as any).musicCssCdnURL = 'https://api.hypcvgm.top/NeteaseMiniPlayer/netease-mini-player-v2.css'
+    }
+    if (!String((frontendConfig as any).musicJsCdnURL || '').trim()) {
+      ;(frontendConfig as any).musicJsCdnURL = 'https://api.hypcvgm.top/NeteaseMiniPlayer/netease-mini-player-v2.js'
+    }
   }
   await saveMusicConfig()
 }
 const musicEmbedMode = computed({
   get: () => (frontendConfig.musicEmbed ? 'embed' : 'float'),
   set: (v: string) => { (frontendConfig as any).musicEmbed = (v === 'embed') }
+})
+
+const musicCdnPreset = ref('hypcvgm')
+const applyMusicCdnAssets = () => {
+  const css = String((frontendConfig as any).musicCssCdnURL || '').trim()
+  const js = String((frontendConfig as any).musicJsCdnURL || '').trim()
+  const linkArr: any[] = []
+  const scriptArr: any[] = []
+  if (css) linkArr.push({ rel: 'stylesheet', href: css })
+  if (js) scriptArr.push({ src: js, body: true })
+  if (linkArr.length || scriptArr.length) {
+    useHead({ link: linkArr, script: scriptArr })
+  }
+}
+watch(musicCdnPreset, (v) => {
+  if (v === 'hypcvgm') {
+    ;(frontendConfig as any).musicCssCdnURL = 'https://api.hypcvgm.top/NeteaseMiniPlayer/netease-mini-player-v2.css'
+    ;(frontendConfig as any).musicJsCdnURL = 'https://api.hypcvgm.top/NeteaseMiniPlayer/netease-mini-player-v2.js'
+  } else if (v === 'jsdelivr') {
+    ;(frontendConfig as any).musicCssCdnURL = 'https://cdn.jsdelivr.net/gh/ImBHCN/NeteaseMiniPlayer@v2/netease-mini-player-v2.css'
+    ;(frontendConfig as any).musicJsCdnURL = 'https://cdn.jsdelivr.net/gh/ImBHCN/NeteaseMiniPlayer@v2/netease-mini-player-v2.js'
+  } else if (v === 'unpkg') {
+    ;(frontendConfig as any).musicCssCdnURL = 'https://unpkg.com/netease-mini-player/dist/netease-mini-player-v2.css'
+    ;(frontendConfig as any).musicJsCdnURL = 'https://unpkg.com/netease-mini-player/dist/netease-mini-player-v2.js'
+  }
+  applyMusicCdnAssets()
 })
 
 const saveGithubOAuthConfig = async () => {

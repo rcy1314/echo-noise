@@ -387,16 +387,13 @@ func checkAdmin(c *gin.Context) (uint, error) {
 	if !exists {
 		return 0, fmt.Errorf("未授权访问")
 	}
-
 	user, err := services.GetUserByID(userID.(uint))
 	if err != nil {
 		return 0, err
 	}
-
 	if !user.IsAdmin {
 		return 0, fmt.Errorf("需要管理员权限")
 	}
-
 	return userID.(uint), nil
 }
 
@@ -459,7 +456,9 @@ func UpdateSetting(c *gin.Context) {
 		return
 	}
 
-	oldSetting.AllowRegistration = setting.AllowRegistration
+	if setting.AllowRegistration != nil {
+		oldSetting.AllowRegistration = *setting.AllowRegistration
+	}
 
 	frontendSettings := setting.FrontendSettings
 	if frontendSettings == nil {
@@ -467,8 +466,10 @@ func UpdateSetting(c *gin.Context) {
 	}
 
 	settingMap := map[string]interface{}{
-		"allowRegistration": setting.AllowRegistration,
-		"frontendSettings":  frontendSettings,
+		"frontendSettings": frontendSettings,
+	}
+	if setting.AllowRegistration != nil {
+		settingMap["allowRegistration"] = *setting.AllowRegistration
 	}
 	if setting.SmtpEnabled != nil {
 		settingMap["smtpEnabled"] = *setting.SmtpEnabled
@@ -765,6 +766,41 @@ func BackfillCommentParents(c *gin.Context) {
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{"code": 1, "data": gin.H{"updated": updated}})
+}
+
+// 列出所有内置评论（管理员，支持搜索与分页）
+func ListComments(c *gin.Context) {
+	_, err := checkAdmin(c)
+	if err != nil {
+		c.JSON(http.StatusOK, dto.Fail[string](err.Error()))
+		return
+	}
+	q := strings.TrimSpace(c.Query("q"))
+	page, _ := strconv.Atoi(c.Query("page"))
+	if page <= 0 {
+		page = 1
+	}
+	pageSize, _ := strconv.Atoi(c.Query("pageSize"))
+	if pageSize <= 0 || pageSize > 200 {
+		pageSize = 30
+	}
+	db, _ := database.GetDB()
+	tx := db.Model(&models.Comment{})
+	if q != "" {
+		like := "%" + q + "%"
+		tx = tx.Where("nick LIKE ? OR content LIKE ? OR mail LIKE ? OR link LIKE ?", like, like, like, like)
+	}
+	var total int64
+	if err := tx.Count(&total).Error; err != nil {
+		c.JSON(http.StatusOK, dto.Fail[string]("查询失败"))
+		return
+	}
+	var list []models.Comment
+	if err := tx.Order("created_at DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&list).Error; err != nil {
+		c.JSON(http.StatusOK, dto.Fail[string]("查询失败"))
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 1, "data": gin.H{"total": total, "items": list}})
 }
 
 // 动态生成 Web Manifest

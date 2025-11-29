@@ -85,6 +85,8 @@ func GetFrontendConfig() (map[string]interface{}, error) {
 			"musicAutoplay":         config.MusicAutoplay,
 			"musicDefaultMinimized": config.MusicDefaultMinimized,
 			"musicEmbed":            config.MusicEmbed,
+			"musicCssCdnURL":        choose(config.MusicCssCdnURL, ""),
+			"musicJsCdnURL":         choose(config.MusicJsCdnURL, ""),
 			// 评论系统
 			"commentEnabled":      config.CommentEnabled,
 			"commentSystem":       choose(config.CommentSystem, "waline"),
@@ -242,6 +244,12 @@ func UpdateFrontendSetting(userID uint, settingMap map[string]interface{}) error
 		config.MusicEmbed = vb
 	} else if vs, ok := frontendSettings["musicEmbed"].(string); ok {
 		config.MusicEmbed = (vs == "true")
+	}
+	if v, ok := frontendSettings["musicCssCdnURL"].(string); ok {
+		config.MusicCssCdnURL = v
+	}
+	if v, ok := frontendSettings["musicJsCdnURL"].(string); ok {
+		config.MusicJsCdnURL = v
 	}
 	if v, ok := frontendSettings["commentSystem"].(string); ok {
 		config.CommentSystem = v
@@ -580,6 +588,8 @@ func getDefaultConfig() map[string]interface{} {
 			"musicAutoplay":         false,
 			"musicDefaultMinimized": true,
 			"musicEmbed":            false,
+			"musicCssCdnURL":        "",
+			"musicJsCdnURL":         "",
 			// 评论系统默认值
 			"commentEnabled":                false,
 			"commentSystem":                 "waline",

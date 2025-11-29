@@ -61,10 +61,10 @@ func SetupRouter() *gin.Engine {
 
 	r.Use(cors.New(corsConfig))
 
-	// 使用固定的 ./public 作为静态目录
-	r.Use(static.Serve("/", static.LocalFile("./public", true)))
+	// 暂不挂载根静态目录，全部前端路径通过 devProxy 转发到 Nuxt 开发服务
 	r.Static("/api/images", "./data/images")
 	r.Static("/video", "./data/video")
+	// 常用静态文件已在上方映射
 
 	// API 路由组
 	api := r.Group("/api")
@@ -131,10 +131,13 @@ func SetupRouter() *gin.Engine {
 	// 评论系统（内置）公共路由
 	api.GET("/messages/:id/comments", controllers.GetComments)
 	api.POST("/messages/:id/comments", controllers.PostComment)
+	// 管理员评论列表（提供公共路径，函数内再校验管理员权限）
+	api.GET("/comments", controllers.ListComments)
 	// 评论删除（管理员）
 	authRoutes.DELETE("/messages/:id/comments/:cid", controllers.DeleteComment)
 	// 一次性回填评论 parent_id（管理员）
 	authRoutes.POST("/comments/backfill", controllers.BackfillCommentParents)
+	// 管理员评论列表管理（已在公共组注册路径，函数内部鉴权）
 	// 添加推送配置路由
 	notify := authRoutes.Group("/notify")
 	{
@@ -184,9 +187,24 @@ func SetupRouter() *gin.Engine {
 	// 设置路由
 	authRoutes.PUT("/settings", controllers.UpdateSetting)
 
+	// 显式 /status 返回 SPA 入口，避免目录重定向影响
 	r.GET("/status", func(c *gin.Context) {
 		c.File("./public/index.html")
 	})
+
+	// 先映射关键静态文件，避免被 SPA Fallback 覆盖
+	r.StaticFile("/favicon.ico", "./public/favicon.ico")
+	r.StaticFile("/favicon-32x32.png", "./public/favicon-32x32.png")
+	r.StaticFile("/android-chrome-192x192.png", "./public/android-chrome-192x192.png")
+	r.StaticFile("/favicon.svg", "./public/favicon.svg")
+	// manifest 与 SW 使用控制器路由，避免重复注册
+
+	// 使用静态中间件托管根目录，支持 SPA Fallback
+	r.Use(static.Serve("/", static.LocalFile("./public", true)))
+	// 显式映射 Nuxt 资源目录和常用静态
+	r.Static("/_nuxt", "./public/_nuxt")
+	r.Static("/assets", "./public/assets")
+
 	r.NoRoute(func(c *gin.Context) {
 		path := c.Request.URL.Path
 		if strings.HasPrefix(path, "/m/") ||
