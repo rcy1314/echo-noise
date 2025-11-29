@@ -517,15 +517,41 @@
                 </div>
                 <div v-if="showUsers" class="rounded-lg p-3" :class="theme.subtleBg">
                   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                    <div v-for="u in filteredUsers" :key="(u.id ?? u.ID)" class="flex items-center justify-between rounded border px-3 py-2" :class="theme.border">
-                      <div class="flex items-center gap-2 min-w-0">
+                    <div v-for="u in filteredUsers" :key="(u.id ?? u.ID)" class="rounded border px-3 py-2" :class="theme.border">
+                      <div class="flex items-center justify-between gap-2 min-w-0">
                         <UBadge color="gray" variant="soft">#{{ u.id ?? u.ID }}</UBadge>
                         <span class="truncate" :class="theme.text">{{ u.username ?? u.Username }}</span>
                         <UBadge :color="(u.is_admin ?? u.IsAdmin) ? 'primary' : 'gray'" variant="subtle">{{ (u.is_admin ?? u.IsAdmin) ? '管理员' : '普通' }}</UBadge>
+                        <div class="flex-1"></div>
+                        <UButton size="xs" variant="ghost" :color="isExpanded(u) ? 'gray' : 'primary'" @click="toggleExpanded(u)">{{ isExpanded(u) ? '收起' : '展开' }}</UButton>
                       </div>
-                      <div class="flex items-center gap-2">
+                      <div class="mt-2 flex items-center gap-2">
                         <UButton :color="(u.is_admin ?? u.IsAdmin) ? 'orange' : 'green'" :variant="(u.is_admin ?? u.IsAdmin) ? 'soft' : 'solid'" class="shadow" @click="confirmToggleAdmin(u)">{{ (u.is_admin ?? u.IsAdmin) ? '取消管理员' : '设为管理员' }}</UButton>
                         <UButton color="red" variant="soft" class="shadow" @click="confirmDeleteUser(u)">删除</UButton>
+                      </div>
+                      <div v-if="isExpanded(u)" class="mt-3 rounded p-3" :class="theme.subtleBg">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                          <div>
+                            <div class="text-xs" :class="theme.mutedText">用户ID</div>
+                            <div :class="theme.text">{{ u.id ?? u.ID }}</div>
+                          </div>
+                          <div>
+                            <div class="text-xs" :class="theme.mutedText">用户名</div>
+                            <div :class="theme.text">{{ u.username ?? u.Username }}</div>
+                          </div>
+                          <div>
+                            <div class="text-xs" :class="theme.mutedText">角色</div>
+                            <div :class="theme.text">{{ (u.is_admin ?? u.IsAdmin) ? '管理员' : '普通用户' }}</div>
+                          </div>
+                        </div>
+                        <div class="mt-3">
+                          <div class="text-sm mb-1" :class="theme.text">重置密码</div>
+                          <div class="flex items-center gap-2">
+                            <UInput v-model="resetForm.password[(u.id ?? u.ID)]" :type="showResetPassword ? 'text' : 'password'" placeholder="新密码" class="flex-1" />
+                            <UButton :icon="showResetPassword ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'" color="gray" variant="ghost" @click="showResetPassword = !showResetPassword" />
+                            <UButton :disabled="!canReset(u)" color="primary" @click="resetUserPassword(u)">保存</UButton>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1639,6 +1665,31 @@ const refreshUsers = async () => {
   await userStore.getStatus()
 }
 const showUsers = ref(false)
+const expandedUsers = ref<Record<string, boolean>>({})
+const isExpanded = (u: any) => !!expandedUsers.value[String(u.id ?? u.ID)]
+const toggleExpanded = (u: any) => { const k = String(u.id ?? u.ID); expandedUsers.value[k] = !expandedUsers.value[k] }
+const resetForm = reactive<{ password: Record<string, string> }>({ password: {} })
+const showResetPassword = ref(false)
+const canReset = (u: any) => {
+  const v = (resetForm.password[String(u.id ?? u.ID)] || '').trim()
+  return v.length >= 6
+}
+const resetUserPassword = async (u: any) => {
+  try {
+    const id = u.id ?? u.ID ?? u.user_id
+    const password = (resetForm.password[String(id)] || '').trim()
+    if (password.length < 6) throw new Error('密码至少6位')
+    const res = await postRequest<any>('user/reset_password', { id, password }, { credentials: 'include' })
+    if (res && res.code === 1) {
+      useToast().add({ title: res?.msg || '已重置密码', color: 'green' })
+      resetForm.password[String(id)] = ''
+    } else {
+      throw new Error(res?.msg || '重置失败')
+    }
+  } catch (e: any) {
+    useToast().add({ title: '重置失败', description: e.message, color: 'red' })
+  }
+}
 const confirmToggleAdmin = async (u: any) => {
   try {
     const name = u.username ?? u.Username

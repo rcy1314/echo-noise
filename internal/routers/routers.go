@@ -175,6 +175,7 @@ func SetupRouter() *gin.Engine {
 		user.PUT("/admin", controllers.UpdateUserAdmin)
 		user.DELETE("", controllers.DeleteUser)
 		user.POST("/logout", controllers.Logout) // 添加退出登录路由
+		user.POST("/reset_password", controllers.AdminResetPassword)
 		// 添加 Token 相关路由
 		user.GET("/token", controllers.GetUserToken)
 		user.POST("/token/regenerate", controllers.RegenerateUserToken)

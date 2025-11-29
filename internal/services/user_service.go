@@ -179,18 +179,27 @@ func ChangePassword(user *models.User, userdto dto.UserInfoDto) error {
 	return nil
 }
 
-func UpdateUserAdmin(userID uint) error {
+func UpdateUserAdmin(userID uint, currentUserID uint) error {
     user, err := repository.GetUserByID(userID)
     if err != nil {
         return err
     }
-
-	user.IsAdmin = !user.IsAdmin
-
-	if err := repository.UpdateUser(user); err != nil {
-		return err
-	}
-
+    // 不允许取消当前登录用户的管理员身份
+    if userID == currentUserID && user.IsAdmin {
+        return fmt.Errorf("不允许取消当前登录用户的管理员身份")
+    }
+    // 至少保留一位管理员
+    if user.IsAdmin {
+        count, err := repository.CountAdmins()
+        if err != nil { return err }
+        if count <= 1 {
+            return fmt.Errorf("系统至少保留一位管理员")
+        }
+    }
+    user.IsAdmin = !user.IsAdmin
+    if err := repository.UpdateUser(user); err != nil {
+        return err
+    }
     return nil
 }
 

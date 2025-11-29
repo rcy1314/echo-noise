@@ -131,6 +131,16 @@ func DeleteUser(id uint) error {
     return nil
 }
 
+// CountAdmins 统计管理员数量
+func CountAdmins() (int64, error) {
+    var count int64
+    err := database.DB.Model(&models.User{}).Where("is_admin = ?", true).Count(&count).Error
+    if err != nil {
+        return 0, err
+    }
+    return count, nil
+}
+
 // BatchCreateUsers 批量创建用户
 func BatchCreateUsers(users []*models.User) error {
     return database.DB.Create(&users).Error

@@ -414,7 +414,13 @@ func UpdateUserAdmin(c *gin.Context) {
 		return
 	}
 
-	if err := services.UpdateUserAdmin(uint(id)); err != nil {
+	currentID, err := checkAdmin(c)
+	if err != nil {
+		c.JSON(http.StatusOK, dto.Fail[string](err.Error()))
+		return
+	}
+
+	if err := services.UpdateUserAdmin(uint(id), currentID); err != nil {
 		c.JSON(http.StatusOK, dto.Fail[string](err.Error()))
 		return
 	}
@@ -1907,11 +1913,51 @@ func DeleteUser(c *gin.Context) {
 		c.JSON(http.StatusOK, dto.Fail[string]("不允许删除当前登录用户"))
 		return
 	}
+	// 至少保留一位管理员：当删除目标是管理员时检查数量
+	target, err := repository.GetUserByID(uint(id))
+	if err == nil && target.IsAdmin {
+		cnt, err := repository.CountAdmins()
+		if err != nil {
+			c.JSON(http.StatusOK, dto.Fail[string]("校验管理员数量失败"))
+			return
+		}
+		if cnt <= 1 {
+			c.JSON(http.StatusOK, dto.Fail[string]("系统至少保留一位管理员，无法删除最后一位管理员"))
+			return
+		}
+	}
 	if err := repository.DeleteUser(uint(id)); err != nil {
 		c.JSON(http.StatusOK, dto.Fail[string]("删除失败"))
 		return
 	}
 	c.JSON(http.StatusOK, dto.OK[any](nil, "已删除用户"))
+}
+
+// 管理员重置任意用户密码
+func AdminResetPassword(c *gin.Context) {
+	_, err := checkAdmin(c)
+	if err != nil {
+		c.JSON(http.StatusOK, dto.Fail[string](err.Error()))
+		return
+	}
+	var req struct {
+		ID       uint   `json:"id"`
+		Password string `json:"password"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.ID == 0 || strings.TrimSpace(req.Password) == "" {
+		c.JSON(http.StatusOK, dto.Fail[string](models.InvalidRequestBodyMessage))
+		return
+	}
+	user, err := services.GetUserByID(req.ID)
+	if err != nil {
+		c.JSON(http.StatusOK, dto.Fail[string](models.UserNotFoundMessage))
+		return
+	}
+	if err := services.ChangePassword(user, dto.UserInfoDto{Password: req.Password}); err != nil {
+		c.JSON(http.StatusOK, dto.Fail[string](err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, dto.OK[any](nil, models.ChangePasswordSuccessMessage))
 }
 func sendTelegramErrorNotify(c *gin.Context, err error) {
 	log.Printf("Telegram 推送失败: %v", err)
