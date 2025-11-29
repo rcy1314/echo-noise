@@ -143,9 +143,17 @@ type SiteConfig struct {
 	MusicDefaultMinimized bool   `gorm:"default:true"`
 	MusicEmbed            bool   `gorm:"default:false"`
 	// 评论系统配置
-	CommentEnabled      bool   `gorm:"default:false"`
-	CommentSystem       string `gorm:"type:varchar(20)"` // builtin/waline/none/other
-	CommentEmailEnabled bool   `gorm:"default:false"`
+    CommentEnabled      bool   `gorm:"default:false"`
+    CommentSystem       string `gorm:"type:varchar(20)"` // builtin/waline/none/other
+    CommentEmailEnabled bool   `gorm:"default:false"`
+    CommentEmailReplyName     string `gorm:"type:varchar(100)"`
+    CommentEmailAdminPrefix   string `gorm:"type:varchar(50)"`
+    CommentEmailReplyPrefix   string `gorm:"type:varchar(50)"`
+    CommentEmailReplyTemplate string `gorm:"type:text"`
+    CommentEmailAdminTemplate string `gorm:"type:text"`
+    CommentEmailSiteURL       string `gorm:"type:varchar(191)"`
+    CommentEmailReplyTemplateHTML string `gorm:"type:text"`
+    CommentEmailAdminTemplateHTML string `gorm:"type:text"`
 }
 
 func (s *SiteConfig) GetBackgroundsList() []string {

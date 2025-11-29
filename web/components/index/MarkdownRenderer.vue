@@ -231,18 +231,26 @@ const renderMarkdown = async (markdown: string) => {
       normalizedContent = markdown ?? '';
     }
     const processedContent = processMediaLinks(normalizedContent);
+
+    // 将裸露的 URL 转为可点击链接（新标签页打开）
+    const linkifyBareUrls = (text: string): string => {
+      return text.replace(/(^|\s)(https?:\/\/[^\s<]+)/g, (_match, pre, url) => {
+        return `${pre}<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+      });
+    };
+    const withLinks = linkifyBareUrls(processedContent);
     
     // 修改标签匹配规则，排除HTML标签内的内容
     let finalContent = '';
     try {
-      finalContent = processedContent
+      finalContent = withLinks
         .replace(/<a /g, '<a target="_blank" ')
         .replace(
           /(?<!<[^>]*)#([^\s#<>]+)(?![^<]*>)/g,
           '<span class="clickable-tag" onclick="window.handleTagClick(\'$1\')" style="cursor: pointer;">#$1</span>'
         );
     } catch {
-      finalContent = processedContent.replace(/<a /g, '<a target="_blank" ');
+      finalContent = withLinks.replace(/<a /g, '<a target="_blank" ');
     }
 
   // 使用处理后的内容
@@ -358,20 +366,26 @@ watch(() => contentTheme && contentTheme.value, () => {
 }
 
 /* 主题化整体与标题颜色（容器自身带主题类） */
-.markdown-preview.theme-dark { color: rgb(227, 220, 220) !important; }
-.markdown-preview.theme-light { color: #111111 !important; }
-.markdown-preview.theme-dark h1,
-.markdown-preview.theme-dark h2,
-.markdown-preview.theme-dark h3,
-.markdown-preview.theme-dark h4,
-.markdown-preview.theme-dark h5,
-.markdown-preview.theme-dark h6 { color: rgb(251, 247, 247) !important; }
-.markdown-preview.theme-light h1,
-.markdown-preview.theme-light h2,
-.markdown-preview.theme-light h3,
-.markdown-preview.theme-light h4,
-.markdown-preview.theme-light h5,
-.markdown-preview.theme-light h6 { color: #111111 !important; }
+.builtin-comments .markdown-preview.theme-dark { color: rgb(227, 220, 220) !important; }
+.builtin-comments .markdown-preview.theme-light { color: #111111 !important; }
+.builtin-comments .markdown-preview.theme-dark h1,
+.builtin-comments .markdown-preview.theme-dark h2,
+.builtin-comments .markdown-preview.theme-dark h3,
+.builtin-comments .markdown-preview.theme-dark h4,
+.builtin-comments .markdown-preview.theme-dark h5,
+.builtin-comments .markdown-preview.theme-dark h6 { color: rgb(251, 247, 247) !important; }
+.builtin-comments .markdown-preview.theme-light h1,
+.builtin-comments .markdown-preview.theme-light h2,
+.builtin-comments .markdown-preview.theme-light h3,
+.builtin-comments .markdown-preview.theme-light h4,
+.builtin-comments .markdown-preview.theme-light h5,
+.builtin-comments .markdown-preview.theme-light h6 { color: #111111 !important; }
+
+/* 链接样式（蓝色，可悬停下划线） */
+.builtin-comments .markdown-preview.theme-light a { color: #1d4ed8 !important; text-decoration: none; }
+.builtin-comments .markdown-preview.theme-light a:hover { text-decoration: underline; }
+.builtin-comments .markdown-preview.theme-dark a { color: #60a5fa !important; text-decoration: none; }
+.builtin-comments .markdown-preview.theme-dark a:hover { text-decoration: underline; }
 
 .markdown-preview p {
   margin: 0.5em 0;

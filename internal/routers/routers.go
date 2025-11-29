@@ -133,6 +133,8 @@ func SetupRouter() *gin.Engine {
 	api.POST("/messages/:id/comments", controllers.PostComment)
 	// 评论删除（管理员）
 	authRoutes.DELETE("/messages/:id/comments/:cid", controllers.DeleteComment)
+	// 一次性回填评论 parent_id（管理员）
+	authRoutes.POST("/comments/backfill", controllers.BackfillCommentParents)
 	// 添加推送配置路由
 	notify := authRoutes.Group("/notify")
 	{

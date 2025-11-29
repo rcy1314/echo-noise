@@ -1,6 +1,6 @@
 <template>
  
-    <div class="relative min-h-screen w-full overflow-x-hidden" :class="theme.pageBg">
+   <div class="fixed inset-0 w-full h-full overflow-x-hidden overflow-y-auto" :class="theme.pageBg">
       <div class="min-h-screen w-full">
         <aside class="w-72 h-screen overflow-y-auto backdrop-blur-md flex flex-col fixed left-0 top-0 z-40 transition-transform duration-300 md:transition-none border-r" :class="[{ 'translate-x-0': sidebarOpen, '-translate-x-full md:translate-x-0': !sidebarOpen }, theme.sidebarBg, theme.border, theme.sidebarText]">
         <div class="px-4 py-4 border-b border-slate-700/40 flex flex-col items-center gap-2">
@@ -1253,7 +1253,7 @@ const scrollTo = (id: string) => {
 
 // 新用户注册开关相关
 const registerEnabled = ref(true);
-const sidebarOpen = ref(typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
+const sidebarOpen = ref(false)
 const panelTheme = ref<'dark' | 'midnight' | 'slate' | 'light'>(
   (typeof window !== 'undefined' && (localStorage.getItem('adminTheme') as any)) || 'dark'
 )
@@ -1282,6 +1282,7 @@ const setActive = async (name: 'system' | 'user' | 'site' | 'notify' | 'db' | 's
 
 onMounted(() => {
   loadStorageConfig()
+  sidebarOpen.value = window.innerWidth >= 768
 })
 
 const showBottomBar = ref(typeof window !== 'undefined' ? window.innerWidth >= 768 : true)

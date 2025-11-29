@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -585,28 +586,76 @@ func PostComment(c *gin.Context) {
 	var cfg models.SiteConfig
 	_ = db.Table("site_configs").First(&cfg).Error
 	if cfg.SmtpEnabled && cfg.CommentEmailEnabled {
-		// 站点URL
-		scheme := c.Request.Header.Get("X-Forwarded-Proto")
-		if scheme == "" {
-			scheme = "http"
+		siteURL := strings.TrimSpace(cfg.CommentEmailSiteURL)
+		if siteURL == "" || !(strings.HasPrefix(siteURL, "http://") || strings.HasPrefix(siteURL, "https://")) {
+			scheme := c.Request.Header.Get("X-Forwarded-Proto")
+			if scheme == "" {
+				scheme = "http"
+			}
+			host := c.Request.Host
+			siteURL = fmt.Sprintf("%s://%s", scheme, host)
 		}
-		host := c.Request.Host
-		siteURL := fmt.Sprintf("%s://%s", scheme, host)
 		// 管理员邮箱
 		adminTo := cfg.SmtpFrom
 		if adminTo == "" {
 			adminTo = cfg.SmtpUser
 		}
-		subject := fmt.Sprintf("新评论通知 - %s", cfg.SiteTitle)
-		body := fmt.Sprintf("站点：%s\n用户：%s\n邮箱：%s\n网址：%s\n内容：\n%s\n\n查看：%s/m/%d", cfg.SiteTitle, comment.Nick, comment.Mail, comment.Link, comment.Content, siteURL, message.ID)
-		_ = models.SendEmail(adminTo, subject, body)
+		prefixAdmin := strings.TrimSpace(cfg.CommentEmailAdminPrefix)
+		if prefixAdmin != "" {
+			prefixAdmin = prefixAdmin + " "
+		}
+		subject := fmt.Sprintf("%s新评论通知 - %s", prefixAdmin, cfg.SiteTitle)
+		textBody := fmt.Sprintf("站点：%s\n用户：%s\n邮箱：%s\n网址：%s\n内容：\n%s\n\n查看：%s/m/%d", cfg.SiteTitle, comment.Nick, comment.Mail, comment.Link, comment.Content, siteURL, message.ID)
+		if strings.TrimSpace(cfg.CommentEmailAdminTemplate) != "" {
+			tpl := cfg.CommentEmailAdminTemplate
+			tpl = strings.ReplaceAll(tpl, "{site}", cfg.SiteTitle)
+			tpl = strings.ReplaceAll(tpl, "{nick}", comment.Nick)
+			tpl = strings.ReplaceAll(tpl, "{mail}", comment.Mail)
+			tpl = strings.ReplaceAll(tpl, "{link}", comment.Link)
+			tpl = strings.ReplaceAll(tpl, "{content}", comment.Content)
+			tpl = strings.ReplaceAll(tpl, "{url}", fmt.Sprintf("%s/m/%d", siteURL, message.ID))
+			textBody = tpl
+		}
+		htmlTpl := strings.TrimSpace(cfg.CommentEmailAdminTemplateHTML)
+		if htmlTpl != "" {
+			htmlTpl = strings.ReplaceAll(htmlTpl, "{site}", cfg.SiteTitle)
+			htmlTpl = strings.ReplaceAll(htmlTpl, "{nick}", comment.Nick)
+			htmlTpl = strings.ReplaceAll(htmlTpl, "{mail}", comment.Mail)
+			htmlTpl = strings.ReplaceAll(htmlTpl, "{link}", comment.Link)
+			htmlTpl = strings.ReplaceAll(htmlTpl, "{content}", comment.Content)
+			htmlTpl = strings.ReplaceAll(htmlTpl, "{url}", fmt.Sprintf("%s/m/%d", siteURL, message.ID))
+			_ = models.SendEmailHTML(adminTo, subject, htmlTpl)
+		} else {
+			_ = models.SendEmail(adminTo, subject, textBody)
+		}
 		// 回复通知
 		if comment.ParentID != nil {
 			var parent models.Comment
 			if err := db.First(&parent, *comment.ParentID).Error; err == nil && strings.TrimSpace(parent.Mail) != "" {
-				replySubject := fmt.Sprintf("你的评论有新回复 - %s", cfg.SiteTitle)
-				replyBody := fmt.Sprintf("用户 %s 回复了你的评论：\n\n原评论：%s\n回复内容：%s\n\n查看：%s/m/%d", comment.Nick, parent.Content, comment.Content, siteURL, message.ID)
-				_ = models.SendEmail(strings.TrimSpace(parent.Mail), replySubject, replyBody)
+				prefixReply := strings.TrimSpace(cfg.CommentEmailReplyPrefix)
+				if prefixReply != "" {
+					prefixReply = prefixReply + " "
+				}
+				replySubject := fmt.Sprintf("%s你的评论有新回复 - %s", prefixReply, cfg.SiteTitle)
+				textTpl := fmt.Sprintf("用户 %s 回复了你的评论：\n\n原评论：%s\n回复内容：%s\n\n查看：%s/m/%d", comment.Nick, parent.Content, comment.Content, siteURL, message.ID)
+				if strings.TrimSpace(cfg.CommentEmailReplyTemplate) != "" {
+					tpl := cfg.CommentEmailReplyTemplate
+					tpl = strings.ReplaceAll(tpl, "{site}", cfg.SiteTitle)
+					tpl = strings.ReplaceAll(tpl, "{nick}", comment.Nick)
+					tpl = strings.ReplaceAll(tpl, "{content}", comment.Content)
+					tpl = strings.ReplaceAll(tpl, "{url}", fmt.Sprintf("%s/m/%d", siteURL, message.ID))
+					textTpl = tpl
+				}
+				htmlTpl := strings.TrimSpace(cfg.CommentEmailReplyTemplateHTML)
+				if htmlTpl != "" {
+					htmlTpl = strings.ReplaceAll(htmlTpl, "{site}", cfg.SiteTitle)
+					htmlTpl = strings.ReplaceAll(htmlTpl, "{nick}", comment.Nick)
+					htmlTpl = strings.ReplaceAll(htmlTpl, "{content}", comment.Content)
+					htmlTpl = strings.ReplaceAll(htmlTpl, "{url}", fmt.Sprintf("%s/m/%d", siteURL, message.ID))
+					_ = models.SendEmailHTMLWithFrom(strings.TrimSpace(parent.Mail), replySubject, htmlTpl, strings.TrimSpace(cfg.CommentEmailReplyName))
+				} else {
+					_ = models.SendEmailWithFrom(strings.TrimSpace(parent.Mail), replySubject, textTpl, strings.TrimSpace(cfg.CommentEmailReplyName))
+				}
 			}
 		}
 	}
@@ -640,6 +689,76 @@ func DeleteComment(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"code": 1, "msg": "已删除"})
+}
+
+func BackfillCommentParents(c *gin.Context) {
+	isAdmin, _ := c.Get("is_admin")
+	if b, ok := isAdmin.(bool); !ok || !b {
+		c.JSON(http.StatusForbidden, gin.H{"code": 0, "msg": "无权限"})
+		return
+	}
+	db, _ := database.GetDB()
+	var all []models.Comment
+	if err := db.Order("message_id ASC").Order("created_at ASC").Find(&all).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "msg": "查询失败"})
+		return
+	}
+	type key struct{ mid uint }
+	groups := map[uint][]models.Comment{}
+	for _, cm := range all {
+		groups[cm.MessageID] = append(groups[cm.MessageID], cm)
+	}
+	mention := regexp.MustCompile(`^@([^\s:：]+)`)
+	updated := 0
+	for mid, list := range groups {
+		for i := range list {
+			cmt := list[i]
+			if cmt.ParentID != nil {
+				continue
+			}
+			m := mention.FindStringSubmatch(strings.TrimSpace(cmt.Content))
+			if len(m) < 2 {
+				continue
+			}
+			nick := strings.TrimSpace(m[1])
+			var candidates []models.Comment
+			for j := range list {
+				if list[j].ID == cmt.ID {
+					continue
+				}
+				if strings.TrimSpace(list[j].Nick) == nick {
+					candidates = append(candidates, list[j])
+				}
+			}
+			if len(candidates) == 0 {
+				continue
+			}
+			ct := cmt.CreatedAt
+			var parent *models.Comment
+			var earlier []models.Comment
+			for _, cand := range candidates {
+				if !cand.CreatedAt.After(ct) {
+					earlier = append(earlier, cand)
+				}
+			}
+			if len(earlier) > 0 {
+				sort.Slice(earlier, func(a, b int) bool { return earlier[a].CreatedAt.After(earlier[b].CreatedAt) })
+				p := earlier[0]
+				parent = &p
+			} else {
+				sort.Slice(candidates, func(a, b int) bool { return candidates[a].CreatedAt.After(candidates[b].CreatedAt) })
+				p := candidates[0]
+				parent = &p
+			}
+			if parent != nil {
+				pid := parent.ID
+				if err := db.Model(&models.Comment{}).Where("id = ? AND message_id = ?", cmt.ID, mid).Update("parent_id", pid).Error; err == nil {
+					updated++
+				}
+			}
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 1, "data": gin.H{"updated": updated}})
 }
 
 // 动态生成 Web Manifest
