@@ -57,7 +57,7 @@ const local = reactive({
 watch(() => props.config, (v: any) => {
   if (!v) return
   local.commentEnabled = !!v.commentEnabled
-  local.commentSystem = String(v.commentSystem || 'waline')
+  local.commentSystem = String(v.commentSystem || 'waline').toLowerCase()
   local.commentEmailEnabled = !!v.commentEmailEnabled
   local.walineServerURL = String(v.walineServerURL || '')
   local.commentEmailReplyName = String(v.commentEmailReplyName || '')
@@ -71,7 +71,11 @@ watch(() => props.config, (v: any) => {
 }, { immediate: true, deep: true })
 
 watch(() => local.commentSystem, (v) => {
-  emit('comment-system-changed', String(v || ''))
+  const sys = String(v || '').toLowerCase()
+  if (sys === 'builtin') {
+    local.walineServerURL = ''
+  }
+  emit('comment-system-changed', sys)
 })
 
 const subtleBg = computed(() => 'bg-gray-800')
@@ -83,7 +87,7 @@ const textCls = computed(() => 'text-white')
       const payload = {
         frontendSettings: {
         commentEnabled: !!props.config?.commentEnabled,
-        commentSystem: String(local.commentSystem || 'waline'),
+        commentSystem: String(local.commentSystem || 'waline').toLowerCase(),
         commentEmailEnabled: !!props.config?.commentEmailEnabled,
         walineServerURL: String(local.walineServerURL || ''),
         commentEmailReplyName: String(local.commentEmailReplyName || ''),

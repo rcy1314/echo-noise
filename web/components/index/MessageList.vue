@@ -490,8 +490,9 @@ const toggleComment = async (msgId: number) => {
     }
     return;
   }
-  // Waline：初始化第三方评论
-  if (useWaline.value && window.Waline) {
+  if (useWaline.value) {
+    await loadWalineAssets();
+    if (!window.Waline) return;
     const el = document.querySelector(`#waline-${msgId}`);
     if (el) {
       window.Waline.init({
@@ -626,28 +627,30 @@ watch(() => message.messages, () => {
 }, { deep: true });
 // 添加路由相关
 const route = useRoute();
+const loadWalineAssets = async () => {
+  if (useWaline.value && !window.Waline) {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://unpkg.com/@waline/client@v2/dist/waline.css";
+    document.head.appendChild(link);
+
+    await new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://unpkg.com/@waline/client@v2/dist/waline.js";
+      script.crossOrigin = "anonymous";
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }
+}
 onMounted(async () => {
   try {
     await checkApi()
     // 获取路由中的消息ID
     const messageId = route.hash.split('/messages/').pop();
     
-    // 加载 Waline（仅当选择 Waline 时）
-    if (useWaline.value && !window.Waline) {
-      const link = document.createElement("link");
-      link.rel = "stylesheet";
-      link.href = "https://unpkg.com/@waline/client@v2/dist/waline.css";
-      document.head.appendChild(link);
-
-      await new Promise((resolve, reject) => {
-        const script = document.createElement("script");
-        script.src = "https://unpkg.com/@waline/client@v2/dist/waline.js";
-        script.crossOrigin = "anonymous";
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.appendChild(script);
-      });
-    }
+    await loadWalineAssets()
 
     // 根据是否有消息ID来决定加载方式
     if (messageId) {
@@ -712,40 +715,11 @@ onMounted(async () => {
             if (resp2 && resp2.ok) js = await resp2.json();
           }
           const count = js && Array.isArray(js.data) ? js.data.length : 0;
-          if (count > 0) expandedCommentsMap.value[m.id] = true;
-        } catch {}
-      });
-      await Promise.allSettled(tasks);
-      await nextTick();
-      // 初始化 Waline 对于默认展开的项
-      if (useWaline.value && window.Waline) {
-        (message.messages || []).forEach((m: any) => {
-          if (expandedCommentsMap.value[m.id]) {
-            const el = document.querySelector(`#waline-${m.id}`);
-            if (el) {
-              try {
-                window.Waline.init({
-                  el: `#waline-${m.id}`,
-                  serverURL: props.siteConfig.walineServerURL,
-                  path: `messages/${m.id}`,
-                  reaction: false,
-                  meta: ["nick", "mail", "link"],
-                  requiredMeta: ["mail", "nick"],
-                  pageview: true,
-                  search: false,
-                  wordLimit: 200,
-                  pageSize: 5,
-                  avatar: "monsterid",
-                  emoji: ["https://unpkg.com/@waline/emojis@1.2.0/tieba"],
-                  imageUploader: false,
-                  copyright: false,
-                  dark: 'html[class="dark"]',
-                });
-              } catch {}
-            }
-          }
-        });
-      }
+          if (isBuiltin.value && count > 0) expandedCommentsMap.value[m.id] = true;
+      } catch {}
+    });
+    await Promise.allSettled(tasks);
+    await nextTick();
     } catch {}
     
   } catch (error) {
@@ -781,7 +755,6 @@ watch(() => route.hash, async (newHash) => {
           message.total = data.data.total || 0;
           message.hasMore = (message.messages.length < message.total);
           message.page = 1;
-          // 重置并计算默认展开状态
           expandedCommentsMap.value = {};
           try {
             const tasks = (message.messages || []).map(async (m: any) => {
@@ -790,7 +763,7 @@ watch(() => route.hash, async (newHash) => {
                 if (resp.ok) {
                   const js = await resp.json();
                   const count = Array.isArray(js.data) ? js.data.length : 0;
-                  if (count > 0) expandedCommentsMap.value[m.id] = true;
+                  if (isBuiltin.value && count > 0) expandedCommentsMap.value[m.id] = true;
                 }
               } catch {}
             });
