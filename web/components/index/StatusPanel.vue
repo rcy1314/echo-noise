@@ -73,6 +73,10 @@
             <UIcon name="i-heroicons-bell-alert" class="w-5 h-5 text-indigo-300" />
             <span class="text-sm text-center">推送配置</span>
           </button>
+          <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('attachments', $event)">
+            <UIcon name="i-heroicons-paper-clip" class="w-5 h-5 text-indigo-300" />
+            <span class="text-sm text-center">附件管理</span>
+          </button>
           <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('db', $event)">
             <UIcon name="i-heroicons-circle-stack" class="w-5 h-5 text-indigo-300" />
             <span class="text-sm text-center">数据库管理</span>
@@ -697,6 +701,12 @@
                 </div>
                 <div class="text-xs" :class="theme.mutedText">默认不开启，开启后登录页显示“GitHub 一键登录”按钮</div>
               </div>
+            </div>
+          </div>
+
+          <div id="attachments-section" class="col-span-12">
+            <div class="rounded-xl border shadow-xl" :class="[theme.cardBg, theme.border]">
+              <AttachmentManager :theme="theme" />
             </div>
           </div>
 
@@ -1354,6 +1364,7 @@ import { useToast } from '#ui/composables/useToast'
 import NotifyPanel from './NotifyPanel.vue'
  
 import CommentsSettings from '~/components/admin/CommentsSettings.vue'
+import AttachmentManager from '~/components/admin/AttachmentManager.vue'
 import { getRequest, putRequest, postRequest, deleteRequest } from '~/utils/api'
  
 const cardCls = 'rounded-2xl border shadow-2xl'
@@ -1385,7 +1396,7 @@ const avatarSrc = computed(() => {
   return '/favicon.ico'
 })
 
-const setActive = async (name: 'system' | 'user' | 'site' | 'notify' | 'db' | 'site-register' | 'site-pwa' | 'site-github-card' | 'site-github-login' | 'site-announcement' | 'site-music' | 'site-default-theme' | 'site-configs' | 'comments' | 'email', evt?: MouseEvent) => {
+const setActive = async (name: 'system' | 'user' | 'site' | 'notify' | 'attachments' | 'db' | 'site-register' | 'site-pwa' | 'site-github-card' | 'site-github-login' | 'site-announcement' | 'site-music' | 'site-default-theme' | 'site-configs' | 'comments' | 'email', evt?: MouseEvent) => {
   await nextTick()
   const el = document.getElementById(`${name}-section`)
   if (!el) return

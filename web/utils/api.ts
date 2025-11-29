@@ -10,10 +10,10 @@ export const postRequest = async <T>(url: string, body: object | FormData, optio
     try {
         const isFormData = body instanceof FormData;
         const headers = isFormData 
-        ? { 'Authorization': `${token}` }
+        ? { 'Authorization': `Bearer ${token}` }
         : { 
             'Content-Type': 'application/json',
-            'Authorization': `${token}`
+            'Authorization': `Bearer ${token}`
           };
 
         const response: Response<T> = await $fetch(`${BASE_API}/${url}`, {
@@ -44,7 +44,7 @@ export const getRequest = async <T>(url: string, params?: any, options?: { crede
         const response: Response<T> = await $fetch(`${BASE_API}/${url}${queryParamString}`, {
             method: 'GET',
             headers: {
-                'Authorization': `${token}`,
+                'Authorization': `Bearer ${token}`,
                 'Cache-Control': 'no-cache',
                 'Pragma': 'no-cache'
             },
@@ -77,7 +77,7 @@ export const putRequest = async <T>(url: string, body: object, options?: { crede
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `${token}`,
+                'Authorization': `Bearer ${token}`,
             },
             body: JSON.stringify(body),
             credentials: options?.credentials,
@@ -115,7 +115,7 @@ export const deleteRequest = async <T>(url: string, params?: any, options?: { cr
         const response: Response<T> = await $fetch(`${BASE_API}/${url}${queryParamString}`, {
             method: 'DELETE',
             headers: {
-                'Authorization': `${token}`,
+                'Authorization': `Bearer ${token}`,
             },
             credentials: options?.credentials
         });

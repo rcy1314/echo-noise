@@ -179,6 +179,12 @@ const processMediaLinks = (content: string): string => {
       </div>`;
     });
   }
+  // 将裸视频文件链接替换为内联视频标签（先于链接化处理）
+  const VIDEO_FILE_REG = /(?<!["'\(])\bhttps?:\/\/[^\s<]+\.(mp4|webm|mov|avi)(\?[^\s<\)]*)?\b/g;
+  content = content.replace(VIDEO_FILE_REG, (m) => {
+    const src = m;
+    return `<video src="${src}" controls preload="metadata" style="width:100%;height:auto"></video>`;
+  });
   return content
     .replace(BILIBILI_REG, "<div class='video-wrapper'><iframe src='https://www.bilibili.com/blackboard/html5mobileplayer.html?bvid=$1&as_wide=1&high_quality=1&danmaku=0' scrolling='no' border='0' frameborder='no' framespacing='0' allowfullscreen='true' style='position:absolute;height:100%;width:100%'></iframe></div>")
     .replace(YOUTUBE_REG, "<div class='video-wrapper'><iframe src='https://www.youtube.com/embed/$1$2' title='YouTube video player' frameborder='0' allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture' allowfullscreen></iframe></div>")
@@ -268,6 +274,10 @@ const renderMarkdown = async (markdown: string) => {
         lineNumber: true,
         enable: true
       },
+      markdown: {
+        // 允许安全的 HTML 渲染，避免视频标签被移除
+        sanitize: false
+      },
 
       after: () => {
         // 确保所有链接都有 target="_blank"
@@ -281,6 +291,20 @@ const renderMarkdown = async (markdown: string) => {
         applyThemeClass();
         applyImageGrid();
         initializeZoom();
+        // 将指向视频文件的链接替换为视频标签（处理被链接化的场景）
+        const anchors = previewElement.value?.querySelectorAll('a[href]') || [] as any;
+        anchors.forEach((a: HTMLAnchorElement) => {
+          const href = a.getAttribute('href') || ''
+          if (/\.(mp4|webm|mov|avi)(\?.*)?$/i.test(href)) {
+            const v = document.createElement('video')
+            v.setAttribute('src', href)
+            v.setAttribute('controls', 'true')
+            v.setAttribute('preload', 'metadata')
+            v.style.width = '100%'
+            v.style.height = 'auto'
+            a.replaceWith(v)
+          }
+        })
         console.log('Rendering complete.');
         emit('rendered');
         const proc = (window as any).processNMPv2Shortcodes

@@ -3,11 +3,13 @@ package routers
 import (
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
+	"github.com/lin-snow/ech0/config"
 	"github.com/lin-snow/ech0/internal/controllers"
 	"github.com/lin-snow/ech0/internal/middleware"
 	"github.com/lin-snow/ech0/pkg"
@@ -61,9 +63,30 @@ func SetupRouter() *gin.Engine {
 
 	r.Use(cors.New(corsConfig))
 
-	// 暂不挂载根静态目录，全部前端路径通过 devProxy 转发到 Nuxt 开发服务
-	r.Static("/api/images", "./data/images")
-	r.Static("/video", "./data/video")
+	wd, _ := os.Getwd()
+	exePath, _ := os.Executable()
+	exeDir := filepath.Dir(exePath)
+	sp := strings.TrimRight(config.Config.Upload.SavePath, "/")
+	imgDir := pickDir([]string{
+		sp,
+		"./" + sp,
+		filepath.Join(wd, sp),
+		filepath.Join(exeDir, sp),
+		"./data/images",
+		filepath.Join(wd, "data/images"),
+		filepath.Join(exeDir, "data/images"),
+		"/data/images",
+		"/app/data/images",
+	}, "./data/images")
+	vidDir := pickDir([]string{
+		"./data/video",
+		filepath.Join(wd, "data/video"),
+		filepath.Join(exeDir, "data/video"),
+		"/data/video",
+		"/app/data/video",
+	}, "./data/video")
+	r.Static("/api/images", imgDir)
+	r.Static("/video", vidDir)
 	// 常用静态文件已在上方映射
 
 	// API 路由组
@@ -166,8 +189,21 @@ func SetupRouter() *gin.Engine {
 
 	// 图片上传路由
 	authRoutes.POST("/images/upload", controllers.UploadImage) // 上传图片
-	// 新增：视频上传路由
-	authRoutes.POST("/videos/upload", controllers.UploadVideo) // 上传视频
+	// 新增：视频上传路由（改为单数 video）
+	authRoutes.POST("/video/upload", controllers.UploadVideo) // 上传视频
+
+	// 附件管理路由
+	attachments := authRoutes.Group("/attachments")
+	{
+		attachments.GET("/images", controllers.ListImageAttachments)
+		attachments.GET("/images/", controllers.ListImageAttachments)
+		attachments.GET("/video", controllers.ListVideoAttachments)
+		attachments.GET("/video/", controllers.ListVideoAttachments)
+		attachments.DELETE("/images/:name", middleware.AdminAuthMiddleware(), controllers.DeleteImageAttachment)
+		attachments.DELETE("/images/:name/", middleware.AdminAuthMiddleware(), controllers.DeleteImageAttachment)
+		attachments.DELETE("/video/:name", middleware.AdminAuthMiddleware(), controllers.DeleteVideoAttachment)
+		attachments.DELETE("/video/:name/", middleware.AdminAuthMiddleware(), controllers.DeleteVideoAttachment)
+	}
 
 	// 用户相关路由
 	user := authRoutes.Group("/user")
@@ -218,4 +254,16 @@ func SetupRouter() *gin.Engine {
 	})
 
 	return r
+}
+
+func pickDir(candidates []string, fallback string) string {
+	for _, d := range candidates {
+		if d == "" {
+			continue
+		}
+		if info, err := os.Stat(d); err == nil && info.IsDir() {
+			return d
+		}
+	}
+	return fallback
 }

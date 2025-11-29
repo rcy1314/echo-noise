@@ -52,7 +52,7 @@ const handleVideoChange = async (event: Event) => {
 
   // 使用 XMLHttpRequest 以支持进度
   const xhr = new XMLHttpRequest()
-  xhr.open('POST', `${BASE_API}/videos/upload`, true)
+  xhr.open('POST', `${BASE_API}/video/upload`, true)
   xhr.withCredentials = true
 
   xhr.upload.onprogress = (event) => {

@@ -333,12 +333,23 @@ const addImage = async (event: Event) => {
 
     const data = await response.json();
     if (data.code === 1 && data.data) {
-      // 直接插入编辑器内容
       if (vditorEditor.value?.insertValue) {
-        // 拼接完整图片链接
-        const origin = typeof window !== 'undefined' ? window.location.origin : '';
-        const imageMarkdown = `\n![](${origin}${BASE_API}${data.data})\n`;
-        vditorEditor.value.insertValue(imageMarkdown);
+        const origin = typeof window !== 'undefined' ? window.location.origin : ''
+        const base = String(BASE_API || '/api')
+        const ret = String(data.data || '')
+        let full = ''
+        if (ret.startsWith('http')) {
+          full = ret
+        } else {
+          const path = ret.startsWith('/') ? ret : `/${ret}`
+          if (/^https?:\/\//.test(base)) {
+            full = `${base}${path}`
+          } else {
+            full = `${origin}${base}${path}`
+          }
+        }
+        const imageMarkdown = `\n![](${full})\n`
+        vditorEditor.value.insertValue(imageMarkdown)
       }
       toast.add({
         title: '成功',
@@ -365,11 +376,22 @@ const addImage = async (event: Event) => {
 };
 
 const handleVideoUploaded = (videoUrl: string) => {
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const url = videoUrl.startsWith('/') ? videoUrl : `/${videoUrl}`;
-  const videoTag = `<video width="100%" height="100%" src="${origin}${url}" controls loop></video>\n`;
+  const raw = String(videoUrl || '')
+  const baseApi = useRuntimeConfig().public.baseApi || '/api'
+  let full = raw
+  if (!/^https?:\/\//.test(raw)) {
+    const path = raw.startsWith('/') ? raw : `/${raw}`
+    if (/^https?:\/\//.test(String(baseApi))) {
+      const base = String(baseApi).replace(/\/api$/, '')
+      full = `${base}${path}`
+    } else {
+      const origin = typeof window !== 'undefined' ? window.location.origin : ''
+      full = `${origin}${path}`
+    }
+  }
+  const videoTag = `<video width="100%" height="100%" src="${full}" controls loop></video>\n`
   if (vditorEditor.value?.insertValue) {
-    vditorEditor.value.insertValue(videoTag);
+    vditorEditor.value.insertValue(videoTag)
   }
 };
 
