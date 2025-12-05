@@ -379,8 +379,11 @@ func UpdateUser(c *gin.Context) {
 }
 
 func ChangePassword(c *gin.Context) {
-	var userdto dto.UserInfoDto
-	if err := c.ShouldBindJSON(&userdto); err != nil {
+	var req struct {
+		OldPassword string `json:"oldPassword"`
+		Password    string `json:"password"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusOK, dto.Fail[string](models.InvalidRequestBodyMessage))
 		return
 	}
@@ -391,7 +394,7 @@ func ChangePassword(c *gin.Context) {
 		return
 	}
 
-	if err := services.ChangePassword(user, userdto); err != nil {
+	if err := services.ChangePasswordWithOld(user, req.OldPassword, req.Password); err != nil {
 		c.JSON(http.StatusOK, dto.Fail[string](err.Error()))
 		return
 	}

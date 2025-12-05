@@ -78,68 +78,57 @@ func Login(userdto dto.LoginDto) (*models.User, error) {
 	}(pw)
 	isBcrypt := strings.HasPrefix(pw, "$2a$") || strings.HasPrefix(pw, "$2b$") || strings.HasPrefix(pw, "$2y$")
 
+	matched := ""
 	if isMD5 {
-		if !strings.EqualFold(pw, md5pwd) {
+		if strings.EqualFold(pw, md5pwd) {
+			matched = plain
+		} else {
 			return nil, errors.New(models.PasswordIncorrectMessage)
 		}
-		newHash := models.HashPassword(plain)
-		if newHash != "" {
-			_ = repository.UpdateUserField(user.ID, "password", newHash)
-			user.Password = newHash
-		}
 	} else if isBcrypt {
-		if err := bcrypt.CompareHashAndPassword([]byte(pw), []byte(plain)); err != nil {
+		if bcrypt.CompareHashAndPassword([]byte(pw), []byte(plain)) == nil {
+			matched = plain
+		} else {
 			tplain := strings.TrimSpace(userdto.Password)
-			if tplain != plain {
-				if errt := bcrypt.CompareHashAndPassword([]byte(pw), []byte(tplain)); errt == nil {
-					newHash := models.HashPassword(tplain)
-					if newHash != "" {
-						_ = repository.UpdateUserField(user.ID, "password", newHash)
-						user.Password = newHash
-					}
-				} else {
-					tmd5 := pkg.MD5Encrypt(tplain)
-					if err2 := bcrypt.CompareHashAndPassword([]byte(pw), []byte(tmd5)); err2 != nil {
-						up := strings.ToUpper(md5pwd)
-						if err3 := bcrypt.CompareHashAndPassword([]byte(pw), []byte(up)); err3 != nil {
-							override := strings.TrimSpace(os.Getenv("NOISE_ADMIN_PASSWORD"))
-							if !(override != "" && (strings.EqualFold(username, "noise") || user.IsAdmin) && plain == override) {
-								return nil, errors.New(models.PasswordIncorrectMessage)
-							}
-						}
-					}
-					newHash := models.HashPassword(plain)
-					if newHash != "" {
-						_ = repository.UpdateUserField(user.ID, "password", newHash)
-						user.Password = newHash
-					}
-				}
+			if tplain != plain && bcrypt.CompareHashAndPassword([]byte(pw), []byte(tplain)) == nil {
+				matched = tplain
+			} else if bcrypt.CompareHashAndPassword([]byte(pw), []byte(md5pwd)) == nil {
+				matched = plain
 			} else {
-				if err2 := bcrypt.CompareHashAndPassword([]byte(pw), []byte(md5pwd)); err2 != nil {
-					up := strings.ToUpper(md5pwd)
-					if err3 := bcrypt.CompareHashAndPassword([]byte(pw), []byte(up)); err3 != nil {
-						override := strings.TrimSpace(os.Getenv("NOISE_ADMIN_PASSWORD"))
-						if !(override != "" && (strings.EqualFold(username, "noise") || user.IsAdmin) && plain == override) {
-							return nil, errors.New(models.PasswordIncorrectMessage)
-						}
+				tplain := strings.TrimSpace(userdto.Password)
+				tmd5 := pkg.MD5Encrypt(tplain)
+				if tplain != plain && bcrypt.CompareHashAndPassword([]byte(pw), []byte(tmd5)) == nil {
+					matched = tplain
+				} else if bcrypt.CompareHashAndPassword([]byte(pw), []byte(strings.ToUpper(md5pwd))) == nil {
+					matched = plain
+				} else {
+					override := strings.TrimSpace(os.Getenv("NOISE_ADMIN_PASSWORD"))
+					if override != "" && (strings.EqualFold(username, "noise") || user.IsAdmin) && plain == override {
+						matched = plain
+					} else {
+						return nil, errors.New(models.PasswordIncorrectMessage)
 					}
-				}
-				newHash := models.HashPassword(plain)
-				if newHash != "" {
-					_ = repository.UpdateUserField(user.ID, "password", newHash)
-					user.Password = newHash
 				}
 			}
 		}
 	} else {
-		if pw == plain { // 兼容历史明文存储
-			newHash := models.HashPassword(plain)
-			if newHash != "" {
-				_ = repository.UpdateUserField(user.ID, "password", newHash)
-				user.Password = newHash
-			}
+		if pw == plain {
+			matched = plain
 		} else {
 			return nil, errors.New(models.PasswordIncorrectMessage)
+		}
+	}
+
+	if matched == "" {
+		return nil, errors.New(models.PasswordIncorrectMessage)
+	}
+
+	needUpgrade := isMD5 || !isBcrypt || matched != plain
+	if needUpgrade {
+		newHash := models.HashPassword(matched)
+		if newHash != "" {
+			_ = repository.UpdateUserField(user.ID, "password", newHash)
+			user.Password = newHash
 		}
 	}
 
@@ -292,6 +281,68 @@ func ChangePassword(user *models.User, userdto dto.UserInfoDto) error {
 		return fmt.Errorf("更新密码失败: %v", err)
 	}
 
+	return nil
+}
+
+// ChangePasswordWithOld 验证旧密码后更新为新密码（兼容历史明文/MD5/bcrypt）
+func ChangePasswordWithOld(user *models.User, old string, new string) error {
+	if user == nil {
+		return errors.New("用户信息不能为空")
+	}
+	old = strings.TrimSpace(old)
+	new = strings.TrimSpace(new)
+	if new == "" {
+		return errors.New(models.PasswordCannotBeEmptyMessage)
+	}
+
+	// 校验旧密码是否正确（兼容历史存储格式）
+	pw := strings.TrimSpace(user.Password)
+	md5old := pkg.MD5Encrypt(old)
+	isMD5 := len(pw) == 32 && func(s string) bool {
+		for i := 0; i < len(s); i++ {
+			c := s[i]
+			if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F') {
+				return false
+			}
+		}
+		return true
+	}(pw)
+
+	matched := false
+	if strings.HasPrefix(pw, "$2a$") || strings.HasPrefix(pw, "$2b$") || strings.HasPrefix(pw, "$2y$") {
+		if bcrypt.CompareHashAndPassword([]byte(pw), []byte(old)) == nil {
+			matched = true
+		} else if bcrypt.CompareHashAndPassword([]byte(pw), []byte(md5old)) == nil {
+			matched = true
+		} else if bcrypt.CompareHashAndPassword([]byte(pw), []byte(strings.ToUpper(md5old))) == nil {
+			matched = true
+		}
+	} else if isMD5 {
+		matched = strings.EqualFold(pw, md5old)
+	} else {
+		matched = (pw == old)
+	}
+	if !matched {
+		return errors.New(models.PasswordIncorrectMessage)
+	}
+
+	// 新密码不得与旧密码一致
+	if old == new {
+		return errors.New(models.PasswordCannotBeSameAsBeforeMessage)
+	}
+	if bcrypt.CompareHashAndPassword([]byte(pw), []byte(new)) == nil {
+		return errors.New(models.PasswordCannotBeSameAsBeforeMessage)
+	}
+
+	// 使用 bcrypt 更新密码
+	hashed := models.HashPassword(new)
+	if hashed == "" {
+		return fmt.Errorf("密码加密失败")
+	}
+	user.Password = hashed
+	if err := repository.UpdateUser(user); err != nil {
+		return fmt.Errorf("更新密码失败: %v", err)
+	}
 	return nil
 }
 
