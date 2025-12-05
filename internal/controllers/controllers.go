@@ -1987,7 +1987,7 @@ func GithubLogin(c *gin.Context) {
 		c.JSON(http.StatusOK, dto.Fail[string]("GitHub 登录参数不完整"))
 		return
 	}
-	authURL := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=read:user", clientID, callback)
+	authURL := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=user:email", clientID, callback)
 	c.Redirect(http.StatusFound, authURL)
 }
 
@@ -2066,6 +2066,39 @@ func GithubCallback(c *gin.Context) {
 			return
 		}
 		user = &newUser
+	}
+	// 自动识别并绑定 GitHub 邮箱
+	emailReq, _ := http.NewRequest("GET", "https://api.github.com/user/emails", nil)
+	emailReq.Header.Set("Authorization", "Bearer "+tokenData.AccessToken)
+	emailResp, err := http.DefaultClient.Do(emailReq)
+	if err == nil {
+		defer emailResp.Body.Close()
+		var emails []struct {
+			Email    string `json:"email"`
+			Primary  bool   `json:"primary"`
+			Verified bool   `json:"verified"`
+		}
+		_ = json.NewDecoder(emailResp.Body).Decode(&emails)
+		pick := ""
+		for _, e := range emails {
+			if e.Primary && e.Verified && e.Email != "" {
+				pick = e.Email
+				break
+			}
+		}
+		if pick == "" {
+			for _, e := range emails {
+				if e.Verified && e.Email != "" {
+					pick = e.Email
+					break
+				}
+			}
+		}
+		if pick != "" {
+			user.Email = pick
+			user.EmailVerified = true
+			_ = repository.UpdateUser(user)
+		}
 	}
 	// 设置会话
 	session := sessions.Default(c)

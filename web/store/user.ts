@@ -77,7 +77,9 @@ export const useUserStore = defineStore("userStore", () => {
                 username: u.username ?? u.Username,
                 is_admin: u.is_admin ?? u.IsAdmin,
                 avatar_url: u.avatar_url ?? u.AvatarURL,
-                description: u.description ?? u.Description
+                description: u.description ?? u.Description,
+                email: u.email ?? u.Email,
+                email_verified: u.email_verified ?? u.EmailVerified
             } as any
             token.value = u.token ?? u.Token ?? token.value
             isLogin.value = true;
@@ -139,7 +141,9 @@ export const useUserStore = defineStore("userStore", () => {
                 username: u.username ?? u.Username,
                 is_admin: u.is_admin ?? u.IsAdmin,
                 avatar_url: u.avatar_url ?? u.AvatarURL,
-                description: u.description ?? u.Description
+                description: u.description ?? u.Description,
+                email: u.email ?? u.Email,
+                email_verified: u.email_verified ?? u.EmailVerified
             } as any
             isLogin.value = true;
             await getStatus();

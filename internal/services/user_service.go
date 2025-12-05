@@ -61,8 +61,23 @@ func Login(userdto dto.LoginDto) (*models.User, error) {
 	plain := userdto.Password
 	md5pwd := pkg.MD5Encrypt(plain)
 
-	user, err := repository.GetUserByUsername(username)
-	if err != nil {
+	var user *models.User
+	var err error
+	if strings.Contains(username, "@") {
+		// 输入看起来像邮箱，优先按邮箱查找
+		user, err = repository.GetUserByEmail(username)
+		if err != nil || user == nil {
+			// 回退到用户名匹配
+			user, err = repository.GetUserByUsername(username)
+		}
+	} else {
+		// 优先用户名，找不到再尝试邮箱
+		user, err = repository.GetUserByUsername(username)
+		if err != nil || user == nil {
+			user, err = repository.GetUserByEmail(username)
+		}
+	}
+	if err != nil || user == nil {
 		return nil, errors.New(models.UserNotFoundMessage)
 	}
 

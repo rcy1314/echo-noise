@@ -336,6 +336,12 @@
                 <div v-else>
                   <p :class="theme.mutedText">暂无 Token</p>
                 </div>
+                <div class="mt-3 flex items-center justify-between">
+                  <span :class="theme.mutedText">邮箱</span>
+                  <span :class="userStore.user?.email ? theme.text : 'text-amber-400'">
+                    {{ userStore.user?.email ? userStore.user?.email : '未绑定邮箱，请先绑定邮箱' }}
+                  </span>
+                </div>
                 <div class="border-t mt-4 pt-3" :class="theme.border">
                   <div class="flex justify-between items-center mb-2">
                     <span :class="theme.mutedText">修改密码</span>

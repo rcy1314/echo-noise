@@ -11,8 +11,8 @@
           <UButton variant="link" color="indigo" class="text-sm" @click="goRegister">去注册</UButton>
         </div>
         <UForm @submit.prevent="onSubmit">
-          <UFormGroup label="用户名" class="mb-3">
-            <UInput v-model="form.username" placeholder="请输入用户名" />
+          <UFormGroup label="用户名/已绑定邮箱" class="mb-3">
+            <UInput v-model="form.username" placeholder="请输入用户名或已绑定邮箱" />
           </UFormGroup>
           <UFormGroup label="密码" class="mb-2">
             <UInput v-model="form.password" type="password" placeholder="请输入密码" autocomplete="current-password" autocorrect="off" autocapitalize="off" spellcheck="false" />
