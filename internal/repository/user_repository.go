@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"strings"
 	"sync"
 	"time"
 
@@ -21,7 +22,16 @@ var (
 
 func GetUserByUsername(username string) (*models.User, error) {
 	var user models.User
-	err := database.DB.Where("username = ?", username).First(&user).Error
+	err := database.DB.Where("LOWER(username) = ?", strings.ToLower(strings.TrimSpace(username))).First(&user).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func GetUserByEmail(email string) (*models.User, error) {
+	var user models.User
+	err := database.DB.Where("email = ?", email).First(&user).Error
 	if err != nil {
 		return nil, err
 	}
@@ -98,63 +108,74 @@ func UpdateUser(user *models.User) error {
 	return nil
 }
 func GetSettingByID(id uint) (*models.Setting, error) {
-    var setting models.Setting
-    result := database.DB.First(&setting, id)
-    if result.Error != nil {
-        return nil, result.Error
-    }
-    return &setting, nil
+	var setting models.Setting
+	result := database.DB.First(&setting, id)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &setting, nil
 }
 
 func UpdateSetting(setting *models.Setting, updates map[string]interface{}) error {
-    result := database.DB.Model(setting).Updates(updates)
-    return result.Error
+	result := database.DB.Model(setting).Updates(updates)
+	return result.Error
 }
 func UpdateUserField(userID uint, field string, value interface{}) error {
-    return database.DB.Model(&models.User{}).Where("id = ?", userID).Update(field, value).Error
+	return database.DB.Model(&models.User{}).Where("id = ?", userID).Update(field, value).Error
 }
 func UpdateUserToken(userID uint, token string) error {
-    err := database.DB.Model(&models.User{}).Where("id = ?", userID).Update("token", token).Error
-    if err != nil {
-        return err
-    }
-    clearUserCache(userID)  // 清除用户缓存
-    return nil
+	err := database.DB.Model(&models.User{}).Where("id = ?", userID).Update("token", token).Error
+	if err != nil {
+		return err
+	}
+	clearUserCache(userID) // 清除用户缓存
+	return nil
 }
+
 // DeleteUser 删除用户
 func DeleteUser(id uint) error {
-    err := database.DB.Delete(&models.User{}, id).Error
-    if err != nil {
-        return err
-    }
-    clearUserCache(id)
-    return nil
+	err := database.DB.Delete(&models.User{}, id).Error
+	if err != nil {
+		return err
+	}
+	clearUserCache(id)
+	return nil
+}
+
+// CountAdmins 统计管理员数量
+func CountAdmins() (int64, error) {
+	var count int64
+	err := database.DB.Model(&models.User{}).Where("is_admin = ?", true).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 // BatchCreateUsers 批量创建用户
 func BatchCreateUsers(users []*models.User) error {
-    return database.DB.Create(&users).Error
+	return database.DB.Create(&users).Error
 }
 
 // BatchUpdateUsers 批量更新用户
 func BatchUpdateUsers(users []*models.User) error {
-    for _, user := range users {
-        if err := UpdateUser(user); err != nil {
-            return err
-        }
-    }
-    return nil
+	for _, user := range users {
+		if err := UpdateUser(user); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ClearExpiredCache 清理过期缓存
 func ClearExpiredCache() {
-    cacheMutex.Lock()
-    defer cacheMutex.Unlock()
-    
-    now := time.Now()
-    for id, item := range userCacheMap {
-        if now.Sub(item.timestamp) > cacheExpiry {
-            delete(userCacheMap, id)
-        }
-    }
+	cacheMutex.Lock()
+	defer cacheMutex.Unlock()
+
+	now := time.Now()
+	for id, item := range userCacheMap {
+		if now.Sub(item.timestamp) > cacheExpiry {
+			delete(userCacheMap, id)
+		}
+	}
 }

@@ -1,51 +1,32 @@
 <template>
-    <UCard class="mx-auto sm:max-w-2xl hover:shadow-md backdrop-blur-sm bg-black/40 shadow-lg text-white">
-      <div class="heatmap-header">
-        <h3>内容发布日历</h3>
-        <div class="heatmap-legend">
-          <span>少</span>
-          <div class="legend-colors">
-            <div v-for="n in 5" :key="n" :style="{ backgroundColor: getColor(n) }"></div>
-          </div>
-          <span>多</span>
-        </div>
-      </div>
-      
-      <div class="calendar-wrapper">
-        <div class="calendar-container" ref="calendarContainer">
-        <!-- 月份标题 -->
-        <div class="month-labels">
-          <div class="month-label" v-for="(month, index) in monthLabels" :key="index">{{ month }}</div>
-        </div>
-        
-        <!-- 星期标签 -->
-        <div class="weekday-labels">
-          <div class="weekday-label" v-for="day in weekdays" :key="day">{{ day }}</div>
-        </div>
-        
-        <!-- 热力图网格 -->
-        <div class="heatmap-grid">
-          <div v-for="(week, i) in calendarData" :key="i" class="heatmap-week">
-            <div 
-              v-for="(day, j) in week" 
-              :key="j" 
-              class="heatmap-day"
-              :style="{ backgroundColor: getBackgroundColor(day) }"
-              :title="`${day.date}: ${day.count || 0} 条内容`"
-            ></div>
-          </div>
+  <div class="calendar-wrapper">
+    <div class="calendar-container" ref="calendarContainer" :class="isDark ? 'heatmap-dark' : 'heatmap-light'">
+      <div class="heatmap-grid">
+        <div v-for="(week, i) in calendarData" :key="i" class="heatmap-week">
+          <div 
+            v-for="(day, j) in week" 
+            :key="j" 
+            class="heatmap-day"
+            :style="{ backgroundColor: getBackgroundColor(day) }"
+            :title="`${day.date} · ${day.count || 0} 条`"
+          ></div>
         </div>
       </div>
     </div>
-  </UCard>
+  </div>
 </template>
   
-  <script setup lang="ts">
-  import { ref, onMounted, computed, nextTick } from 'vue'
-  
-  const rawData = ref([])
-  const calendarData = ref([])
-  const calendarContainer = ref(null)
+<script setup lang="ts">
+import { ref, onMounted, computed, nextTick, inject } from 'vue'
+
+const rawData = ref([])
+const calendarData = ref([])
+const calendarContainer = ref(null)
+
+// 主题注入与样式类
+const injectedTheme = inject('contentTheme', ref('light')) as any
+const isDark = computed(() => String((injectedTheme && injectedTheme.value !== undefined) ? injectedTheme.value : injectedTheme) === 'dark')
+const mutedTextClass = computed(() => (isDark.value ? 'text-white/70' : 'text-black/60'))
   
   // 生成月份标签
   const monthLabels = computed(() => {
@@ -82,13 +63,23 @@
   // 中文星期
   const weekdays = ['日', '一', '二', '三', '四', '五', '六']
   
-  const getColor = (level: number) => {
-    const colors = ['#9be9a8', '#40c463', '#30a14e', '#216e39', '#0e4429']
-    return colors[Math.min(level - 1, 4)] || '#ebedf0'
-  }
+const getColor = (level: number) => {
+  // 统一为主题友好的绿色梯度（亮：GitHub风格；暗：降低饱和度提高层次）
+  const lightColors = ['#9be9a8', '#40c463', '#30a14e', '#216e39', '#0e4429']
+  const darkColors = [
+    'rgba(16, 185, 129, 0.28)',
+    'rgba(16, 185, 129, 0.45)',
+    'rgba(16, 185, 129, 0.62)',
+    'rgba(16, 185, 129, 0.80)',
+    'rgba(16, 185, 129, 0.98)'
+  ]
+  const arr = isDark.value ? darkColors : lightColors
+  return arr[Math.min(Math.max(level - 1, 0), 4)] || (isDark.value ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)')
+}
   // 优化颜色计算
 const getBackgroundColor = (day: { count: number; level: number }) => {
-  if (!day.count) return 'rgba(235, 237, 240, 0.4)'
+  // 空格子颜色统一且对比适中
+  if (!day.count) return isDark.value ? 'rgba(255, 255, 255, 0.10)' : '#e5e7eb'
   return getColor(day.level)
 }
   const fetchHeatmapData = async () => {
@@ -190,126 +181,96 @@ const getBackgroundColor = (day: { count: number; level: number }) => {
     calendarData.value = calendar;
   }
   
+  const generateEmptyCalendar = () => {
+    const today = new Date()
+    const startDate = new Date(today)
+    startDate.setMonth(today.getMonth() - 11)
+    startDate.setDate(1)
+    const endDate = new Date(startDate)
+    endDate.setMonth(startDate.getMonth() + 11)
+    endDate.setDate(endDate.getDate() + (6 - endDate.getDay()))
+
+    const calendar = []
+    let currentDate = new Date(startDate)
+    currentDate.setDate(currentDate.getDate() - currentDate.getDay())
+
+    while (currentDate <= endDate) {
+      const weekData = []
+      for (let day = 0; day < 7; day++) {
+        weekData.push({ date: formatDate(currentDate), count: 0, level: 0 })
+        currentDate.setDate(currentDate.getDate() + 1)
+      }
+      calendar.push(weekData)
+    }
+    calendarData.value = calendar
+  }
+
   onMounted(() => {
+    generateEmptyCalendar()
     fetchHeatmapData()
   })
   </script>
   
   <style scoped>
   .calendar-wrapper {
-  position: relative;
-  overflow: hidden;
-  margin: 0 -16px;
-  padding: 16px;
-}
-
-.calendar-container {
-  position: relative;
-  padding-top: 20px;
-  padding-left: 30px;
-  overflow: visible;
-}
-
-  .heatmap-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-  }
-  
-  .heatmap-header h3 {
+    position: relative;
+    overflow: hidden;
     margin: 0;
-    font-size: 16px;
-    color: white;
+    padding: 0;
+    width: 100%;
   }
-  
-  .heatmap-legend {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.7);
+
+  .calendar-container {
+    position: relative;
+    padding: 0;
+    overflow: visible;
+    width: 100%;
   }
-  
-  .legend-colors {
-    display: flex;
-    gap: 2px;
-  }
-  
-  .legend-colors div {
-    width: 12px;
-    height: 12px;
-    border-radius: 2px;
-  }
+
   
   .calendar-container {
     position: relative;
-    padding-top: 20px;
-    padding-left: 30px;
+    padding-top: 0;
+    padding-left: 0;
   }
   
   .month-label {
   flex: 1;
   text-align: center;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.7);
   padding: 0 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
   
-.month-labels {
-  display: flex;
-  position: absolute;
-  top: 0;
-  left: 30px;
-  right: 0;
-  padding-bottom: 4px;
-}
+  .month-labels { display: none; }
   
-  .weekday-labels {
-    position: absolute;
-    left: 0;
-    top: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
+  .weekday-labels { display: none; }
   
   .weekday-label {
     height: 12px;
     line-height: 12px;
     font-size: 10px;
-    color: rgba(255, 255, 255, 0.7);
     text-align: right;
     padding-right: 4px;
   }
   
   .heatmap-grid {
-   display: flex;
-   gap: 3px;
-   overflow-x: auto;
-   padding-bottom: 5px;
-   scroll-behavior: smooth;
-   -webkit-overflow-scrolling: touch;
-   scrollbar-width: thin;
-   mask-image: linear-gradient(to right, transparent, black 30px, black 90%, transparent);
-   -webkit-mask-image: linear-gradient(to right, transparent, black 30px, black 90%, transparent);
+    display: flex;
+    gap: 3px;
+    overflow-x: auto;
+    padding-bottom: 0;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    width: 100%;
   }
-  .heatmap-grid::-webkit-scrollbar {
-  height: 6px;
-}
-
-.heatmap-grid::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-}
-
-.heatmap-grid::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 3px;
-}
+  .heatmap-grid::-webkit-scrollbar { height: 6px; }
+  .heatmap-light .heatmap-grid::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.08); border-radius: 3px; }
+  .heatmap-light .heatmap-grid::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.25); border-radius: 3px; }
+  .heatmap-dark .heatmap-grid::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.08); border-radius: 3px; }
+  .heatmap-dark .heatmap-grid::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.28); border-radius: 3px; }
   .heatmap-week {
     display: flex;
     flex-direction: column;
@@ -321,13 +282,16 @@ const getBackgroundColor = (day: { count: number; level: number }) => {
     height: 12px;
     border-radius: 2px;
     transition: all 0.2s ease;
+    border: 1px solid transparent;
   }
+  .heatmap-light .heatmap-day { border-color: #cbd5e1; }
+  .heatmap-dark .heatmap-day { border-color: rgba(255,255,255,0.12); }
   
   .heatmap-day:hover {
     transform: scale(1.2);
   }
   
-  @media screen and (max-width: 768px) {
+  @media screen and (max-width: 1024px) {
     .heatmap-day {
       width: 8px;
       height: 8px;
@@ -350,9 +314,10 @@ const getBackgroundColor = (day: { count: number; level: number }) => {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  background: linear-gradient(to right, rgba(0, 0, 0, 0.8) 80%, transparent);
   padding-right: 10px;
   z-index: 1;
 }
   }
   </style>
+<style scoped>
+</style>

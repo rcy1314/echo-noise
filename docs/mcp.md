@@ -2,11 +2,20 @@
 
 ### 连接方式与配置建议
 
+#### 端口约定（统一说明）
+- 后端 API 与静态页面：`1314`（容器映射 `-p 1314:1314`）
+- 本地前端开发服务器：`1316`（开发时代理 `/api`、`/rss` 到 `1314`）
+- MCP HTTP/SSE（可选）：`1315`（设置 `NOTE_HTTP_PORT=1315` 并映射 `-p 1315:1315`）
+- 仅 Stdio 握手：`NOTE_HTTP_PORT=0`（不监听 HTTP，不占用任何端口）
+
+ 说明：MCP 作为客户端访问 `NOTE_HOST`（默认 `http://localhost:1314`），不会与后端端口产生占用冲突；只有在开启 MCP 的 HTTP/SSE 服务时才需要 `1315`。
+ 实现说明：MCP 的 HTTP/SSE 服务在 `mcp/server.js:509` 读取 `NOTE_HTTP_PORT`，大于 `0` 时启动并监听；端点包括 `GET /mcp/tools`、`POST /mcp/tool/:name`、`GET /mcp/sse`。
+
 - 重要：使用 `docker exec` 方式需要本地已安装并运行 Docker，且当前 CLI 指向目标 Docker 守护进程（本机或远程）。如需操作云服务器上的容器，必须先切换到远程 Docker 上下文（`docker context use <remote>`）或配置 `DOCKER_HOST`，否则命令会作用于本机。
 - 容器需为 `final-mcp` 目标并已运行，容器名与配置保持一致（例如 `Ech0-Noise`）。
 - 环境变量值必须是纯字符串，不要包含反引号或多余空格（如 `NOTE_HOST=http://<服务器IP>:1314`）。
 - 不使用本地 Docker 时，可改用 SSH + Stdio 或 HTTP/SSE 网关；详见下文“本地连接远程 MCP（多种方式）”。
-- 避免二次占用 `1315` 端口导致 `EADDRINUSE`
+- 避免二次占用 `1315` 端口导致 `EADDRINUSE`（如需同时运行多实例，请将第二实例的 `NOTE_HTTP_PORT` 设为 `0`）
 - 使用 `docker exec` 启动 `stdio` 握手的实例时，将 `NOTE_HTTP_PORT` 设为 `0`，只进行握手，不再监听 HTTP
 
 ```json

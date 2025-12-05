@@ -1,34 +1,34 @@
 <template>
   <!-- 搜索内容显示 -->
-  <UModal v-model="showModal">
-    <div class="bg-gray-800 p-6 rounded-lg">
-      <h3 class="text-xl font-semibold text-white mb-4">搜索内容</h3>
+  <UModal v-model="showModal" :ui="{ container: 'items-center', base: 'backdrop-blur-sm' }">
+    <UCard class="search-card">
+      <template #header>
+        <div class="flex items-center gap-2">
+          <UIcon name="i-heroicons-magnifying-glass" class="w-5 h-5" />
+          <h3 class="text-base font-semibold">站内搜索</h3>
+        </div>
+      </template>
       <div class="space-y-4">
-        <UInput
-          v-model="searchQuery"
-          placeholder="输入搜索关键词"
-          class="w-full"
-          @keyup.enter="handleSearch"
-        />
-        <div class="flex justify-end gap-2">
-          <UButton
-            variant="solid"
-            color="gray"
-            @click="closeModal"
-            class="bg-gray-700 hover:bg-gray-700 text-white hover:text-white border border-gray-600"
-          >
-            取消
-          </UButton>
-          <UButton
-            color="primary"
-            @click="handleSearch"
-            class="text-white hover:text-white"
-          >
-            搜索
-          </UButton>
+        <div class="relative">
+          <UIcon name="i-heroicons-magnifying-glass" class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 opacity-70" />
+          <UInput
+            v-model="searchQuery"
+            placeholder="请输入关键词"
+            class="w-full pl-10"
+            :ui="{ base: 'rounded-xl' }"
+            @keyup.enter="handleSearch"
+            autofocus
+          />
+        </div>
+        <div class="flex justify-between items-center">
+          <div class="text-xs opacity-70">按 Enter 搜索，Esc 关闭</div>
+          <div class="flex justify-end gap-2">
+            <UButton variant="ghost" color="gray" @click="closeModal">取消</UButton>
+            <UButton color="orange" @click="handleSearch">搜索</UButton>
+          </div>
         </div>
       </div>
-    </div>
+    </UCard>
   </UModal>  
 </template>
 
@@ -37,7 +37,7 @@ import { ref, computed } from 'vue';
 
 const toast = useToast();
 const config = useRuntimeConfig();
-const BASE_API = config.public.baseApi;
+const BASE_API = config.public.baseApi || '/api';
 
 // 添加props和emits以支持v-model
 const props = defineProps({
@@ -122,9 +122,6 @@ defineExpose({
 </script>
 
 <style scoped>
-.modal-content {
-  background-color: rgba(36, 43, 50, 0.95);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-}
+.search-card { background: #ffffff; color: #111827; border: 1px solid #e5e7eb; border-radius: 16px; }
+html.dark .search-card { background: rgba(36,43,50,0.95); color: #fff; border: 1px solid rgba(255,255,255,0.08); }
 </style>

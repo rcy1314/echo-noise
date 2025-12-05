@@ -8,7 +8,7 @@ export const useMessage = () => {
     // save
     const save = async (messageToSave: MessageToSave) => {
         try {
-            const response = await postRequest<Message>('messages', messageToSave);
+            const response = await postRequest<Message>('messages', messageToSave, { credentials: 'include' });
             if (!response || response.code !== 1) {
                 console.log(response?.code);
                 toast.add({
@@ -78,7 +78,7 @@ export const useMessage = () => {
             const formData = new FormData();
             formData.append('image', file);
 
-            const response = await postRequest<string>('images/upload', formData);
+            const response = await postRequest<string>('images/upload', formData, { credentials: 'include' });
 
             if (!response || response.code !== 1) {
                 console.log(response?.code);

@@ -27,7 +27,7 @@ export const useMessageStore = defineStore("messageStore", () => {
  // 获取网站配置
  const getSiteConfig = async () => {
   try {
-    const response = await getRequest<any>("site/config", {
+    const response = await getRequest<any>("site/config", undefined, {
       credentials: 'include'
     });
     
@@ -137,7 +137,7 @@ const getMessages = async (query: PageQuery) => {
   // 删除笔记
   const deleteMessage = async (id: number) => {
     try {
-      const response = await deleteRequest<any>(`messages/${id}`, {
+      const response = await deleteRequest<any>(`messages/${id}`, undefined, {
         credentials: 'include'
       });
       
@@ -165,9 +165,9 @@ const getMessages = async (query: PageQuery) => {
   // 按ID获取单条消息
   const getMessageById = async (id: string) => {
     try {
-      const response = await getRequest<any>(`messages/${id}`, {
-        credentials: 'include'
-      } as any);
+    const response = await getRequest<any>(`messages/${id}`, undefined, {
+      credentials: 'include'
+    });
       if (!response || response.code !== 1) {
         toast.add({
           title: "获取消息失败",
@@ -251,7 +251,7 @@ const getMessages = async (query: PageQuery) => {
  // 获取所有标签
  const getAllTags = async () => {
   try {
-    const response = await getRequest<any>("messages/tags", {
+    const response = await getRequest<any>("messages/tags", undefined, {
       credentials: 'include'
     });
     
@@ -276,7 +276,7 @@ const getMessages = async (query: PageQuery) => {
 // 根据标签获取消息
 const getMessagesByTag = async (tag: string) => {
   try {
-    const response = await getRequest<any>(`messages/tags/${encodeURIComponent(tag)}`, {
+    const response = await getRequest<any>(`messages/tags/${encodeURIComponent(tag)}`, undefined, {
       credentials: 'include'
     });
     
@@ -300,7 +300,7 @@ const getMessagesByTag = async (tag: string) => {
 // 获取所有图片
 const getAllImages = async () => {
   try {
-    const response = await getRequest<any>("messages/images", {
+    const response = await getRequest<any>("messages/images", undefined, {
       credentials: 'include'
     });
     
@@ -324,7 +324,7 @@ const getAllImages = async () => {
   // 获取推送配置
 const getNotifyConfig = async () => {
   try {
-    const response = await getRequest<any>("notify/config", {
+    const response = await getRequest<any>("notify/config", undefined, {
       credentials: 'include'
     });
     

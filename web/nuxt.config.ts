@@ -5,7 +5,8 @@ export default defineNuxtConfig({
         { rel: 'stylesheet', href: 'https://www.noisework.cn/css/APlayer.min.css' },
         { rel: 'stylesheet', href: 'https://unpkg.com/@waline/client@v3/dist/waline.css' },
         { rel: 'stylesheet', href: 'https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css' },
-        { rel: 'icon', href: '/favicon.ico' },
+        { rel: 'icon', href: '/favicon.svg' },
+        { rel: 'apple-touch-icon', href: '/favicon.svg' },
         { rel: 'manifest', href: '/manifest.webmanifest' },
       ],
       script: [
@@ -34,12 +35,25 @@ export default defineNuxtConfig({
   },
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
+  vite: {
+    server: {
+      proxy: {
+        '/api': {
+          target: 'http://localhost:1314',
+          changeOrigin: true
+        },
+        '/rss': {
+          target: 'http://localhost:1314',
+          changeOrigin: true
+        }
+      }
+    }
+  },
   plugins: [
     '~/plugins/fetch.ts'
   ],
   modules: [
     '@nuxt/ui',
-    '@nuxt/fonts',
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt',
   ],
@@ -51,15 +65,19 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      baseApi: process.env.BASE_API,
+      baseApi: process.env.NODE_ENV === 'development' ? '/api' : (process.env.BASE_API || '/api'),
     }
   },
   // 添加以下配置
   nitro: {
-    preset: 'node-server',
+    preset: process.env.NODE_ENV === 'production' ? 'static' : undefined,
     devProxy: {
       '/api': {
-        target: 'http://localhost:1315/api',
+        target: 'http://localhost:1314',
+        changeOrigin: true
+      },
+      '/rss': {
+        target: 'http://localhost:1314',
         changeOrigin: true
       }
     },
@@ -79,7 +97,7 @@ export default defineNuxtConfig({
   },
   devServer: {
     port: 1314,
-    host: 'localhost'
+    host: '0.0.0.0'
   },
   ssr: false,
 })

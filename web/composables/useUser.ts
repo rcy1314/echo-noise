@@ -31,7 +31,6 @@ export const useUser = () => {
     const login = async (userToLogin: UserToLogin) => {
         const response = await userStore.login(userToLogin);
         if (response) {
-            // 登录成功后立即获取最新状态
             await checkLoginStatus();
             toast.add({
                 title: '登录成功',
@@ -40,7 +39,7 @@ export const useUser = () => {
                 color: 'green',
                 timeout: 1000,
             });
-            router.push('/')
+            // 页面自行决定跳转（登录页处理 redirect->/status）
         }
     }
 

@@ -3,9 +3,17 @@ package services
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/lin-snow/ech0/internal/database"
 	"github.com/lin-snow/ech0/internal/models"
+	"github.com/lin-snow/ech0/internal/syncmanager"
 )
 
 // GetFrontendConfig 获取前端配置
@@ -27,8 +35,34 @@ func GetFrontendConfig() (map[string]interface{}, error) {
 		allowReg = setting.AllowRegistration
 	}
 
+	// 读取 DB 类型
+	dbType := os.Getenv("DB_TYPE")
+	if dbType == "" {
+		dbType = "sqlite"
+	}
+
+	var leftAdsListRaw []map[string]interface{}
+	if strings.TrimSpace(config.LeftAds) != "" {
+		_ = json.Unmarshal([]byte(config.LeftAds), &leftAdsListRaw)
+	}
+	normalizedAds := make([]map[string]string, 0, len(leftAdsListRaw))
+	for _, m := range leftAdsListRaw {
+		img := strings.TrimSpace(fmt.Sprintf("%v", pickAny(m, "imageURL", "ImageURL")))
+		link := strings.TrimSpace(fmt.Sprintf("%v", pickAny(m, "linkURL", "LinkURL")))
+		desc := strings.TrimSpace(fmt.Sprintf("%v", pickAny(m, "description", "Description")))
+		if img == "" {
+			continue
+		}
+		normalizedAds = append(normalizedAds, map[string]string{
+			"imageURL":    img,
+			"linkURL":     link,
+			"description": desc,
+		})
+	}
+
 	configMap := map[string]interface{}{
 		"allowRegistration": allowReg,
+		"dbType":            dbType,
 		"frontendSettings": map[string]interface{}{
 			"siteTitle":        config.SiteTitle,
 			"subtitleText":     config.SubtitleText,
@@ -45,6 +79,16 @@ func GetFrontendConfig() (map[string]interface{}, error) {
 			"rssFaviconURL":    config.RSSFaviconURL,
 			"walineServerURL":  config.WalineServerURL,
 			"enableGithubCard": config.EnableGithubCard,
+			// 系统欢迎组件（与用户资料解耦；若未设置则回退默认）
+			"welcomeAvatarURL":   choose(config.WelcomeAvatarURL, getDefaultConfig()["frontendSettings"].(map[string]interface{})["welcomeAvatarURL"].(string)),
+			"welcomeName":        choose(config.WelcomeName, getDefaultConfig()["frontendSettings"].(map[string]interface{})["welcomeName"].(string)),
+			"welcomeDescription": choose(config.WelcomeDescription, getDefaultConfig()["frontendSettings"].(map[string]interface{})["welcomeDescription"].(string)),
+			"welcomeUseAdmin":    config.WelcomeUseAdmin,
+			// GitHub OAuth
+			"githubOAuthEnabled": config.GithubOAuthEnabled,
+			"githubClientId":     config.GithubClientId,
+			"githubClientSecret": config.GithubClientSecret,
+			"githubCallbackURL":  config.GithubCallbackURL,
 			// PWA 设置
 			"pwaEnabled":     config.PwaEnabled,
 			"pwaTitle":       choose(config.PwaTitle, config.SiteTitle),
@@ -55,7 +99,66 @@ func GetFrontendConfig() (map[string]interface{}, error) {
 			// 公告栏
 			"announcementText":    choose(config.AnnouncementText, "欢迎访问我的说说笔记！"),
 			"announcementEnabled": config.AnnouncementEnabled,
+			// 音乐播放器
+			"musicEnabled":          config.MusicEnabled,
+			"musicPlaylistId":       choose(config.MusicPlaylistId, ""),
+			"musicSongId":           choose(config.MusicSongId, ""),
+			"musicPosition":         choose(config.MusicPosition, "bottom-left"),
+			"musicTheme":            choose(config.MusicTheme, "auto"),
+			"musicLyric":            config.MusicLyric,
+			"musicAutoplay":         config.MusicAutoplay,
+			"musicDefaultMinimized": config.MusicDefaultMinimized,
+			"musicEmbed":            config.MusicEmbed,
+			"musicCssCdnURL":        choose(config.MusicCssCdnURL, ""),
+			"musicJsCdnURL":         choose(config.MusicJsCdnURL, ""),
+			// 评论系统
+			"commentEnabled":       config.CommentEnabled,
+			"commentSystem":        choose(config.CommentSystem, "builtin"),
+			"commentEmailEnabled":  config.CommentEmailEnabled,
+			"commentLoginRequired": config.CommentLoginRequired,
+			// 扩展组件开关
+			"calendarEnabled": config.CalendarEnabled,
+			"timeEnabled":     config.TimeEnabled,
+			"hitokotoEnabled": config.HitokotoEnabled,
+
+			"leftAdEnabled":     config.LeftAdEnabled,
+			"leftAds":           normalizedAds,
+			"leftAdsIntervalMs": config.LeftAdsIntervalMs,
 		},
+		"storageEnabled": config.StorageEnabled,
+		"storageConfig": map[string]interface{}{
+			"provider":        choose(config.StorageProvider, ""),
+			"endpoint":        choose(config.StorageEndpoint, ""),
+			"region":          choose(config.StorageRegion, ""),
+			"bucket":          choose(config.StorageBucket, ""),
+			"accessKey":       choose(config.StorageAccessKey, ""),
+			"secretKey":       choose(config.StorageSecretKey, ""),
+			"usePathStyle":    config.StorageUsePathStyle,
+			"publicBaseURL":   choose(config.StoragePublicBaseURL, ""),
+			"autoSyncEnabled": config.StorageAutoSyncEnabled,
+			"syncMode":        choose(config.StorageSyncMode, "instant"),
+			"syncIntervalMinute": func() int {
+				if config.StorageSyncIntervalMinute > 0 {
+					return config.StorageSyncIntervalMinute
+				}
+				return 15
+			}(),
+			"lastSyncTime": func() string {
+				if config.StorageLastSyncTime != nil {
+					return config.StorageLastSyncTime.Format(time.RFC3339)
+				}
+				return ""
+			}(),
+		},
+		"smtpEnabled":    config.SmtpEnabled,
+		"smtpDriver":     config.SmtpDriver,
+		"smtpHost":       config.SmtpHost,
+		"smtpPort":       config.SmtpPort,
+		"smtpUser":       config.SmtpUser,
+		"smtpPass":       config.SmtpPass,
+		"smtpFrom":       config.SmtpFrom,
+		"smtpEncryption": config.SmtpEncryption,
+		"smtpTLS":        config.SmtpTLS,
 	}
 	return configMap, nil
 }
@@ -125,6 +228,171 @@ func UpdateFrontendSetting(userID uint, settingMap map[string]interface{}) error
 	}
 	if v, ok := frontendSettings["walineServerURL"].(string); ok {
 		config.WalineServerURL = v
+	}
+	if vb, ok := frontendSettings["calendarEnabled"].(bool); ok {
+		config.CalendarEnabled = vb
+	} else if vs, ok := frontendSettings["calendarEnabled"].(string); ok {
+		config.CalendarEnabled = (vs == "true")
+	}
+	if vb, ok := frontendSettings["timeEnabled"].(bool); ok {
+		config.TimeEnabled = vb
+	} else if vs, ok := frontendSettings["timeEnabled"].(string); ok {
+		config.TimeEnabled = (vs == "true")
+	}
+	if vb, ok := frontendSettings["hitokotoEnabled"].(bool); ok {
+		config.HitokotoEnabled = vb
+	} else if vs, ok := frontendSettings["hitokotoEnabled"].(string); ok {
+		config.HitokotoEnabled = (vs == "true")
+	}
+	// 评论系统设置
+	if vb, ok := frontendSettings["commentEnabled"].(bool); ok {
+		config.CommentEnabled = vb
+	} else if vs, ok := frontendSettings["commentEnabled"].(string); ok {
+		if vs == "true" {
+			config.CommentEnabled = true
+		} else if vs == "false" {
+			config.CommentEnabled = false
+		}
+	}
+
+	// 广告位设置（与评论系统无关，独立保存）
+	if vb, ok := frontendSettings["leftAdEnabled"].(bool); ok {
+		config.LeftAdEnabled = vb
+	} else if vs, ok := frontendSettings["leftAdEnabled"].(string); ok {
+		config.LeftAdEnabled = (vs == "true")
+	}
+	// 轮播间隔
+	if vi, ok := frontendSettings["leftAdsIntervalMs"].(float64); ok {
+		config.LeftAdsIntervalMs = int(vi)
+	} else if vi2, ok := frontendSettings["leftAdsIntervalMs"].(int); ok {
+		config.LeftAdsIntervalMs = vi2
+	} else if vs, ok := frontendSettings["leftAdsIntervalMs"].(string); ok {
+		if n, err := strconv.Atoi(vs); err == nil {
+			config.LeftAdsIntervalMs = n
+		}
+	}
+	// 多广告列表
+	if arr, ok := frontendSettings["leftAds"].([]interface{}); ok {
+		list := make([]map[string]string, 0, len(arr))
+		for _, it := range arr {
+			m, ok := it.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			img := strings.TrimSpace(fmt.Sprintf("%v", m["imageURL"]))
+			if img == "" {
+				continue
+			}
+			link := strings.TrimSpace(fmt.Sprintf("%v", m["linkURL"]))
+			desc := strings.TrimSpace(fmt.Sprintf("%v", m["description"]))
+			list = append(list, map[string]string{
+				"imageURL":    img,
+				"linkURL":     link,
+				"description": desc,
+			})
+		}
+		bs, _ := json.Marshal(list)
+		config.LeftAds = string(bs)
+	} else if arr2, ok := frontendSettings["leftAds"].([]map[string]string); ok {
+		bs, _ := json.Marshal(arr2)
+		config.LeftAds = string(bs)
+	}
+
+	// 系统欢迎组件（与用户资料解耦）
+	if v, ok := frontendSettings["welcomeAvatarURL"].(string); ok {
+		config.WelcomeAvatarURL = strings.TrimSpace(v)
+	}
+	if v, ok := frontendSettings["welcomeName"].(string); ok {
+		config.WelcomeName = strings.TrimSpace(v)
+	}
+	if v, ok := frontendSettings["welcomeDescription"].(string); ok {
+		config.WelcomeDescription = strings.TrimSpace(v)
+	}
+	if vb, ok := frontendSettings["welcomeUseAdmin"].(bool); ok {
+		config.WelcomeUseAdmin = vb
+	} else if vs, ok := frontendSettings["welcomeUseAdmin"].(string); ok {
+		config.WelcomeUseAdmin = (strings.EqualFold(strings.TrimSpace(vs), "true"))
+	}
+
+	// 音乐播放器设置
+	if vb, ok := frontendSettings["musicEnabled"].(bool); ok {
+		config.MusicEnabled = vb
+	} else if vs, ok := frontendSettings["musicEnabled"].(string); ok {
+		config.MusicEnabled = (vs == "true")
+	}
+	if v, ok := frontendSettings["musicPlaylistId"].(string); ok {
+		config.MusicPlaylistId = v
+	}
+	if v, ok := frontendSettings["musicSongId"].(string); ok {
+		config.MusicSongId = v
+	}
+	if v, ok := frontendSettings["musicPosition"].(string); ok {
+		config.MusicPosition = v
+	}
+	if v, ok := frontendSettings["musicTheme"].(string); ok {
+		config.MusicTheme = v
+	}
+	if vb, ok := frontendSettings["musicLyric"].(bool); ok {
+		config.MusicLyric = vb
+	} else if vs, ok := frontendSettings["musicLyric"].(string); ok {
+		config.MusicLyric = (vs == "true")
+	}
+	if vb, ok := frontendSettings["musicAutoplay"].(bool); ok {
+		config.MusicAutoplay = vb
+	} else if vs, ok := frontendSettings["musicAutoplay"].(string); ok {
+		config.MusicAutoplay = (vs == "true")
+	}
+	if vb, ok := frontendSettings["musicDefaultMinimized"].(bool); ok {
+		config.MusicDefaultMinimized = vb
+	} else if vs, ok := frontendSettings["musicDefaultMinimized"].(string); ok {
+		config.MusicDefaultMinimized = (vs == "true")
+	}
+	if vb, ok := frontendSettings["musicEmbed"].(bool); ok {
+		config.MusicEmbed = vb
+	} else if vs, ok := frontendSettings["musicEmbed"].(string); ok {
+		config.MusicEmbed = (vs == "true")
+	}
+	if v, ok := frontendSettings["musicCssCdnURL"].(string); ok {
+		config.MusicCssCdnURL = v
+	}
+	if v, ok := frontendSettings["musicJsCdnURL"].(string); ok {
+		config.MusicJsCdnURL = v
+	}
+	if v, ok := frontendSettings["commentSystem"].(string); ok {
+		config.CommentSystem = v
+	}
+	if vb, ok := frontendSettings["commentLoginRequired"].(bool); ok {
+		config.CommentLoginRequired = vb
+	} else if vs, ok := frontendSettings["commentLoginRequired"].(string); ok {
+		config.CommentLoginRequired = (vs == "true")
+	}
+	if vb, ok := frontendSettings["commentEmailEnabled"].(bool); ok {
+		config.CommentEmailEnabled = vb
+	} else if vs, ok := frontendSettings["commentEmailEnabled"].(string); ok {
+		if vs == "true" {
+			config.CommentEmailEnabled = true
+		} else if vs == "false" {
+			config.CommentEmailEnabled = false
+		}
+	}
+	// GitHub OAuth 设置
+	if vb, ok := frontendSettings["githubOAuthEnabled"].(bool); ok {
+		config.GithubOAuthEnabled = vb
+	} else if vs, ok := frontendSettings["githubOAuthEnabled"].(string); ok {
+		if vs == "true" {
+			config.GithubOAuthEnabled = true
+		} else if vs == "false" {
+			config.GithubOAuthEnabled = false
+		}
+	}
+	if v, ok := frontendSettings["githubClientId"].(string); ok {
+		config.GithubClientId = v
+	}
+	if v, ok := frontendSettings["githubClientSecret"].(string); ok {
+		config.GithubClientSecret = v
+	}
+	if v, ok := frontendSettings["githubCallbackURL"].(string); ok {
+		config.GithubCallbackURL = v
 	}
 	if v, ok := frontendSettings["enableGithubCard"].(bool); ok {
 		config.EnableGithubCard = v
@@ -213,6 +481,160 @@ func UpdateFrontendSetting(userID uint, settingMap map[string]interface{}) error
 		}
 	}
 
+	if v, ok := settingMap["storageEnabled"].(bool); ok {
+		config.StorageEnabled = v
+	}
+	if sc, ok := settingMap["storageConfig"].(map[string]interface{}); ok {
+		if pv, ok := sc["provider"].(string); ok {
+			config.StorageProvider = pv
+		}
+		if v, ok := sc["endpoint"].(string); ok {
+			config.StorageEndpoint = v
+		}
+		if v, ok := sc["region"].(string); ok {
+			config.StorageRegion = v
+		}
+		if v, ok := sc["bucket"].(string); ok {
+			config.StorageBucket = v
+		}
+		if v, ok := sc["accessKey"].(string); ok {
+			config.StorageAccessKey = v
+		}
+		if v, ok := sc["secretKey"].(string); ok {
+			config.StorageSecretKey = v
+		}
+		if v, ok := sc["usePathStyle"].(bool); ok {
+			config.StorageUsePathStyle = v
+		}
+		if v, ok := sc["publicBaseURL"].(string); ok {
+			config.StoragePublicBaseURL = v
+		}
+		if vb, ok := sc["autoSyncEnabled"].(bool); ok {
+			config.StorageAutoSyncEnabled = vb
+		} else if vs, ok := sc["autoSyncEnabled"].(string); ok {
+			config.StorageAutoSyncEnabled = (vs == "true")
+		}
+		if v, ok := sc["syncMode"].(string); ok {
+			if v == "instant" || v == "scheduled" {
+				config.StorageSyncMode = v
+			}
+		}
+		if vi, ok := sc["syncIntervalMinute"].(float64); ok {
+			config.StorageSyncIntervalMinute = int(vi)
+		} else if vi2, ok := sc["syncIntervalMinute"].(int); ok {
+			config.StorageSyncIntervalMinute = vi2
+		} else if vs, ok := sc["syncIntervalMinute"].(string); ok {
+			if n, err := strconv.Atoi(vs); err == nil {
+				config.StorageSyncIntervalMinute = n
+			}
+		}
+	}
+
+	if config.StorageProvider == "r2" {
+		config.StorageUsePathStyle = true
+	}
+	if config.StorageEnabled {
+		if config.StorageProvider == "" || config.StorageEndpoint == "" || config.StorageBucket == "" || config.StorageAccessKey == "" || config.StorageSecretKey == "" {
+			tx.Rollback()
+			return fmt.Errorf("云存储配置不完整")
+		}
+	}
+
+	if v, ok := settingMap["smtpEnabled"].(bool); ok {
+		config.SmtpEnabled = v
+	}
+	if v, ok := settingMap["smtpDriver"].(string); ok {
+		config.SmtpDriver = v
+	}
+	if v, ok := settingMap["smtpHost"].(string); ok {
+		config.SmtpHost = v
+	}
+	if v, ok := settingMap["smtpPort"].(float64); ok {
+		config.SmtpPort = int(v)
+	} else if vi, ok := settingMap["smtpPort"].(int); ok {
+		config.SmtpPort = vi
+	} else if vs, ok := settingMap["smtpPort"].(string); ok {
+		if p, err := strconv.Atoi(vs); err == nil {
+			config.SmtpPort = p
+		}
+	}
+	if v, ok := settingMap["smtpUser"].(string); ok {
+		config.SmtpUser = v
+	}
+	if v, ok := settingMap["smtpPass"].(string); ok {
+		config.SmtpPass = v
+	}
+	if v, ok := settingMap["smtpFrom"].(string); ok {
+		config.SmtpFrom = v
+	}
+	if v, ok := settingMap["smtpEncryption"].(string); ok {
+		config.SmtpEncryption = v
+	}
+	if v, ok := settingMap["smtpTLS"].(bool); ok {
+		config.SmtpTLS = v
+	}
+
+	// 自动启用：当必填项齐全时，强制启用
+	if !config.SmtpEnabled {
+		if config.SmtpHost != "" && config.SmtpPort > 0 && config.SmtpUser != "" && config.SmtpPass != "" &&
+			(config.SmtpEncryption == "ssl" || config.SmtpEncryption == "tls") {
+			config.SmtpEnabled = true
+		}
+	}
+
+	// 基础校验：开启时必填项必须完整
+	if config.SmtpEnabled {
+		if config.SmtpHost == "" || config.SmtpPort <= 0 || config.SmtpUser == "" || config.SmtpPass == "" ||
+			(config.SmtpEncryption != "ssl" && config.SmtpEncryption != "tls") {
+			tx.Rollback()
+			return fmt.Errorf("邮件设置错误")
+		}
+	}
+
+	if err := tx.Table("site_configs").Save(&config).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("更新配置失败: %v", err)
+	}
+
+	// 同步配置到自动同步管理器
+	// 注意：仅在服务进程内触发，不影响数据库事务
+	// 读取最新配置并传入管理器
+	db.Table("site_configs").First(&config)
+	// 调用同步管理器进行配置
+	syncmanager.Configure(config)
+
+	if config.StorageEnabled {
+		dbType := os.Getenv("DB_TYPE")
+		if dbType == "" {
+			dbType = "sqlite"
+		}
+		if dbType == "sqlite" {
+			base := strings.TrimSpace(config.StoragePublicBaseURL)
+			if base != "" {
+				url := strings.TrimRight(base, "/") + "/database.db"
+				client := &http.Client{Timeout: 60 * time.Second}
+				resp, err := client.Get(url)
+				if err == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+					defer resp.Body.Close()
+					tempFile := filepath.Join(os.TempDir(), "cloud_database.db")
+					out, err := os.Create(tempFile)
+					if err == nil {
+						_, _ = io.Copy(out, resp.Body)
+						out.Close()
+						dbPath := os.Getenv("DB_PATH")
+						if dbPath == "" {
+							dbPath = "/app/data/noise.db"
+						}
+						_ = os.MkdirAll(filepath.Dir(dbPath), 0755)
+						_ = copyFile(tempFile, dbPath)
+						_ = os.Remove(tempFile)
+						_ = database.ReconnectDB()
+					}
+				}
+			}
+		}
+	}
+
 	// 提交事务
 	if err := tx.Commit().Error; err != nil {
 		return fmt.Errorf("提交配置更新失败: %v", err)
@@ -240,11 +662,6 @@ func getDefaultConfig() map[string]interface{} {
 				"https://s2.loli.net/2025/03/27/PMRuX5loc6Uaimw.jpg",
 				"https://s2.loli.net/2025/03/27/U2WIslbNyTLt4rD.jpg",
 				"https://s2.loli.net/2025/03/27/xu1jZL5Og4pqT9d.jpg",
-				"https://s2.loli.net/2025/03/27/OXqwzZ6v3PVIns9.jpg",
-				"https://s2.loli.net/2025/03/27/HGuqlE6apgNywbh.jpg",
-				"https://s2.loli.net/2025/03/26/d7iyuPYA8cRqD1K.jpg",
-				"https://s2.loli.net/2025/03/27/wYy12qDMH6bGJOI.jpg",
-				"https://s2.loli.net/2025/03/27/y67m2k5xcSdTsHN.jpg",
 			},
 			"cardFooterTitle":  "Noise·说说·笔记~",
 			"cardFooterLink":   "note.noisework.cn",
@@ -252,17 +669,60 @@ func getDefaultConfig() map[string]interface{} {
 			"rssTitle":         "Noise的说说笔记",
 			"rssDescription":   "一个说说笔记~",
 			"rssAuthorName":    "Noise",
-			"rssFaviconURL":    "/favicon.ico",
+			"rssFaviconURL":    "/favicon-32x32.png",
 			"walineServerURL":  "请前往waline官网https://waline.js.org查看部署配置",
 			"enableGithubCard": false,
-			// PWA 设置默认值
-			"pwaEnabled":          true,
-			"pwaTitle":            "",
-			"pwaDescription":      "",
-			"pwaIconURL":          "",
-			"defaultContentTheme": "dark",
-			"announcementText":    "欢迎访问我的说说笔记！",
-			"announcementEnabled": true,
+			// 系统欢迎组件默认参数
+			"welcomeAvatarURL":      "https://s2.loli.net/2025/03/24/HnSXKvibAQlosIW.png",
+			"welcomeName":           "Noise",
+			"welcomeDescription":    "执迷不悟",
+			"welcomeUseAdmin":       true,
+			"githubOAuthEnabled":    false,
+			"githubClientId":        "",
+			"githubClientSecret":    "",
+			"githubCallbackURL":     "",
+			"pwaEnabled":            true,
+			"pwaTitle":              "",
+			"pwaDescription":        "",
+			"pwaIconURL":            "",
+			"defaultContentTheme":   "light",
+			"announcementText":      "欢迎访问我的说说笔记！",
+			"announcementEnabled":   true,
+			"musicEnabled":          false,
+			"musicPlaylistId":       "",
+			"musicSongId":           "",
+			"musicPosition":         "bottom-left",
+			"musicTheme":            "auto",
+			"musicLyric":            true,
+			"musicAutoplay":         false,
+			"musicDefaultMinimized": true,
+			"musicEmbed":            false,
+			"musicCssCdnURL":        "",
+			"musicJsCdnURL":         "",
+			"commentEnabled":        true,
+			"commentSystem":         "builtin",
+			"commentEmailEnabled":   false,
+			"commentLoginRequired":  false,
+			"hitokotoEnabled":       true,
+			// 广告默认参数（多广告位）
+			"leftAdEnabled": true,
+			"leftAds": []map[string]string{
+				{"imageURL": "https://picsum.photos/seed/ad-1/640/640", "linkURL": "https://note.noisework.cn", "description": "写作与记录，开启灵感之旅"},
+				{"imageURL": "https://picsum.photos/seed/ad-2/640/640", "linkURL": "https://noisework.cn", "description": "探索新主题与小工具"},
+				{"imageURL": "https://picsum.photos/seed/ad-3/640/640", "linkURL": "https://github.com", "description": "开源项目，欢迎 Star"},
+			},
+			"leftAdsIntervalMs": 4000,
+		},
+		"storageEnabled": false,
+		"storageConfig": map[string]interface{}{
+			"provider":      "",
+			"endpoint":      "",
+			"region":        "",
+			"bucket":        "",
+			"accessKey":     "",
+			"secretKey":     "",
+			"usePathStyle":  true,
+			"publicBaseURL": "",
 		},
 	}
 }
@@ -275,4 +735,30 @@ func choose(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func pickAny(m map[string]interface{}, keys ...string) interface{} {
+	for _, k := range keys {
+		if v, ok := m[k]; ok {
+			return v
+		}
+	}
+	return ""
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	return err
 }

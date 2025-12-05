@@ -275,6 +275,64 @@ func UpdateMessagePinned(messageID uint, pinned bool) error {
     }
     return nil
 }
+
+// IncrementLikeCount 点赞计数加一
+func IncrementLikeCount(messageID uint) (int, error) {
+    message, err := repository.GetMessageByID(messageID, false)
+    if err != nil {
+        return 0, fmt.Errorf("获取消息失败: %v", err)
+    }
+    if message == nil {
+        return 0, fmt.Errorf("消息不存在")
+    }
+    message.LikeCount = message.LikeCount + 1
+    if err := database.DB.Save(message).Error; err != nil {
+        return 0, fmt.Errorf("更新点赞失败: %v", err)
+    }
+    return message.LikeCount, nil
+}
+
+// ToggleLike 根据 session 或用户切换点赞状态
+func ToggleLike(messageID uint, userID *uint, sessionID string) (bool, int, error) {
+    if sessionID == "" && (userID == nil || *userID == 0) {
+        return false, 0, fmt.Errorf("缺少会话或用户信息")
+    }
+    // 查询是否已有点赞
+    var existing models.MessageLike
+    q := database.DB.Where("message_id = ?", messageID)
+    if userID != nil && *userID != 0 {
+        q = q.Where("user_id = ?", *userID)
+    } else {
+        q = q.Where("session_id = ?", sessionID)
+    }
+    if err := q.First(&existing).Error; err == nil && existing.ID != 0 {
+        // 已点赞 -> 取消
+        if err := database.DB.Delete(&existing).Error; err != nil {
+            return false, 0, err
+        }
+    } else {
+        // 未点赞 -> 新增
+        like := models.MessageLike{ MessageID: messageID, SessionID: sessionID }
+        if userID != nil && *userID != 0 { like.UserID = userID }
+        if err := database.DB.Create(&like).Error; err != nil {
+            return false, 0, err
+        }
+    }
+    // 重新统计总数并同步
+    var cnt int64
+    if err := database.DB.Model(&models.MessageLike{}).Where("message_id = ?", messageID).Count(&cnt).Error; err != nil {
+        return false, 0, err
+    }
+    if err := database.DB.Model(&models.Message{}).Where("id = ?", messageID).Update("like_count", cnt).Error; err != nil {
+        return false, int(cnt), err
+    }
+    // 再查一次是否点赞状态
+    var check models.MessageLike
+    q2 := database.DB.Where("message_id = ?", messageID)
+    if userID != nil && *userID != 0 { q2 = q2.Where("user_id = ?", *userID) } else { q2 = q2.Where("session_id = ?", sessionID) }
+    liked := q2.First(&check).Error == nil && check.ID != 0
+    return liked, int(cnt), nil
+}
 func GetMessagesGroupByDate() ([]struct {
 	Date  string `json:"date"`
 	Count int    `json:"count"`

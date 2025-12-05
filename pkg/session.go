@@ -17,11 +17,11 @@ func InitSession(r *gin.Engine) {
     store := cookie.NewStore([]byte("secret_key"))
     // 添加 cookie 配置
     store.Options(sessions.Options{
-        Path:     "/",           // cookie 路径
-        MaxAge:   86400,        // 过期时间：24小时
-        HttpOnly: true,         // 防止 XSS 攻击
-        Secure:   false,        // 开发环境设置 false，生产环境建议 true
-        SameSite: http.SameSiteStrictMode,  // CSRF 保护
+        Path:     "/",
+        MaxAge:   86400,
+        HttpOnly: true,
+        Secure:   false,
+        SameSite: http.SameSiteLaxMode,
     })
     r.Use(sessions.Sessions("ech0_session", store))
 }

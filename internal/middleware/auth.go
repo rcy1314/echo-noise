@@ -16,6 +16,28 @@ func SessionAuthMiddleware() gin.HandlerFunc {
         userID := session.Get("user_id")
 
         if userID == nil {
+            // Bearer Token 回退认证（无需 Cookie）
+            auth := ctx.GetHeader("Authorization")
+            if strings.TrimSpace(auth) != "" {
+                var token string
+                if strings.HasPrefix(auth, "Bearer ") {
+                    token = strings.TrimPrefix(auth, "Bearer ")
+                } else {
+                    token = auth
+                }
+
+                db, err := database.GetDB()
+                if err == nil {
+                    var user models.User
+                    if err := db.Where("token = ?", strings.TrimSpace(token)).First(&user).Error; err == nil && user.ID != 0 {
+                        ctx.Set("user_id", user.ID)
+                        ctx.Set("username", user.Username)
+                        ctx.Set("is_admin", user.IsAdmin)
+                        ctx.Next()
+                        return
+                    }
+                }
+            }
             // 定义公共路由
             publicPaths := []string{
                 "/api/messages/page",

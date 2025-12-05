@@ -1,14 +1,12 @@
 # 构建阶段：前端
-FROM node:22.14.0-alpine AS frontend-build
+FROM public.ecr.aws/docker/library/node:22.14.0-alpine AS frontend-build
 
 # 设置工作目录
 WORKDIR /app/web
 
 # 复制前端依赖文件并安装依赖
 COPY ./web/package.json ./web/package-lock.json* ./
-# 使用稳定镜像源以避免 EAI_AGAIN
-RUN npm config set registry https://registry.npmmirror.com && \
-    npm ci --omit=dev --registry=https://registry.npmmirror.com
+RUN npm ci --omit=dev
 
 # 更新 Browserslist 数据，避免 caniuse-lite 过期警告
 RUN npx --yes update-browserslist-db@latest
@@ -21,19 +19,17 @@ RUN npm run generate
 RUN mkdir -p /app/public && cp -r .output/public/* /app/public/
 
 # 构建阶段：后端
-FROM golang:1.24.1-alpine AS backend-build
+FROM public.ecr.aws/docker/library/golang:1.24.1-alpine AS backend-build
 
 # 设置环境变量
-ENV GOPROXY=https://goproxy.cn,direct
 ENV CGO_ENABLED=0
+ENV GOPROXY=https://goproxy.cn,direct
 
 # 设置工作目录
 WORKDIR /app
 
-# 配置 APK 镜像源并安装构建依赖
-RUN echo "https://mirrors.aliyun.com/alpine/v3.21/main" > /etc/apk/repositories && \
-    echo "https://mirrors.aliyun.com/alpine/v3.21/community" >> /etc/apk/repositories && \
-    apk update && apk add --no-cache build-base
+# 安装构建依赖
+RUN apk add --no-cache build-base
 
 # 复制 Go 模块文件并下载依赖
 COPY ./go.mod ./go.sum ./
@@ -55,11 +51,10 @@ RUN mkdir -p /app/data /app/public && chmod -R 755 /app/data
 RUN go build -trimpath -ldflags "-s -w -buildid=" -o /app/noise ./cmd/server/main.go
 
 # MCP 构建阶段（打包为单文件，避免在最终镜像中保留 node_modules）
-FROM node:20-alpine AS mcp-build
+FROM public.ecr.aws/docker/library/node:20-alpine AS mcp-build
 WORKDIR /app/mcp
 COPY ./mcp/package.json ./
-RUN npm config set registry https://registry.npmmirror.com && \
-    npm install --omit=dev --registry=https://registry.npmmirror.com
+RUN npm install --omit=dev
 COPY ./mcp/server.js ./server.js
 RUN npx --yes esbuild@0.23.0 server.js \
     --bundle \
@@ -68,10 +63,14 @@ RUN npx --yes esbuild@0.23.0 server.js \
     --outfile=server.bundle.mjs
 
 # 运行时阶段
-FROM alpine:3.21 AS final
+FROM public.ecr.aws/docker/library/alpine:3.21 AS final
 
 # 可选：是否使用 UPX 压缩二进制（1=启用，0=禁用）
 ARG USE_UPX=1
+# 镜像版本（用于在运行时展示），构建时可通过 --build-arg VERSION=xxx 传入
+ARG VERSION=latest
+ENV APP_VERSION=$VERSION
+LABEL org.opencontainers.image.version=$VERSION
 
 # 设置工作目录
 WORKDIR /app
@@ -108,10 +107,6 @@ RUN set -eux; \
     fi
 
 
-# 更换 Alpine 镜像源
-RUN echo "https://mirrors.aliyun.com/alpine/v3.21/main" > /etc/apk/repositories && \
-    echo "https://mirrors.aliyun.com/alpine/v3.21/community" >> /etc/apk/repositories
-
 # 安装运行时所需的工具
 RUN apk update && \
     apk add --no-cache ca-certificates && \
@@ -138,9 +133,7 @@ EXPOSE 1315
 CMD ["/app/noise"]
 
 FROM final AS final-mcp
-RUN echo "https://mirrors.aliyun.com/alpine/v3.21/main" > /etc/apk/repositories && \
-    echo "https://mirrors.aliyun.com/alpine/v3.21/community" >> /etc/apk/repositories && \
-    apk update && \
+RUN apk update && \
     apk add --no-cache nodejs && \
     rm -rf /var/cache/apk/*
 COPY --from=mcp-build /app/mcp/server.bundle.mjs /app/mcp/server.bundle.mjs
@@ -149,7 +142,7 @@ EXPOSE 1314
 EXPOSE 1315
 CMD ["sh","-c","node /app/mcp/server.bundle.mjs & exec /app/noise"]
 
-FROM node:20-alpine AS mcp-final
+FROM public.ecr.aws/docker/library/node:20-alpine AS mcp-final
 WORKDIR /app/mcp
 COPY --from=mcp-build /app/mcp/server.bundle.mjs /app/mcp/server.bundle.mjs
 ENV NOTE_HTTP_PORT=1315

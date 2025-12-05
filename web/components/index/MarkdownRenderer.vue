@@ -179,6 +179,12 @@ const processMediaLinks = (content: string): string => {
       </div>`;
     });
   }
+  // 将裸视频文件链接替换为内联视频标签（先于链接化处理）
+  const VIDEO_FILE_REG = /(?<!["'\(])\bhttps?:\/\/[^\s<]+\.(mp4|webm|mov|avi)(\?[^\s<\)]*)?\b/g;
+  content = content.replace(VIDEO_FILE_REG, (m) => {
+    const src = m;
+    return `<video src="${src}" controls preload="metadata" style="width:100%;height:auto"></video>`;
+  });
   return content
     .replace(BILIBILI_REG, "<div class='video-wrapper'><iframe src='https://www.bilibili.com/blackboard/html5mobileplayer.html?bvid=$1&as_wide=1&high_quality=1&danmaku=0' scrolling='no' border='0' frameborder='no' framespacing='0' allowfullscreen='true' style='position:absolute;height:100%;width:100%'></iframe></div>")
     .replace(YOUTUBE_REG, "<div class='video-wrapper'><iframe src='https://www.youtube.com/embed/$1$2' title='YouTube video player' frameborder='0' allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture' allowfullscreen></iframe></div>")
@@ -231,18 +237,26 @@ const renderMarkdown = async (markdown: string) => {
       normalizedContent = markdown ?? '';
     }
     const processedContent = processMediaLinks(normalizedContent);
+
+    // 将裸露的 URL 转为可点击链接（新标签页打开）
+    const linkifyBareUrls = (text: string): string => {
+      return text.replace(/(^|\s)(https?:\/\/[^\s<]+)/g, (_match, pre, url) => {
+        return `${pre}<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+      });
+    };
+    const withLinks = linkifyBareUrls(processedContent);
     
     // 修改标签匹配规则，排除HTML标签内的内容
     let finalContent = '';
     try {
-      finalContent = processedContent
+      finalContent = withLinks
         .replace(/<a /g, '<a target="_blank" ')
         .replace(
           /(?<!<[^>]*)#([^\s#<>]+)(?![^<]*>)/g,
           '<span class="clickable-tag" onclick="window.handleTagClick(\'$1\')" style="cursor: pointer;">#$1</span>'
         );
     } catch {
-      finalContent = processedContent.replace(/<a /g, '<a target="_blank" ');
+      finalContent = withLinks.replace(/<a /g, '<a target="_blank" ');
     }
 
   // 使用处理后的内容
@@ -260,6 +274,10 @@ const renderMarkdown = async (markdown: string) => {
         lineNumber: true,
         enable: true
       },
+      markdown: {
+        // 允许安全的 HTML 渲染，避免视频标签被移除
+        sanitize: false
+      },
 
       after: () => {
         // 确保所有链接都有 target="_blank"
@@ -273,8 +291,26 @@ const renderMarkdown = async (markdown: string) => {
         applyThemeClass();
         applyImageGrid();
         initializeZoom();
+        // 将指向视频文件的链接替换为视频标签（处理被链接化的场景）
+        const anchors = previewElement.value?.querySelectorAll('a[href]') || [] as any;
+        anchors.forEach((a: HTMLAnchorElement) => {
+          const href = a.getAttribute('href') || ''
+          if (/\.(mp4|webm|mov|avi)(\?.*)?$/i.test(href)) {
+            const v = document.createElement('video')
+            v.setAttribute('src', href)
+            v.setAttribute('controls', 'true')
+            v.setAttribute('preload', 'metadata')
+            v.style.width = '100%'
+            v.style.height = 'auto'
+            a.replaceWith(v)
+          }
+        })
         console.log('Rendering complete.');
         emit('rendered');
+        const proc = (window as any).processNMPv2Shortcodes
+        if (proc && previewElement.value) {
+          proc(previewElement.value)
+        }
         
         // 绑定标签点击事件
         const tags = previewElement.value?.querySelectorAll('.clickable-tag');
@@ -353,17 +389,45 @@ watch(() => contentTheme && contentTheme.value, () => {
   line-height: 1.6;
 }
 
-.markdown-preview h1,
-.markdown-preview h2,
-.markdown-preview h3,
-.markdown-preview h4,
-.markdown-preview h5,
-.markdown-preview h6 {
-  color: rgb(251, 247, 247);
-}
+/* 主题化整体与标题颜色（容器自身带主题类） */
+.builtin-comments .markdown-preview.theme-dark { color: rgb(227, 220, 220) !important; }
+.builtin-comments .markdown-preview.theme-light { color: #111111 !important; }
+/* 通用主题文本颜色（非评论区域也适用） */
+.markdown-preview.theme-dark { color: rgb(227, 220, 220) !important; }
+.markdown-preview.theme-light { color: #111111 !important; }
+.builtin-comments .markdown-preview.theme-dark h1,
+.builtin-comments .markdown-preview.theme-dark h2,
+.builtin-comments .markdown-preview.theme-dark h3,
+.builtin-comments .markdown-preview.theme-dark h4,
+.builtin-comments .markdown-preview.theme-dark h5,
+.builtin-comments .markdown-preview.theme-dark h6 { color: rgb(251, 247, 247) !important; }
+.builtin-comments .markdown-preview.theme-light h1,
+.builtin-comments .markdown-preview.theme-light h2,
+.builtin-comments .markdown-preview.theme-light h3,
+.builtin-comments .markdown-preview.theme-light h4,
+.builtin-comments .markdown-preview.theme-light h5,
+.builtin-comments .markdown-preview.theme-light h6 { color: #111111 !important; }
+/* 通用标题颜色（非评论区域） */
+.markdown-preview.theme-dark h1,
+.markdown-preview.theme-dark h2,
+.markdown-preview.theme-dark h3,
+.markdown-preview.theme-dark h4,
+.markdown-preview.theme-dark h5,
+.markdown-preview.theme-dark h6 { color: #ffffff !important; }
+.markdown-preview.theme-light h1,
+.markdown-preview.theme-light h2,
+.markdown-preview.theme-light h3,
+.markdown-preview.theme-light h4,
+.markdown-preview.theme-light h5,
+.markdown-preview.theme-light h6 { color: #111111 !important; }
+
+/* 链接样式（蓝色，可悬停下划线） */
+.builtin-comments .markdown-preview.theme-light a { color: #1d4ed8 !important; text-decoration: none; }
+.builtin-comments .markdown-preview.theme-light a:hover { text-decoration: underline; }
+.builtin-comments .markdown-preview.theme-dark a { color: #60a5fa !important; text-decoration: none; }
+.builtin-comments .markdown-preview.theme-dark a:hover { text-decoration: underline; }
 
 .markdown-preview p {
-  color: rgb(227, 220, 220);
   margin: 0.5em 0;
   line-height: 1.6;
 }
@@ -669,6 +733,40 @@ watch(() => contentTheme && contentTheme.value, () => {
 /* 白天模式下内容区链接颜色加深为深橙色 */
 .theme-light.markdown-preview :deep(a) {
   color: #0366d6;
+}
+/* 图片悬停与盒子效果（与内容样式一致） */
+.markdown-preview :deep(img) {
+  border-radius: 12px;
+  display: block;
+  width: 100%;
+  height: auto;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.10);
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+.markdown-preview :deep(img:hover) {
+  transform: translate3d(0,0,0) scale(1.02);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.28);
+  filter: saturate(1.06) contrast(1.02);
+}
+.image-grid-item img {
+  border-radius: 12px;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.10);
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+.image-grid-item img:hover {
+  transform: translate3d(0,0,0) scale(1.02);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.28);
+  filter: saturate(1.06) contrast(1.02);
+}
+@media (prefers-color-scheme: dark) {
+  .markdown-preview :deep(img) { box-shadow: 0 1px 2px rgba(255,255,255,0.06); }
+  .markdown-preview :deep(img:hover) { box-shadow: 0 8px 22px rgba(255,255,255,0.12); }
+  .image-grid-item img { box-shadow: 0 1px 2px rgba(255,255,255,0.06); }
+  .image-grid-item img:hover { box-shadow: 0 8px 22px rgba(255,255,255,0.12); }
 }
 
 .theme-dark.markdown-preview :deep(a) {
