@@ -1,41 +1,10 @@
 <template>
-  <UCard class="mx-auto sm:max-w-2xl hover:shadow-md backdrop-blur-sm bg-black/20 shadow-lg text-white">
-    <div class="flex justify-between mb-3">
-      <div class="flex justify-start items-center gap-2">
-        <UIcon 
-          name="i-heroicons-pencil-square" 
-          class="w-6 h-6 transition-all duration-300 hover:scale-110 hover:text-blue-400 animate-pulse" 
-        />
-        <h2 class="text-lg font-bold italic text-white">说说·笔记~</h2>
-      </div>
-      <div class="flex gap-2">
-        <ClientOnly>
-          <div @click="showSearchModal=true" class="cursor-pointer flex">
-            <UIcon name="i-heroicons-magnifying-glass" class="w-5 h-5 text-gray-200" />
-          </div>
-          <button @click="toggleHeatmap">
-            <UIcon name="i-mdi-calendar-month" class="w-5 h-5 text-gray-200" />
-          </button>
-          <button @click="toggleTheme" title="切换暗黑/白天模式">
-            <UIcon 
-              :name="(contentTheme === 'dark' ? 'i-mdi-weather-night' : 'i-mdi-white-balance-sunny')"
-              class="w-5 h-5 text-gray-200"
-            />
-          </button>
-          <a href="/rss" target="_blank">
-            <UIcon name="i-mdi-rss" class="w-5 h-5 text-gray-200" />
-          </a>
-        </ClientOnly>
-        <NuxtLink to="/status">
-          <UIcon name="i-mdi-server-outline" class="w-5 h-5 text-gray-200" />
-        </NuxtLink>
-      </div>
-    </div>
+  <div :class="containerClass">
 
-    <div>
+    <div class="editor-box">
       <VditorEditor ref="vditorEditor" v-model="MessageContent" :theme="contentTheme" />
-      <div class="flex justify-between items-center">
-        <div class="flex items-center justify-start gap-2">
+      <div class="editor-toolbar">
+        <div class="toolbar-left">
           <input
             id="file-input"
             ref="fileInput"
@@ -57,74 +26,29 @@
     </div>
     <div class="text-xs text-gray-300 mt-1 text-right">{{ videoUploadProgress }}%</div>
   </div>
-          <UButton
-            color="gray"
-            variant="solid"
-            class="cursor-pointer"
-            size="sm"
-            icon="i-fluent-image-20-regular"
-            @click="triggerFileInput"
-          />
+          <button class="tb-btn" @click="triggerFileInput" title="插入图片"><UIcon name="i-fluent-image-20-regular" class="w-5 h-5" /></button>
            <!-- 新增图床上传按钮 -->
-           <UButton
-            color="gray"
-            variant="solid"
-            class="cursor-pointer"
-            size="sm"
-            icon="i-mdi-cloud-upload-outline"
-            @click="showImageUploader = true"
-            title="图床上传"
-          />
-          <UButton
-            color="gray"
-            variant="solid"
-            size="sm"
-            @click="togglePrivate"
-            :icon="privateIcon"
-            :title="Private ? '设为公开' : '设为私密'"
-            :ui="{ tooltip: { text: Private ? '设为公开' : '设为私密' } }"
-          />
-          <UButton
-            color="gray"
-            variant="solid"
-            size="sm"
-            @click="toggleNotify"
-            :icon="enableNotify ? 'i-mdi-bell' : 'i-mdi-bell-off'"
-            :title="enableNotify ? '关闭推送' : '开启推送'"
-            :ui="{ tooltip: { text: enableNotify ? '关闭推送' : '开启推送' } }"
-            class="text-gray-600" 
-          />          
+           <button class="tb-btn" @click="showImageUploader = true" title="图床上传"><UIcon name="i-mdi-cloud-upload-outline" class="w-5 h-5" /></button>
+          
+          <button class="tb-btn" @click="togglePrivate" :title="Private ? '设为公开' : '设为私密'">
+            <UIcon :name="privateIcon" class="w-5 h-5" />
+          </button>
+          <button class="tb-btn" @click="toggleNotify" :title="enableNotify ? '关闭推送' : '开启推送'">
+            <UIcon :name="enableNotify ? 'i-mdi-bell' : 'i-mdi-bell-off'" class="w-5 h-5" />
+          </button>          
         </div>
-        <div class="flex gap-2">
-          <UButton
-            icon="i-fluent-broom-16-regular"
-            variant="solid"
-            color="gray"
-            size="sm"
-            @click="clearForm"
-          />
-          <UButton
-            icon="i-fluent-add-12-filled"
-            variant="solid"
-            color="gray"
-            size="sm"
-            @click="addMessage"
-          />
+        <div class="toolbar-right">
+          
+          <button class="tb-btn" @click="clearForm" title="清空"><UIcon name="i-fluent-broom-16-regular" class="w-5 h-5" /></button>
+          <button class="tb-btn primary" @click="addMessage" title="发布"><UIcon name="i-fluent-add-12-filled" class="w-5 h-5" /></button>
         </div>
       </div>
     </div>
-  </UCard>
+  </div>
 
   <!-- 内容预览区域 - 仅在有内容时显示 -->
-  <div
-    v-if="MessageContentHtml"
-    class="mx-auto sm:max-w-2xl mt-5 backdrop-blur-sm bg-black/40 p-4 rounded-md editor-preview"
-  >
-    <div class="prose prose-invert max-w-none">
-      <div v-html="MessageContentHtml"></div>
-    </div>
-    <hr class="border-gray-600 my-4">
-    <div v-if="MessageContentHtml" class="prose prose-invert max-w-none editor-preview">
+  <div v-if="MessageContentHtml" class="mx-auto sm:max-w-2xl mt-4 preview-card">
+    <div :class="[previewProseClass, 'max-w-none editor-preview']">
       <div v-html="MessageContentHtml"></div>
     </div>
   </div>
@@ -235,13 +159,15 @@ const toggleContentTheme = inject('toggleContentTheme') as (() => void) | undefi
 const toggleTheme = () => {
   toggleContentTheme && toggleContentTheme()
   if (typeof window !== 'undefined') {
-    document.documentElement.className = contentTheme.value === 'dark' ? 'dark' : ''
+    document.documentElement.classList.toggle('dark', contentTheme.value === 'dark')
   }
 }
 const fileInput = ref<HTMLInputElement | null>(null);
 const vditorEditor = ref<any>(null); // 需要支持 insertValue
+// 预览跟随内容自动显示，无需手动开关
 
 const privateIcon = computed(() => (Private.value ? 'i-mdi-eye-off-outline' : 'i-mdi-eye-outline'));
+const previewProseClass = computed(() => contentTheme.value === 'dark' ? 'prose prose-invert' : 'prose')
 
 const notifyStore = useNotifyStore()
 const enableNotify = ref(localStorage.getItem('enableNotify') === 'true')
@@ -585,6 +511,22 @@ const addMessage = async () => {
 </script>
 
 <style scoped>
+.editor-box { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 10px 24px rgba(0,0,0,.08); padding: 8px; color:#111827; }
+.editor-toolbar { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:6px; padding:6px; border-radius:12px; background: rgba(255,255,255,0.85); flex-wrap: wrap; overflow:hidden; }
+.toolbar-left, .toolbar-right { display:flex; align-items:center; gap:8px; flex-wrap: wrap; }
+.tb-btn { display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:12px; background: rgba(0,0,0,0.06); color:#374151; transition: all .18s ease; border:none; }
+.tb-btn:hover { transform: translate3d(0,0,0) scale(1.06); background: rgba(0,0,0,0.12); }
+.tb-btn.primary { background: linear-gradient(135deg, rgba(251,146,60,.95), rgba(234,88,12,.95)); color: #fff; }
+.tb-sep { width:1px; height:24px; background: rgba(0,0,0,0.12); margin: 0 2px; }
+.preview-card { backdrop-filter: blur(8px); background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 8px; color:#111827; }
+html.dark .editor-box { background: rgba(36,43,50,0.95); border: 1px solid rgba(255,255,255,0.08); color:#fff; }
+html.dark .editor-toolbar { background: rgba(36,43,50,0.6); }
+html.dark .tb-btn { background: rgba(255,255,255,0.06); color:#cbd5e1; border:none; }
+html.dark .tb-btn:hover { background: rgba(255,255,255,0.12); }
+html.dark .tb-sep { background: rgba(255,255,255,0.12); }
+html.dark .preview-card { background: rgba(36,43,50,0.6); border: 1px solid rgba(255,255,255,0.12); color:#fff; }
+.editor-toolbar :deep(.u-button) { border:none !important; box-shadow:none !important; background: transparent !important; color:#374151 !important; }
+html.dark .editor-toolbar :deep(.u-button) { border:none !important; box-shadow:none !important; background: rgba(255,255,255,0.06) !important; color:#cbd5e1 !important; }
 .editor-preview p { margin: 0.5rem 0; }
 .editor-preview img { margin: 0.4rem 0; }
 .image-grid {
@@ -617,3 +559,22 @@ const addMessage = async () => {
   margin: 0;
 }
 </style>
+
+const applyFormat = (type: string) => {
+  const ins = (val: string) => vditorEditor.value?.insertValue && vditorEditor.value.insertValue(val)
+  switch (type) {
+    case 'bold': ins('**加粗**'); break
+    case 'italic': ins('*斜体*'); break
+    case 'strike': ins('~~删除线~~'); break
+    case 'inlineCode': ins('`code`'); break
+    case 'codeBlock': ins('\n```\n// code\n```\n'); break
+    case 'quote': ins('\n> 引用\n'); break
+    case 'ul': ins('\n* 列表项\n'); break
+    case 'ol': ins('\n1. 列表项\n'); break
+    case 'task': ins('\n- [ ] 待办\n'); break
+    case 'hr': ins('\n---\n'); break
+    case 'link': ins('[链接文本](https://)'); break
+  }
+}
+const props = defineProps<{ wide?: boolean }>()
+const containerClass = computed(() => (props.wide ? 'w-full max-w-none' : 'mx-auto sm:max-w-2xl'))

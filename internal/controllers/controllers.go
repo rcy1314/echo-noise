@@ -23,6 +23,7 @@ import (
 	"github.com/lin-snow/ech0/internal/repository"
 	"github.com/lin-snow/ech0/internal/services"
 	"github.com/lin-snow/ech0/internal/syncmanager"
+	"github.com/lin-snow/ech0/pkg"
 )
 
 func checkUser(c *gin.Context) (*models.User, error) {
@@ -545,6 +546,37 @@ func GetComments(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 1, "data": comments})
 }
 
+// GetGuestbookMessageID 获取或创建用于留言板的独立消息ID
+func GetGuestbookMessageID(c *gin.Context) {
+	db, _ := database.GetDB()
+	var msg models.Message
+	if err := db.Where("private = ?", false).
+		Where("content LIKE ? OR content LIKE ? OR content LIKE ?",
+			"%#留言%", "%#guestbook%", "%留言板%").
+		Order("created_at ASC").First(&msg).Error; err == nil && msg.ID != 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 1, "data": gin.H{"id": msg.ID}})
+		return
+	}
+	var admin models.User
+	_ = db.Where("is_admin = ?", true).Order("id ASC").First(&admin).Error
+	uid := uint(1)
+	if admin.ID != 0 {
+		uid = admin.ID
+	}
+	content := "留言板\n\n此条用于承载全站留言，不会参与普通内容展示。\n\n#留言 #guestbook"
+	var existing models.Message
+	if err := db.Where("user_id = ? AND content LIKE ?", uid, "%#guestbook%").First(&existing).Error; err == nil && existing.ID != 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 1, "data": gin.H{"id": existing.ID}})
+		return
+	}
+	msg = models.Message{Content: content, UserID: uid, Private: false, Pinned: false}
+	if err := db.Create(&msg).Error; err != nil || msg.ID == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "初始化留言板失败"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 1, "data": gin.H{"id": msg.ID}})
+}
+
 // 提交评论（内置评论系统）
 func PostComment(c *gin.Context) {
 	idStr := c.Param("id")
@@ -577,6 +609,15 @@ func PostComment(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"code": 0, "msg": "消息不存在"})
 		return
 	}
+	// 读取站点配置并根据需要校验登录状态
+	var cfg models.SiteConfig
+	_ = db.Table("site_configs").First(&cfg).Error
+	if cfg.CommentLoginRequired {
+		if _, ok := pkg.GetUserSession(c); !ok {
+			c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "请登录后评论"})
+			return
+		}
+	}
 	comment := models.Comment{
 		MessageID: msgID,
 		Nick:      strings.TrimSpace(req.Nick),
@@ -590,8 +631,6 @@ func PostComment(c *gin.Context) {
 		return
 	}
 	// 邮件通知
-	var cfg models.SiteConfig
-	_ = db.Table("site_configs").First(&cfg).Error
 	if cfg.SmtpEnabled && cfg.CommentEmailEnabled {
 		siteURL := strings.TrimSpace(cfg.CommentEmailSiteURL)
 		if siteURL == "" || !(strings.HasPrefix(siteURL, "http://") || strings.HasPrefix(siteURL, "https://")) {
@@ -1016,6 +1055,74 @@ func UpdateMessagePinned(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"code": 1, "msg": "更新成功"})
 }
+
+// 点赞接口：POST /api/messages/:id/like （无需登录）
+func IncrementMessageLike(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "消息ID不能为空"})
+		return
+	}
+	messageID, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "无效的消息ID"})
+		return
+	}
+	count, err := services.IncrementLikeCount(uint(messageID))
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 0, "msg": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 1, "data": map[string]int{"like_count": count}})
+}
+
+// 点赞切换：POST /api/messages/:id/like/toggle
+func ToggleMessageLike(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "消息ID不能为空"})
+		return
+	}
+	messageID, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "无效的消息ID"})
+		return
+	}
+
+	// 用户或会话
+	var uid *uint
+	if user, ok := pkg.GetUserSession(c); ok {
+		u := user.ID
+		uid = &u
+	}
+	sessionID := ""
+	if cookie, _ := c.Request.Cookie("ech0_session"); cookie != nil {
+		sessionID = cookie.Value
+	}
+	// 兼容匿名用户：若无会话则使用自定义 Cookie 维持点赞状态
+	if sessionID == "" {
+		if ck, _ := c.Request.Cookie("like_sid"); ck != nil && ck.Value != "" {
+			sessionID = ck.Value
+		} else {
+			sid := models.GenerateToken(32)
+			http.SetCookie(c.Writer, &http.Cookie{
+				Name:     "like_sid",
+				Value:    sid,
+				Path:     "/",
+				MaxAge:   86400 * 365,
+				HttpOnly: true,
+				SameSite: http.SameSiteLaxMode,
+			})
+			sessionID = sid
+		}
+	}
+	liked, count, err := services.ToggleLike(uint(messageID), uid, sessionID)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 0, "msg": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 1, "data": map[string]interface{}{"liked": liked, "like_count": count}})
+}
 func GetMessagesCalendar(c *gin.Context) {
 	// 改为调用 services 层方法
 	calendarData, err := services.GetMessagesGroupByDate()
@@ -1132,68 +1239,76 @@ func RefreshRSS(c *gin.Context) {
 
 // 检查版本更新
 func CheckVersion(c *gin.Context) {
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	resp, err := client.Get("https://hub.docker.com/v2/repositories/noise233/echo-noise/tags")
+	client := &http.Client{Timeout: 10 * time.Second}
+	latestResp, err := client.Get("https://hub.docker.com/v2/repositories/noise233/echo-noise/tags/latest")
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code": 0,
-			"msg":  "检查更新失败",
-		})
+		c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "检查更新失败"})
 		return
 	}
-	defer resp.Body.Close()
-
-	var result struct {
-		Results []struct {
-			Name        string `json:"name"`
-			LastUpdated string `json:"last_updated"`
-		} `json:"results"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code": 0,
-			"msg":  "解析版本信息失败",
-		})
+	defer latestResp.Body.Close()
+	var latest struct{ Name, LastUpdated string }
+	if err := json.NewDecoder(latestResp.Body).Decode(&latest); err != nil || strings.TrimSpace(latest.LastUpdated) == "" {
+		c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "解析版本信息失败"})
 		return
 	}
-
-	var lastUpdateTime string
-	for _, tag := range result.Results {
-		if tag.Name == "latest" {
-			lastUpdateTime = tag.LastUpdated
-			break
+	cur := strings.TrimSpace(os.Getenv("ECHO_NOISE_VERSION"))
+	if cur == "" {
+		cur = strings.TrimSpace(os.Getenv("APP_VERSION"))
+	}
+	if cur == "" {
+		cur = strings.TrimSpace(os.Getenv("IMAGE_TAG"))
+	}
+	if cur == "" {
+		cur = "latest"
+	}
+	var curUpdated string
+	if strings.ToLower(cur) != "latest" {
+		curResp, err := client.Get("https://hub.docker.com/v2/repositories/noise233/echo-noise/tags/" + cur)
+		if err == nil {
+			defer curResp.Body.Close()
+			var curTag struct{ Name, LastUpdated string }
+			if json.NewDecoder(curResp.Body).Decode(&curTag) == nil {
+				curUpdated = strings.TrimSpace(curTag.LastUpdated)
+			}
 		}
 	}
-
-	if lastUpdateTime == "" {
-		c.JSON(http.StatusOK, gin.H{
-			"code": 0,
-			"msg":  "未找到版本信息",
-		})
-		return
-	}
-
-	updateTime, err := time.Parse(time.RFC3339, lastUpdateTime)
+	latestTime, err := time.Parse(time.RFC3339, latest.LastUpdated)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code": 0,
-			"msg":  "解析时间失败",
-		})
+		c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "解析时间失败"})
 		return
 	}
+	var hasUpdate bool
+	if strings.ToLower(cur) == "latest" {
+		hasUpdate = false
+	} else if curUpdated != "" {
+		curTime, err := time.Parse(time.RFC3339, curUpdated)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "解析时间失败"})
+			return
+		}
+		hasUpdate = latestTime.After(curTime)
+	} else {
+		hasUpdate = true
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 1, "data": gin.H{"hasUpdate": hasUpdate, "lastUpdateTime": latest.LastUpdated, "currentTag": cur}})
+}
 
-	// 判断是否在24小时内更新
-	hasUpdate := time.Since(updateTime) <= 24*time.Hour
-
+// 获取当前运行版本（优先读取容器环境变量或镜像标签）
+func GetVersion(c *gin.Context) {
+	v := strings.TrimSpace(os.Getenv("ECHO_NOISE_VERSION"))
+	if v == "" {
+		v = strings.TrimSpace(os.Getenv("APP_VERSION"))
+	}
+	if v == "" {
+		v = strings.TrimSpace(os.Getenv("IMAGE_TAG"))
+	}
+	if v == "" {
+		v = "latest"
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"code": 1,
 		"data": gin.H{
-			"hasUpdate":      hasUpdate,
-			"lastUpdateTime": lastUpdateTime,
+			"version": v,
 		},
 	})
 }

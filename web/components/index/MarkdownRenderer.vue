@@ -392,6 +392,9 @@ watch(() => contentTheme && contentTheme.value, () => {
 /* 主题化整体与标题颜色（容器自身带主题类） */
 .builtin-comments .markdown-preview.theme-dark { color: rgb(227, 220, 220) !important; }
 .builtin-comments .markdown-preview.theme-light { color: #111111 !important; }
+/* 通用主题文本颜色（非评论区域也适用） */
+.markdown-preview.theme-dark { color: rgb(227, 220, 220) !important; }
+.markdown-preview.theme-light { color: #111111 !important; }
 .builtin-comments .markdown-preview.theme-dark h1,
 .builtin-comments .markdown-preview.theme-dark h2,
 .builtin-comments .markdown-preview.theme-dark h3,
@@ -404,6 +407,19 @@ watch(() => contentTheme && contentTheme.value, () => {
 .builtin-comments .markdown-preview.theme-light h4,
 .builtin-comments .markdown-preview.theme-light h5,
 .builtin-comments .markdown-preview.theme-light h6 { color: #111111 !important; }
+/* 通用标题颜色（非评论区域） */
+.markdown-preview.theme-dark h1,
+.markdown-preview.theme-dark h2,
+.markdown-preview.theme-dark h3,
+.markdown-preview.theme-dark h4,
+.markdown-preview.theme-dark h5,
+.markdown-preview.theme-dark h6 { color: #ffffff !important; }
+.markdown-preview.theme-light h1,
+.markdown-preview.theme-light h2,
+.markdown-preview.theme-light h3,
+.markdown-preview.theme-light h4,
+.markdown-preview.theme-light h5,
+.markdown-preview.theme-light h6 { color: #111111 !important; }
 
 /* 链接样式（蓝色，可悬停下划线） */
 .builtin-comments .markdown-preview.theme-light a { color: #1d4ed8 !important; text-decoration: none; }
@@ -717,6 +733,40 @@ watch(() => contentTheme && contentTheme.value, () => {
 /* 白天模式下内容区链接颜色加深为深橙色 */
 .theme-light.markdown-preview :deep(a) {
   color: #0366d6;
+}
+/* 图片悬停与盒子效果（与内容样式一致） */
+.markdown-preview :deep(img) {
+  border-radius: 12px;
+  display: block;
+  width: 100%;
+  height: auto;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.10);
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+.markdown-preview :deep(img:hover) {
+  transform: translate3d(0,0,0) scale(1.02);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.28);
+  filter: saturate(1.06) contrast(1.02);
+}
+.image-grid-item img {
+  border-radius: 12px;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.10);
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+.image-grid-item img:hover {
+  transform: translate3d(0,0,0) scale(1.02);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.28);
+  filter: saturate(1.06) contrast(1.02);
+}
+@media (prefers-color-scheme: dark) {
+  .markdown-preview :deep(img) { box-shadow: 0 1px 2px rgba(255,255,255,0.06); }
+  .markdown-preview :deep(img:hover) { box-shadow: 0 8px 22px rgba(255,255,255,0.12); }
+  .image-grid-item img { box-shadow: 0 1px 2px rgba(255,255,255,0.06); }
+  .image-grid-item img:hover { box-shadow: 0 8px 22px rgba(255,255,255,0.12); }
 }
 
 .theme-dark.markdown-preview :deep(a) {

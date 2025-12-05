@@ -29,6 +29,16 @@ type Message struct {
 	CreatedAt time.Time `json:"created_at"`
 	Notify    bool      `gorm:"default:false" json:"notify"` // 新增推送通知字段
 	Pinned    bool      `gorm:"default:false" json:"pinned"`
+	LikeCount int       `gorm:"default:0" json:"like_count"`
+}
+
+// MessageLike 点赞记录（用于幂等与取消点赞）
+type MessageLike struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	MessageID uint      `gorm:"index;not null" json:"message_id"`
+	UserID    *uint     `gorm:"index" json:"user_id,omitempty"`
+	SessionID string    `gorm:"type:varchar(191);index" json:"session_id"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Comment struct {
@@ -43,11 +53,12 @@ type Comment struct {
 }
 
 type User struct {
-	ID       uint   `gorm:"primaryKey" json:"id"`
-	Username string `gorm:"type:varchar(191);not null;uniqueIndex" json:"username"`
-	Password string `gorm:"type:varchar(191);not null" json:"password"`
-	IsAdmin  bool   `json:"is_admin"`
-	Token    string `gorm:"type:varchar(191)" json:"token"`
+	ID        uint   `gorm:"primaryKey" json:"id"`
+	Username  string `gorm:"type:varchar(191);not null;uniqueIndex" json:"username"`
+	Password  string `gorm:"type:varchar(191);not null" json:"password"`
+	IsAdmin   bool   `json:"is_admin"`
+	Token     string `gorm:"type:varchar(191)" json:"token"`
+	AvatarURL string `gorm:"type:varchar(191)" json:"avatar_url"`
 }
 
 // 生成 Token 的工具函数
@@ -140,22 +151,31 @@ type SiteConfig struct {
 	MusicTheme            string `gorm:"type:varchar(20)"` // auto/light/dark
 	MusicLyric            bool   `gorm:"default:true"`
 	MusicAutoplay         bool   `gorm:"default:false"`
-    MusicDefaultMinimized bool   `gorm:"default:true"`
-    MusicEmbed            bool   `gorm:"default:false"`
-    MusicCssCdnURL        string `gorm:"type:varchar(255)"`
-    MusicJsCdnURL         string `gorm:"type:varchar(255)"`
-    // 评论系统配置
-    CommentEnabled      bool   `gorm:"default:false"`
-    CommentSystem       string `gorm:"type:varchar(20)"` // builtin/waline/none/other
-    CommentEmailEnabled bool   `gorm:"default:false"`
-    CommentEmailReplyName     string `gorm:"type:varchar(100)"`
-    CommentEmailAdminPrefix   string `gorm:"type:varchar(50)"`
-    CommentEmailReplyPrefix   string `gorm:"type:varchar(50)"`
-    CommentEmailReplyTemplate string `gorm:"type:text"`
-    CommentEmailAdminTemplate string `gorm:"type:text"`
-    CommentEmailSiteURL       string `gorm:"type:varchar(191)"`
-    CommentEmailReplyTemplateHTML string `gorm:"type:text"`
-    CommentEmailAdminTemplateHTML string `gorm:"type:text"`
+	MusicDefaultMinimized bool   `gorm:"default:true"`
+	MusicEmbed            bool   `gorm:"default:false"`
+	MusicCssCdnURL        string `gorm:"type:varchar(255)"`
+	MusicJsCdnURL         string `gorm:"type:varchar(255)"`
+	// 评论系统配置
+	CommentEnabled                bool   `gorm:"default:true"`
+	CommentSystem                 string `gorm:"type:varchar(20)"` // builtin/waline/none/other
+	CommentEmailEnabled           bool   `gorm:"default:false"`
+	CommentLoginRequired          bool   `gorm:"default:true"`
+	CommentEmailReplyName         string `gorm:"type:varchar(100)"`
+	CommentEmailAdminPrefix       string `gorm:"type:varchar(50)"`
+	CommentEmailReplyPrefix       string `gorm:"type:varchar(50)"`
+	CommentEmailReplyTemplate     string `gorm:"type:text"`
+	CommentEmailAdminTemplate     string `gorm:"type:text"`
+	CommentEmailSiteURL           string `gorm:"type:varchar(191)"`
+	CommentEmailReplyTemplateHTML string `gorm:"type:text"`
+	CommentEmailAdminTemplateHTML string `gorm:"type:text"`
+	// 扩展组件开关
+	CalendarEnabled bool `gorm:"default:true"`
+	TimeEnabled     bool `gorm:"default:true"`
+	HitokotoEnabled bool `gorm:"default:true"`
+	// 广告位配置（左侧）
+	LeftAdEnabled     bool   `gorm:"default:true"`
+	LeftAds           string `gorm:"type:text"`
+	LeftAdsIntervalMs int    `gorm:"default:4000"`
 }
 
 func (s *SiteConfig) GetBackgroundsList() []string {

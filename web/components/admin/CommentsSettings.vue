@@ -1,12 +1,6 @@
 <template>
   <div id="site-comments-section" class="flex flex-wrap items-center rounded-lg p-3 justify-between gap-3" :class="theme?.subtleBg || subtleBg">
     <div class="flex flex-col gap-3 w-full">
-      <div class="flex flex-wrap items-center gap-3 justify-between">
-        <USelect v-model="local.commentSystem" :options="[{label:'内置',value:'builtin'},{label:'Waline',value:'waline'}]" />
-        <UInput v-if="local.commentSystem === 'waline'" v-model="local.walineServerURL" :ui="{base: theme?.text}" placeholder="Waline 地址" class="w-full md:w-[280px]" />
-        <div class="flex-1"></div>
-        <UButton color="green" @click="save" class="shadow">保存</UButton>
-      </div>
       <div v-if="local.commentSystem === 'builtin' && !props.config?.commentEmailEnabled" class="rounded border p-3" :class="theme?.border">
         <div :class="theme?.text || textCls">开启“邮件通知”后，可配置站点链接地址、主题前缀、发件显示名、文本/HTML 模板，并实时预览。</div>
       </div>
@@ -42,9 +36,8 @@ const emit = defineEmits<{ (e: 'update:config', v: any): void, (e: 'comment-syst
 
 const local = reactive({
   commentEnabled: false,
-  commentSystem: 'waline',
+  commentSystem: 'builtin',
   commentEmailEnabled: false,
-  walineServerURL: '',
   commentEmailReplyName: '',
   commentEmailAdminPrefix: '',
   commentEmailReplyPrefix: '',
@@ -57,9 +50,8 @@ const local = reactive({
 watch(() => props.config, (v: any) => {
   if (!v) return
   local.commentEnabled = !!v.commentEnabled
-  local.commentSystem = String(v.commentSystem || 'waline').toLowerCase()
+  local.commentSystem = 'builtin'
   local.commentEmailEnabled = !!v.commentEmailEnabled
-  local.walineServerURL = String(v.walineServerURL || '')
   local.commentEmailReplyName = String(v.commentEmailReplyName || '')
   local.commentEmailAdminPrefix = String(v.commentEmailAdminPrefix || '')
   local.commentEmailReplyPrefix = String(v.commentEmailReplyPrefix || '')
@@ -87,9 +79,8 @@ const textCls = computed(() => 'text-white')
       const payload = {
         frontendSettings: {
         commentEnabled: !!props.config?.commentEnabled,
-        commentSystem: String(local.commentSystem || 'waline').toLowerCase(),
+        commentSystem: 'builtin',
         commentEmailEnabled: !!props.config?.commentEmailEnabled,
-        walineServerURL: String(local.walineServerURL || ''),
         commentEmailReplyName: String(local.commentEmailReplyName || ''),
         commentEmailAdminPrefix: String(local.commentEmailAdminPrefix || ''),
         commentEmailReplyPrefix: String(local.commentEmailReplyPrefix || ''),

@@ -1,6 +1,8 @@
 # 说说笔记
 
-![T1HaBIgPGZEXlfc](https://s2.loli.net/2025/04/12/T1HaBIgPGZEXlfc.png)
+| ![kXN6dnZQIR7lu2B](https://s2.loli.net/2025/12/04/kXN6dnZQIR7lu2B.png) | ![UftWIozH5EC1aQx](https://s2.loli.net/2025/12/04/UftWIozH5EC1aQx.png) |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| ![sR2nh7I1G8MmvCa](https://s2.loli.net/2025/12/04/sR2nh7I1G8MmvCa.png) | ![jlBtEUaZwfDdgqI](https://s2.loli.net/2025/12/04/jlBtEUaZwfDdgqI.png) |
 
 ## 介绍
 
@@ -11,6 +13,7 @@
 ## 特征
 
 - 统一的前端交互与内置组件体验，支持外部扩展、网页组件
+- 可自由切换多栏风格，支持三栏、双栏、单栏
 - 前端优化宫格图片、长文折叠与灯箱，流畅 Markdown 预览与宫格图卡片渲染
 - 完整开放 API 与 Token 认证，便于第三方接入与自动化工作流
 - 支持 MCP 工具，在 AI 环境中一键发布/更新/删除/搜索
@@ -21,9 +24,19 @@
 
 快速上手-[安装部署](#安装部署)
 
-## ❤️开发进度（仅DEV）
+[TOC]
 
-严格意义上属于重构，且前端后端都需要重构，保留原有的API等不变，首页、后台页需要定制化修改
+<details>
+<summary><h2>✅ 更新状况【点击查看】</h2></summary>
+
+
+## 2025更新状态
+
+- 调整首页布局及组件效果
+
+- 增加点赞记数及单独的关于、友链、留言页面
+
+- 为多视频添加宫格显示（含HTML嵌入）
 
 - 重构后台界面（包括ui重构、配色可自定义等）
 
@@ -37,71 +50,9 @@
 
 - 内置评论代替远程评论，内置评论调用smtp回复评论
 
-  ![1764316124235](https://s2.loli.net/2025/11/28/bcjsEDBx5iSPHGK.png)
-
-- 增加数据库云存储R2/S3接入，支持备份上次、自动同步![1764341189272](https://s2.loli.net/2025/11/28/bue4xoDIpN91UEZ.png)
+- 增加数据库云存储R2/S3接入，支持备份上次、自动同步
 
 - 增加后台附件管理功能，可以管理已上传的图片和视频
-
-  ![1764411851123](https://s2.loli.net/2025/11/29/basEgSAmGIZFDRf.png)
-
-  
-
-![ktRvYcdiy6Gu3pS](https://s2.loli.net/2025/11/27/ktRvYcdiy6Gu3pS.png)
-
-![HsU4pjcBS1OXVYo](https://s2.loli.net/2025/11/27/HsU4pjcBS1OXVYo.png)
-
-![r2GbVNv1m7SIBdC](https://s2.loli.net/2025/11/27/r2GbVNv1m7SIBdC.png)
-
-![zd9RAiLrKQUGYlf](https://s2.loli.net/2025/11/28/zd9RAiLrKQUGYlf.png)
-
-[TOC]
-
-云存储功能概览
-
-- 云存储自动同步开关与模式已加入“云存储接入（R2/S3）”模块，包含：
-  - 自动同步开关： 自动同步至云端
-  - 模式选择： 即时 或 定时
-  - 定时间隔：分钟数
-  - 状态显示： 上次同步时间
-  - 操作按钮： 立即同步
-  - 位置： web/components/index/StatusPanel.vue:695-715 ；数据加载与保存在 web/components/index/StatusPanel.vue:2663-2690、2699-2706、2681-2694 中
-    后端实现
-- 站点配置新增字段：
-  - StorageAutoSyncEnabled 、 StorageSyncMode 、 StorageSyncIntervalMinute 、 StorageLastSyncTime
-  - 位置： internal/models/models.go:120-144 附近
-- 配置读写支持上述字段：
-  - 返回前端： internal/services/setting_service.go:85-106 的 storageConfig 中增加了 autoSyncEnabled/syncMode/syncIntervalMinute/lastSyncTime
-  - 保存更新： internal/services/setting_service.go:342-369 完成解析与赋值
-- 同步管理器：
-  - 包路径： internal/syncmanager/auto_sync.go:1-135
-  - 即时模式：防抖 15 秒触发云端备份上传
-  - 定时模式：按 StorageSyncIntervalMinute 启动 goroutine 周期任务
-  - 同步逻辑：打包 backup.zip （含 database.db 、 images/ 、 video/ ），用后端预签名上传至 R2/S3，并记录 StorageLastSyncTime
-  - 配置变更后自动重新应用： internal/services/setting_service.go:433-436
-- 立即同步接口与路由：
-  - 控制器： internal/controllers/backup.go:379-401 新增 HandleBackupSyncNow
-  - 路由： internal/routers/routers.go:156-158 增加 POST /api/backup/storage/sync-now
-- 即时模式触发点：
-  - 发布与更新消息后触发同步防抖： internal/controllers/controllers.go:793-794、1410-1412
-- 前端操作：
-  - 打开“云存储接入（R2/S3）”
-  - 启用“云存储接入”开关并填写 provider/endpoint/region/bucket/accessKey/secretKey/publicBaseURL
-  - 开启“自动同步至云端”，选择模式：
-    - 即时：对消息发布/更新自动触发，防抖合并 15 秒内的变更
-    - 定时：设置间隔分钟数，后台按间隔自动备份上传
-  - 随时点击“立即同步”执行一次上传；“上次同步”显示最近成功时间
-- 后端约束：
-  - R2 强制路径风格；S3 可选路径风格： web/components/index/StatusPanel.vue:682-685、2699-2706
-  - 自动同步依赖云存储启用与必要字段完整，否则不会启动
-    注意事项
-- R2/S3 是对象存储，仅用于备份与资源存储；不适合作为在线事务数据库。若希望“数据在云端即时可读写”，建议把 DB_TYPE 切换至云数据库（Postgres/MySQL）。
-
-<details>
-<summary><h2>✅ 更新状况【点击查看】</h2></summary>
-
-
-## 2025更新状态
 
 - MCP功能加入，支持ai一键操作搜索、发布、更新等
 
@@ -114,8 +65,6 @@
 - 后台增加暗黑模式主题控制开关，前端页面整体统一主题色，优化编辑器主题色效果
 
 - 精简镜像包体积大小（无mcp包时）
-
-  ![FG7av3W9XmHdelT](https://s2.loli.net/2025/11/25/FG7av3W9XmHdelT.png)
 
 - 增加github卡片解析后台开关，优化pwa模式页面加载
 
@@ -133,8 +82,6 @@
 
 - 增加用户注册选项开关，可在后台页面网站配置中设置
 
-  ![1745801297411](https://s2.loli.net/2025/04/28/WpXsncYZLKR7U1C.png)
-
 - 优化首页初始化加载逻辑和速度
 
 - 因私密发布存在逻辑冲突，暂时去除私密内容发布按钮
@@ -144,8 +91,6 @@
 - 调整github卡片渲染时文本和头像的容器大小，优化卡片显示效果
 
 - 增加github链接的预览卡片渲染功能
-
-  ![1745114857169](https://s2.loli.net/2025/04/20/YcG2IK1n5wWQar6.png)
 
 - 增加图床组件，支持图片上传至github 并可设置cdn 加速
 
@@ -172,7 +117,6 @@
   - Authorization: Bearer your_token_here
   - Authorization: your_token_here
 
-   
 
 
 - 增加了标签系统和图片api 路由
@@ -183,21 +127,11 @@
 
 - 除了session 认证外增加Token认证，后台可设置更改，方便使用api发布信息
 
-  ![1743847126537](https://s2.loli.net/2025/04/05/QqLEC1HUw2J9XO8.png)
-
-  
-
 - 增加搜索功能组件
-
-  ![1743816024503](https://s2.loli.net/2025/04/05/wcJSRFktmrxTpui.png)
 
 - 增加内容发布日历-热力图组件，默认不显示，点击日历图标后显示
 
-  ![1743765992985_副本](https://s2.loli.net/2025/04/04/Jf48HmYjvCk1sVU.png)
-
 - 添加每条笔记条目的评论功能（属于外挂评论，因为容易集成和省事）
-
-  ![1742962169845](https://s2.loli.net/2025/03/26/kKJsw51PzcUdyQ6.png)
 
 - 增加md格式图片下Fancybox灯箱模式（包括编辑器及笔记列表中），引入medium-zoom、fancybox组件
 
@@ -207,13 +141,9 @@
 
 - 增加笔记内容二次编辑修改功能（管理员或原发布者权限）
 
-  ![1743011515420](https://s2.loli.net/2025/03/27/ZtBbmGMqHw5RoFO.png)
-
 - 优化编辑器预览及修改内容的预览样式
 
 - 增加生成内容卡片的功能
-
-  ![01.45.31](https://s2.loli.net/2025/03/27/vCKs1ZtPqO8n7jY.png)
 
 - 添加了笔记内容发布者名称的显示（时间状态右侧）
 
@@ -223,19 +153,13 @@
 
 - 调整后台界面
 
-  ![C8Yn4VJ96PgrioX](https://s2.loli.net/2025/03/31/C8Yn4VJ96PgrioX.png)
-
 - 优化载入速度及调整背景图片载入逻辑
 
 - 优化生成卡片图片效果
 
 - 增加后台数据配置，包括评论、底部页脚、rss设置等
 
-  ![iLTP9tARVoaj3cv](https://s2.loli.net/2025/04/01/iLTP9tARVoaj3cv.png)
-
 - 增加数据库文件的备份、上传
-
-  ![ehS1BxwbUKyD2Vm](https://s2.loli.net/2025/04/01/ehS1BxwbUKyD2Vm.png)
 
   
 
@@ -265,7 +189,7 @@ docker run -d \
   --name Ech0-Noise \
   --platform linux/amd64 \
   -p 1314:1314 \
-  noise233/echo-noise:latest
+noise233/echo-noise:latest
 ```
 
 有原数据库文件挂载时默认：
@@ -276,7 +200,50 @@ docker run -d \
   --platform linux/amd64 \
   -v /opt/data:/app/data \
   -p 1314:1314 \
-  noise233/echo-noise:latest
+noise233/echo-noise:latest
+```
+
+### 选择镜像标签版本并展示到后台
+
+部署时显式指定镜像标签版本：
+
+```
+docker run -d \
+  --name Ech0-Noise \
+  -v /opt/data:/app/data \
+  -p 1314:1314 \
+  noise233/echo-noise:2025.12.04
+```
+
+说明：
+- 使用 `noise233/echo-noise:<标签>` 指定版本；后台“系统管理面板”会显示当前镜像版本。
+- 官方镜像已内置版本到变量，若你自行构建镜像，请在构建时加入：
+
+```
+docker build --target final \
+  --build-arg VERSION=2025.12.04 \
+  -t noise233/echo-noise:2025.12.04 .
+```
+
+或在运行时覆盖（仅当你使用第三方镜像或未设置构建参数时）：
+
+```
+docker run -d \
+  -e APP_VERSION=2025.12.04 \
+  -p 1314:1314 \
+  noise233/echo-noise:2025.12.04
+```
+
+docker-compose 固定镜像标签示例：
+
+```yaml
+services:
+  ech0-noise:
+    image: noise233/echo-noise:2025.12.04
+    ports:
+      - "1314:1314"
+    volumes:
+      - /opt/data:/app/data
 ```
 
 > 使用 -v /opt/data:/app/data \ 可挂载你原有的数据，请确保/opt/data文件夹中包含原数据库文件，如有图片请一起放在data文件夹下images 文件夹中，如果没有原数据库文件还使用该命令，进入页面会无任何可用数据显示 使用 --platform linux/amd64 命令可选择不同架构运行部署
@@ -626,6 +593,46 @@ docker run -d \
 - 如果备份时zip中有图片文件夹则同时会恢复 images 目录下的所有图片
 
 ⚠️ ：因PostgreSQL/MySQL云服务会有SSL连接、兼容版本号、数据表格式等要求，后台一键备份恢复不一定能满足你需要连接的远程数据库，请尽量前往服务商处下载备份
+
+### 云存储功能概览
+
+- 云存储自动同步开关与模式已加入“云存储接入（R2/S3）”模块，包含：
+  - 自动同步开关： 自动同步至云端
+  - 模式选择： 即时 或 定时
+  - 定时间隔：分钟数
+  - 状态显示： 上次同步时间
+  - 操作按钮： 立即同步
+  - 位置： web/components/index/StatusPanel.vue:695-715 ；数据加载与保存在 web/components/index/StatusPanel.vue:2663-2690、2699-2706、2681-2694 中
+    后端实现
+- 站点配置新增字段：
+  - StorageAutoSyncEnabled 、 StorageSyncMode 、 StorageSyncIntervalMinute 、 StorageLastSyncTime
+  - 位置： internal/models/models.go:120-144 附近
+- 配置读写支持上述字段：
+  - 返回前端： internal/services/setting_service.go:85-106 的 storageConfig 中增加了 autoSyncEnabled/syncMode/syncIntervalMinute/lastSyncTime
+  - 保存更新： internal/services/setting_service.go:342-369 完成解析与赋值
+- 同步管理器：
+  - 包路径： internal/syncmanager/auto_sync.go:1-135
+  - 即时模式：防抖 15 秒触发云端备份上传
+  - 定时模式：按 StorageSyncIntervalMinute 启动 goroutine 周期任务
+  - 同步逻辑：打包 backup.zip （含 database.db 、 images/ 、 video/ ），用后端预签名上传至 R2/S3，并记录 StorageLastSyncTime
+  - 配置变更后自动重新应用： internal/services/setting_service.go:433-436
+- 立即同步接口与路由：
+  - 控制器： internal/controllers/backup.go:379-401 新增 HandleBackupSyncNow
+  - 路由： internal/routers/routers.go:156-158 增加 POST /api/backup/storage/sync-now
+- 即时模式触发点：
+  - 发布与更新消息后触发同步防抖： internal/controllers/controllers.go:793-794、1410-1412
+- 前端操作：
+  - 打开“云存储接入（R2/S3）”
+  - 启用“云存储接入”开关并填写 provider/endpoint/region/bucket/accessKey/secretKey/publicBaseURL
+  - 开启“自动同步至云端”，选择模式：
+    - 即时：对消息发布/更新自动触发，防抖合并 15 秒内的变更
+    - 定时：设置间隔分钟数，后台按间隔自动备份上传
+  - 随时点击“立即同步”执行一次上传；“上次同步”显示最近成功时间
+- 后端约束：
+  - R2 强制路径风格；S3 可选路径风格： web/components/index/StatusPanel.vue:682-685、2699-2706
+  - 自动同步依赖云存储启用与必要字段完整，否则不会启动
+    注意事项
+- R2/S3 是对象存储，仅用于备份与资源存储；不适合作为在线事务数据库。若希望“数据在云端即时可读写”，建议把 DB_TYPE 切换至云数据库（Postgres/MySQL）。
 
 ## 开发
 
@@ -1469,6 +1476,12 @@ docker buildx create --use --name mybuilder
 docker buildx build --platform linux/amd64,linux/arm64 --target final -t noise233/echo-noise:latest --push --no-cache .
 ```
 
+同时推送版本标签与 latest ：
+
+```
+docker buildx build --platform linux/amd64,linux/arm64 --target final --build-arg VERSION=2025.12.04 -t noise233/echo-noise:2025.12.04 -t noise233/echo-noise:latest --push --no-cache .
+```
+
 开启 UPX 压缩以确保镜像更小（不含 MCP）：
 
 ```
@@ -1720,17 +1733,17 @@ exports.actions = [{
 - [x] 后台增加音乐板块配置并集成到前端
 - [x] 内置评论系统并可选远程评论系统
 - [ ] 增加好友系统，可在前端首页作为组件展示（方向为后台页申请后自动拉取信息并展示）
-- [ ] 增加点赞组件（接入SMTP反馈）
+- [x] 增加点赞组件（接入SMTP反馈）
 - [ ] 增加在线聊天组件（实时接收反馈、支持md写法）
-- [ ] 增加友情链接组件（底部或侧栏）
+- [x] 增加友情链接组件（底部或侧栏）
 - [ ] 增加RSS阅读组件（后台控制）
-- [ ] 增加时间日历组件
-- [ ] 增加广告组件（悬浮或固定）
+- [x] 增加时间日历组件
+- [x] 增加广告组件（悬浮或固定）
 - [ ] 扩展支持一键识别当前网站信息并写入笔记（书签或稍后阅读）
 - [ ] 跨平台桌面端
-- [ ] SQL数据库文件支持一键接入R2或S3实现备份和恢复
-- [ ] 登录注册优化
-- [ ] 后台界面的ui优化定制
+- [x] SQL数据库文件支持一键接入R2或S3实现备份和恢复
+- [x] 登录注册优化
+- [x] 后台界面的ui优化定制
 - [ ] 前端可定制化主题
 - [ ] 数据库备份优化
 - [ ] 其它组件的添加
@@ -1739,4 +1752,4 @@ exports.actions = [{
 
 > [!CAUTION]
 >
-> 本项目为个人定制化使用，如有其它需求可自行修改
+> 本项目为个人定制化使用，如有其它需求可自行修改，项目已完全重构

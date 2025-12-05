@@ -1,14 +1,15 @@
 package services
 
 import (
-	"errors"
-	"fmt"
+    "errors"
+    "fmt"
+    "strings"
 
-	"github.com/lin-snow/ech0/internal/dto"
-	"github.com/lin-snow/ech0/internal/models"
-	"github.com/lin-snow/ech0/internal/repository"
-	"github.com/lin-snow/ech0/pkg"
-	"golang.org/x/crypto/bcrypt"
+    "github.com/lin-snow/ech0/internal/dto"
+    "github.com/lin-snow/ech0/internal/models"
+    "github.com/lin-snow/ech0/internal/repository"
+    "github.com/lin-snow/ech0/pkg"
+    "golang.org/x/crypto/bcrypt"
 )
 
 func Register(userdto dto.RegisterDto) error {
@@ -135,20 +136,52 @@ func IsUserAdmin(userID uint) (bool, error) {
 }
 
 func UpdateUser(user *models.User, userdto dto.UserInfoDto) error {
-	if user.Username == userdto.Username {
-		return nil
-	}
+    if user == nil {
+        return errors.New("用户信息不能为空")
+    }
 
-	if userdto.Username == "" {
-		return errors.New(models.UsernameCannotBeEmptyMessage)
-	}
+    updates := make(map[string]interface{})
 
-	user.Username = userdto.Username
-	if err := repository.UpdateUser(user); err != nil {
-		return errors.New(err.Error())
-	}
+    // 用户名更新
+    if userdto.Username != "" && userdto.Username != user.Username {
+        updates["username"] = userdto.Username
+    }
 
-	return nil
+    // 头像地址更新
+    if userdto.AvatarURL != "" && userdto.AvatarURL != user.AvatarURL {
+        updates["avatar_url"] = userdto.AvatarURL
+    }
+
+    if len(updates) == 0 {
+        return nil
+    }
+
+    // 基本校验：如果包含用户名，不能为空
+    if v, ok := updates["username"]; ok {
+        if s, _ := v.(string); strings.TrimSpace(s) == "" {
+            return errors.New(models.UsernameCannotBeEmptyMessage)
+        }
+    }
+
+    // 应用更新
+    if err := repository.UpdateUserField(user.ID, "username", updates["username"]); err != nil && updates["username"] != nil {
+        return errors.New(err.Error())
+    }
+    if err := repository.UpdateUserField(user.ID, "avatar_url", updates["avatar_url"]); err != nil && updates["avatar_url"] != nil {
+        return errors.New(err.Error())
+    }
+
+    // 同步到本地结构体
+    if v, ok := updates["username"]; ok && v != nil {
+        user.Username = v.(string)
+    }
+    if v, ok := updates["avatar_url"]; ok && v != nil {
+        user.AvatarURL = v.(string)
+    }
+
+    // 清理缓存
+    _ = repository.UpdateUser(user)
+    return nil
 }
 
 func ChangePassword(user *models.User, userdto dto.UserInfoDto) error {

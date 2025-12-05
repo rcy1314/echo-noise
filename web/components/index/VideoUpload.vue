@@ -7,15 +7,9 @@
       class="hidden"
       @change="handleVideoChange"
     />
-    <UButton
-      color="gray"
-      variant="solid"
-      size="sm"
-      icon="i-mdi-video"
-      class="cursor-pointer"
-      @click="triggerVideoInput"
-      :title="'上传视频'"
-    />
+    <button class="tb-btn" @click="triggerVideoInput" :title="'上传视频'">
+      <UIcon name="i-mdi-video" class="w-5 h-5" />
+    </button>
   </div>
 </template>
 
@@ -91,3 +85,10 @@ const handleVideoChange = async (event: Event) => {
   xhr.send(formData)
 }
 </script>
+
+<style scoped>
+.tb-btn { display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:12px; background: rgba(0,0,0,0.06); color:#374151; transition: all .18s ease; border:none; }
+.tb-btn:hover { transform: translate3d(0,0,0) scale(1.06); background: rgba(0,0,0,0.12); }
+html.dark .tb-btn { background: rgba(255,255,255,0.06); color:#cbd5e1; border:none; }
+html.dark .tb-btn:hover { background: rgba(255,255,255,0.12); }
+</style>

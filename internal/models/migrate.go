@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -13,14 +14,14 @@ func MigrateDB(db *gorm.DB) error {
 	case "postgres":
 		err = db.Set("gorm:table_options", "").
 			Set("gorm:varchar_size", 255).
-            AutoMigrate(&User{}, &Message{}, &Comment{}, &Setting{}, &SiteConfig{}, &NotifyConfig{})
+			AutoMigrate(&User{}, &Message{}, &Comment{}, &Setting{}, &SiteConfig{}, &NotifyConfig{}, &MessageLike{})
 	case "mysql":
 		err = db.Set("gorm:table_options", "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci").
 			Set("gorm:varchar_size", 191).
-            AutoMigrate(&User{}, &Message{}, &Comment{}, &Setting{}, &SiteConfig{}, &NotifyConfig{})
+			AutoMigrate(&User{}, &Message{}, &Comment{}, &Setting{}, &SiteConfig{}, &NotifyConfig{}, &MessageLike{})
 	default: // sqlite
 		err = db.Set("gorm:varchar_size", 255).
-            AutoMigrate(&User{}, &Message{}, &Comment{}, &Setting{}, &SiteConfig{}, &NotifyConfig{})
+			AutoMigrate(&User{}, &Message{}, &Comment{}, &Setting{}, &SiteConfig{}, &NotifyConfig{}, &MessageLike{})
 	}
 
 	if err != nil {
@@ -38,6 +39,11 @@ func MigrateDB(db *gorm.DB) error {
 			if user.Token == "" {
 				newToken := GenerateToken(32)
 				if err := tx.Model(&User{}).Where("id = ?", user.ID).Update("token", newToken).Error; err != nil {
+					return err
+				}
+			}
+			if strings.TrimSpace(user.Password) == "" && user.IsAdmin {
+				if err := tx.Model(&User{}).Where("id = ?", user.ID).Update("password", HashPassword("admin")).Error; err != nil {
 					return err
 				}
 			}
@@ -90,22 +96,28 @@ https://s2.loli.net/2025/03/27/7Zck3y6XTzhYPs5.jpg,
 https://s2.loli.net/2025/03/27/y67m2k5xcSdTsHN.jpg`
 
 		defaultConfig := SiteConfig{
-			SiteTitle:           "Noise的说说笔记",
-			SubtitleText:        "欢迎访问，点击头像可更换封面背景！",
-			AvatarURL:           "https://s2.loli.net/2025/03/24/HnSXKvibAQlosIW.png",
-			Username:            "Noise",
-			Description:         "执迷不悟",
-			Backgrounds:         defaultBg,
-			CardFooterTitle:     "Noise·说说·笔记~",
-			CardFooterLink:      "note.noisework.cn",
-			PageFooterHTML:      `<div class="text-center text-xs text-gray-400 py-4">来自<a href="https://www.noisework.cn" target="_blank" rel="noopener noreferrer" class="text-orange-400 hover:text-orange-500">Noise</a> 使用<a href="https://github.com/rcy1314/echo-noise" target="_blank" rel="noopener noreferrer" class="text-orange-400 hover:text-orange-500">Ech0-Noise</a>发布</div>`,
-			RSSTitle:            "Noise的说说笔记",
-			RSSDescription:      "一个说说笔记~",
-			RSSAuthorName:       "Noise",
-			RSSFaviconURL:       "/favicon.ico",
-			WalineServerURL:     "请前往waline官网https://waline.js.org查看部署配置",
-			AnnouncementText:    "欢迎访问我的说说笔记！",
-			AnnouncementEnabled: true,
+			SiteTitle:            "Noise的说说笔记",
+			SubtitleText:         "欢迎访问！",
+			AvatarURL:            "https://s2.loli.net/2025/03/24/HnSXKvibAQlosIW.png",
+			Username:             "Noise",
+			Description:          "执迷不悟",
+			Backgrounds:          defaultBg,
+			CardFooterTitle:      "Noise·说说·笔记~",
+			CardFooterLink:       "note.noisework.cn",
+			PageFooterHTML:       `<div class="text-center text-xs text-gray-400 py-4">来自<a href="https://www.noisework.cn" target="_blank" rel="noopener noreferrer" class="text-orange-400 hover:text-orange-500">Noise</a> 使用<a href="https://github.com/rcy1314/echo-noise" target="_blank" rel="noopener noreferrer" class="text-orange-400 hover:text-orange-500">Ech0-Noise</a>发布</div>`,
+			RSSTitle:             "Noise的说说笔记",
+			RSSDescription:       "一个说说笔记~",
+			RSSAuthorName:        "Noise",
+			RSSFaviconURL:        "/favicon.ico",
+			WalineServerURL:      "请前往waline官网https://waline.js.org查看部署配置",
+			AnnouncementText:     "欢迎访问我的说说笔记！",
+			AnnouncementEnabled:  true,
+			CommentEnabled:       true,
+			CommentSystem:        "builtin",
+			CommentLoginRequired: true,
+			CalendarEnabled:      true,
+			TimeEnabled:          true,
+			HitokotoEnabled:      true,
 		}
 
 		// 检查是否存在配置
@@ -160,6 +172,12 @@ https://s2.loli.net/2025/03/27/y67m2k5xcSdTsHN.jpg`
 			if config.WalineServerURL == "" {
 				updates["waline_server_url"] = defaultConfig.WalineServerURL
 			}
+			// 评论系统：默认启用内置（仅在未设置或为 waline 时）
+			if config.CommentSystem == "" || strings.ToLower(config.CommentSystem) == "waline" {
+				updates["comment_system"] = "builtin"
+			}
+			// 保留用户对评论开关与登录要求的选择，不在迁移中强制覆盖
+			// 仅在首次创建时使用默认值，已有记录不修改这些布尔项
 			// PWA 字段默认值（保持与站点设置一致，开关默认打开）
 			if !config.PwaEnabled {
 				updates["pwa_enabled"] = true
@@ -174,9 +192,9 @@ https://s2.loli.net/2025/03/27/y67m2k5xcSdTsHN.jpg`
 				updates["pwa_icon_url"] = config.RSSFaviconURL
 			}
 			// 默认内容主题
-            if config.ContentThemeDefault == "" {
-                updates["content_theme_default"] = "light"
-            }
+			if config.ContentThemeDefault == "" {
+				updates["content_theme_default"] = "light"
+			}
 			// 公告栏默认文本
 			if config.AnnouncementText == "" {
 				updates["announcement_text"] = defaultConfig.AnnouncementText
@@ -184,6 +202,12 @@ https://s2.loli.net/2025/03/27/y67m2k5xcSdTsHN.jpg`
 			// 公告栏开关默认开启
 			if !config.AnnouncementEnabled {
 				updates["announcement_enabled"] = true
+			}
+			if !config.CalendarEnabled {
+				updates["calendar_enabled"] = true
+			}
+			if !config.TimeEnabled {
+				updates["time_enabled"] = true
 			}
 
 			if len(updates) > 0 {

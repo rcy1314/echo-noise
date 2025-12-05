@@ -16,10 +16,11 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/lin-snow/ech0/config"
 	"github.com/lin-snow/ech0/internal/database"
-    "github.com/lin-snow/ech0/internal/storage"
-    "github.com/lin-snow/ech0/internal/models"
-    "github.com/lin-snow/ech0/internal/syncmanager"
+	"github.com/lin-snow/ech0/internal/models"
+	"github.com/lin-snow/ech0/internal/storage"
+	"github.com/lin-snow/ech0/internal/syncmanager"
 )
 
 func isAdmin(c *gin.Context) bool {
@@ -402,106 +403,106 @@ func HandleBackupRestore(c *gin.Context) {
 }
 
 func HandleBackupPresignUpload(c *gin.Context) {
-    if !isAdmin(c) {
-        c.JSON(http.StatusForbidden, gin.H{"code": 0, "msg": "需要管理员权限"})
-        return
-    }
-    var req struct {
-        ObjectKey      string `json:"objectKey"`
-        ExpiresSeconds int    `json:"expiresSeconds"`
-        ContentType    string `json:"contentType"`
-    }
-    if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "请求参数错误"})
-        return
-    }
-    if req.ObjectKey == "" {
-        req.ObjectKey = "backup.zip"
-    }
-    if req.ContentType == "" {
-        req.ContentType = "application/zip"
-    }
-    if req.ExpiresSeconds <= 0 {
-        req.ExpiresSeconds = 3600
-    }
+	if !isAdmin(c) {
+		c.JSON(http.StatusForbidden, gin.H{"code": 0, "msg": "需要管理员权限"})
+		return
+	}
+	var req struct {
+		ObjectKey      string `json:"objectKey"`
+		ExpiresSeconds int    `json:"expiresSeconds"`
+		ContentType    string `json:"contentType"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "请求参数错误"})
+		return
+	}
+	if req.ObjectKey == "" {
+		req.ObjectKey = "backup.zip"
+	}
+	if req.ContentType == "" {
+		req.ContentType = "application/zip"
+	}
+	if req.ExpiresSeconds <= 0 {
+		req.ExpiresSeconds = 3600
+	}
 
-    db, _ := database.GetDB()
-    var cfg models.SiteConfig
-    if err := db.Table("site_configs").First(&cfg).Error; err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "msg": "读取站点配置失败"})
-        return
-    }
-    if !cfg.StorageEnabled || cfg.StorageBucket == "" || cfg.StorageAccessKey == "" || cfg.StorageSecretKey == "" || cfg.StorageEndpoint == "" {
-        c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "云存储未启用或配置不完整"})
-        return
-    }
-    url, err := storage.PresignUpload(cfg, cfg.StorageBucket, req.ObjectKey, time.Duration(req.ExpiresSeconds)*time.Second, req.ContentType)
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "msg": "生成预签名上传URL失败: " + err.Error()})
-        return
-    }
-    c.JSON(http.StatusOK, gin.H{"code": 1, "data": gin.H{"url": url}})
+	db, _ := database.GetDB()
+	var cfg models.SiteConfig
+	if err := db.Table("site_configs").First(&cfg).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "msg": "读取站点配置失败"})
+		return
+	}
+	if !cfg.StorageEnabled || cfg.StorageBucket == "" || cfg.StorageAccessKey == "" || cfg.StorageSecretKey == "" || cfg.StorageEndpoint == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "云存储未启用或配置不完整"})
+		return
+	}
+	url, err := storage.PresignUpload(cfg, cfg.StorageBucket, req.ObjectKey, time.Duration(req.ExpiresSeconds)*time.Second, req.ContentType)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "msg": "生成预签名上传URL失败: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 1, "data": gin.H{"url": url}})
 }
 
 func HandleBackupPresignDownload(c *gin.Context) {
-    if !isAdmin(c) {
-        c.JSON(http.StatusForbidden, gin.H{"code": 0, "msg": "需要管理员权限"})
-        return
-    }
-    var req struct {
-        ObjectKey      string `json:"objectKey"`
-        ExpiresSeconds int    `json:"expiresSeconds"`
-    }
-    if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "请求参数错误"})
-        return
-    }
-    if req.ObjectKey == "" {
-        req.ObjectKey = "backup.zip"
-    }
-    if req.ExpiresSeconds <= 0 {
-        req.ExpiresSeconds = 3600
-    }
+	if !isAdmin(c) {
+		c.JSON(http.StatusForbidden, gin.H{"code": 0, "msg": "需要管理员权限"})
+		return
+	}
+	var req struct {
+		ObjectKey      string `json:"objectKey"`
+		ExpiresSeconds int    `json:"expiresSeconds"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "请求参数错误"})
+		return
+	}
+	if req.ObjectKey == "" {
+		req.ObjectKey = "backup.zip"
+	}
+	if req.ExpiresSeconds <= 0 {
+		req.ExpiresSeconds = 3600
+	}
 
-    db, _ := database.GetDB()
-    var cfg models.SiteConfig
-    if err := db.Table("site_configs").First(&cfg).Error; err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "msg": "读取站点配置失败"})
-        return
-    }
-    if !cfg.StorageEnabled || cfg.StorageBucket == "" || cfg.StorageAccessKey == "" || cfg.StorageSecretKey == "" || cfg.StorageEndpoint == "" {
-        c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "云存储未启用或配置不完整"})
-        return
-    }
-    url, err := storage.PresignDownload(cfg, cfg.StorageBucket, req.ObjectKey, time.Duration(req.ExpiresSeconds)*time.Second)
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "msg": "生成预签名下载URL失败: " + err.Error()})
-        return
-    }
-    c.JSON(http.StatusOK, gin.H{"code": 1, "data": gin.H{"url": url}})
+	db, _ := database.GetDB()
+	var cfg models.SiteConfig
+	if err := db.Table("site_configs").First(&cfg).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "msg": "读取站点配置失败"})
+		return
+	}
+	if !cfg.StorageEnabled || cfg.StorageBucket == "" || cfg.StorageAccessKey == "" || cfg.StorageSecretKey == "" || cfg.StorageEndpoint == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "云存储未启用或配置不完整"})
+		return
+	}
+	url, err := storage.PresignDownload(cfg, cfg.StorageBucket, req.ObjectKey, time.Duration(req.ExpiresSeconds)*time.Second)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "msg": "生成预签名下载URL失败: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 1, "data": gin.H{"url": url}})
 }
 
 // 立即执行云端同步（备份到 R2/S3）
 func HandleBackupSyncNow(c *gin.Context) {
-    if !isAdmin(c) {
-        c.JSON(http.StatusForbidden, gin.H{"code": 0, "msg": "需要管理员权限"})
-        return
-    }
-    db, _ := database.GetDB()
-    var cfg models.SiteConfig
-    if err := db.Table("site_configs").First(&cfg).Error; err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "msg": "读取站点配置失败"})
-        return
-    }
-    if !cfg.StorageEnabled {
-        c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "云存储未启用"})
-        return
-    }
-    if err := syncmanager.SyncNow(); err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "msg": "同步失败: " + err.Error()})
-        return
-    }
-    c.JSON(http.StatusOK, gin.H{"code": 1, "msg": "已同步到云端"})
+	if !isAdmin(c) {
+		c.JSON(http.StatusForbidden, gin.H{"code": 0, "msg": "需要管理员权限"})
+		return
+	}
+	db, _ := database.GetDB()
+	var cfg models.SiteConfig
+	if err := db.Table("site_configs").First(&cfg).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "msg": "读取站点配置失败"})
+		return
+	}
+	if !cfg.StorageEnabled {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "云存储未启用"})
+		return
+	}
+	if err := syncmanager.SyncNow(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "msg": "同步失败: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 1, "msg": "已同步到云端"})
 }
 func backupPostgres(tempDir string) error {
 	dumpFile := filepath.Join(tempDir, "database.sql")
@@ -603,11 +604,35 @@ func backupMySQL(tempDir string) error {
 	return nil
 }
 func backupSQLite(tempDir string) error {
-	dbPath := os.Getenv("DB_PATH")
-	if dbPath == "" {
-		dbPath = "/app/data/noise.db"
+	wd, _ := os.Getwd()
+	exePath, _ := os.Executable()
+	exeDir := filepath.Dir(exePath)
+	cfgPath := strings.TrimSpace(config.Config.Database.Path)
+	if cfgPath == "" {
+		cfgPath = "data/noise.db"
 	}
-
+	dbEnv := strings.TrimSpace(os.Getenv("DB_PATH"))
+	candidates := []string{
+		dbEnv,
+		cfgPath,
+		filepath.Join(wd, cfgPath),
+		filepath.Join(exeDir, cfgPath),
+		"/app/" + cfgPath,
+		"/app/data/noise.db",
+	}
+	var dbPath string
+	for _, p := range candidates {
+		if p == "" {
+			continue
+		}
+		if info, err := os.Stat(p); err == nil && !info.IsDir() {
+			dbPath = p
+			break
+		}
+	}
+	if dbPath == "" {
+		dbPath = filepath.Join(wd, cfgPath)
+	}
 	return copyFile(dbPath, filepath.Join(tempDir, "database.db"))
 }
 func restorePostgres(tempDir string) error {
@@ -729,18 +754,43 @@ func restoreMySQL(tempDir string) error {
 	return nil
 }
 func restoreSQLite(tempDir string) error {
-	dbPath := os.Getenv("DB_PATH")
+	wd, _ := os.Getwd()
+	exePath, _ := os.Executable()
+	exeDir := filepath.Dir(exePath)
+	cfgPath := strings.TrimSpace(config.Config.Database.Path)
+	if cfgPath == "" {
+		cfgPath = "data/noise.db"
+	}
+	dbEnv := strings.TrimSpace(os.Getenv("DB_PATH"))
+
+	candidates := []string{
+		dbEnv,
+		cfgPath,
+		filepath.Join(wd, cfgPath),
+		filepath.Join(exeDir, cfgPath),
+		"/app/" + cfgPath,
+		"/app/data/noise.db",
+	}
+	var dbPath string
+	for _, p := range candidates {
+		if p == "" {
+			continue
+		}
+		if info, err := os.Stat(p); err == nil && !info.IsDir() {
+			dbPath = p
+			break
+		}
+	}
 	if dbPath == "" {
-		dbPath = "/app/data/noise.db"
+		dbPath = filepath.Join(wd, cfgPath)
+		_ = os.MkdirAll(filepath.Dir(dbPath), 0755)
 	}
 
-	// 检查可能的备份文件名
 	possibleFiles := []string{
 		filepath.Join(tempDir, "database.db"),
 		filepath.Join(tempDir, "noise.db"),
 		filepath.Join(tempDir, "backup.db"),
 	}
-
 	var backupFile string
 	for _, file := range possibleFiles {
 		if _, err := os.Stat(file); err == nil {
@@ -748,46 +798,97 @@ func restoreSQLite(tempDir string) error {
 			break
 		}
 	}
-
 	if backupFile == "" {
 		return fmt.Errorf("找不到有效的 SQLite 备份文件")
 	}
 
-	// 创建备份
 	backupPath := dbPath + ".bak"
+	_ = os.MkdirAll(filepath.Dir(backupPath), 0755)
 	if err := copyFile(dbPath, backupPath); err != nil {
-		return fmt.Errorf("创建当前数据库备份失败: %v", err)
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("创建当前数据库备份失败: %v", err)
+		}
 	}
-
-	// 恢复新数据
 	if err := copyFile(backupFile, dbPath); err != nil {
-		// 恢复失败时还原备份
-		copyFile(backupPath, dbPath)
-		os.Remove(backupPath)
+		if _, statErr := os.Stat(backupPath); statErr == nil {
+			_ = copyFile(backupPath, dbPath)
+			_ = os.Remove(backupPath)
+		}
 		return fmt.Errorf("恢复数据库失败: %v", err)
 	}
-
-	os.Remove(backupPath)
+	_ = os.Remove(backupPath)
 	return nil
 }
 
 func backupImages(tempDir string) error {
-	imagesDir := "/app/data/images"
-	if _, err := os.Stat(imagesDir); os.IsNotExist(err) {
-		return nil // 图片目录不存在，跳过
+	wd, _ := os.Getwd()
+	exePath, _ := os.Executable()
+	exeDir := filepath.Dir(exePath)
+	sp := strings.TrimRight(config.Config.Upload.SavePath, "/")
+	if sp == "" {
+		sp = "data/images"
 	}
-
+	candidates := []string{
+		sp,
+		"./" + sp,
+		filepath.Join(wd, sp),
+		filepath.Join(exeDir, sp),
+		"./data/images",
+		filepath.Join(wd, "data/images"),
+		filepath.Join(exeDir, "data/images"),
+		"/data/images",
+		"/app/data/images",
+	}
+	var imagesDir string
+	for _, d := range candidates {
+		if d == "" {
+			continue
+		}
+		if info, err := os.Stat(d); err == nil && info.IsDir() {
+			imagesDir = d
+			break
+		}
+	}
+	if imagesDir == "" {
+		return nil
+	}
 	destDir := filepath.Join(tempDir, "images")
 	return copyDir(imagesDir, destDir)
 }
 
 func backupCurrentImages() error {
-	imagesDir := "/app/data/images"
-	if _, err := os.Stat(imagesDir); os.IsNotExist(err) {
+	wd, _ := os.Getwd()
+	exePath, _ := os.Executable()
+	exeDir := filepath.Dir(exePath)
+	sp := strings.TrimRight(config.Config.Upload.SavePath, "/")
+	if sp == "" {
+		sp = "data/images"
+	}
+	candidates := []string{
+		sp,
+		"./" + sp,
+		filepath.Join(wd, sp),
+		filepath.Join(exeDir, sp),
+		"./data/images",
+		filepath.Join(wd, "data/images"),
+		filepath.Join(exeDir, "data/images"),
+		"/data/images",
+		"/app/data/images",
+	}
+	var imagesDir string
+	for _, d := range candidates {
+		if d == "" {
+			continue
+		}
+		if info, err := os.Stat(d); err == nil && info.IsDir() {
+			imagesDir = d
+			break
+		}
+	}
+	if imagesDir == "" {
 		return nil
 	}
-
-	backupDir := "/app/data/images_backup"
+	backupDir := imagesDir + "_backup"
 	return copyDir(imagesDir, backupDir)
 }
 
@@ -796,32 +897,108 @@ func restoreImages(tempDir string) error {
 	if _, err := os.Stat(srcDir); os.IsNotExist(err) {
 		return nil
 	}
-
-	destDir := "/app/data/images"
+	wd, _ := os.Getwd()
+	exePath, _ := os.Executable()
+	exeDir := filepath.Dir(exePath)
+	sp := strings.TrimRight(config.Config.Upload.SavePath, "/")
+	if sp == "" {
+		sp = "data/images"
+	}
+	candidates := []string{
+		sp,
+		"./" + sp,
+		filepath.Join(wd, sp),
+		filepath.Join(exeDir, sp),
+		"./data/images",
+		filepath.Join(wd, "data/images"),
+		filepath.Join(exeDir, "data/images"),
+		"/data/images",
+		"/app/data/images",
+	}
+	var destDir string
+	for _, d := range candidates {
+		if d == "" {
+			continue
+		}
+		if info, err := os.Stat(d); err == nil && info.IsDir() {
+			destDir = d
+			break
+		}
+	}
+	if destDir == "" {
+		destDir = filepath.Join(wd, sp)
+	}
+	_ = os.MkdirAll(destDir, 0755)
 	if err := os.RemoveAll(destDir); err != nil {
 		return err
 	}
-
 	return copyDir(srcDir, destDir)
 }
 
 func restoreCurrentImages() error {
-	backupDir := "/app/data/images_backup"
+	wd, _ := os.Getwd()
+	exePath, _ := os.Executable()
+	exeDir := filepath.Dir(exePath)
+	sp := strings.TrimRight(config.Config.Upload.SavePath, "/")
+	if sp == "" {
+		sp = "data/images"
+	}
+	candidates := []string{
+		sp,
+		"./" + sp,
+		filepath.Join(wd, sp),
+		filepath.Join(exeDir, sp),
+		"./data/images",
+		filepath.Join(wd, "data/images"),
+		filepath.Join(exeDir, "data/images"),
+		"/data/images",
+		"/app/data/images",
+	}
+	var imagesDir string
+	for _, d := range candidates {
+		if d == "" {
+			continue
+		}
+		if info, err := os.Stat(d); err == nil && info.IsDir() {
+			imagesDir = d
+			break
+		}
+	}
+	if imagesDir == "" {
+		imagesDir = filepath.Join(wd, sp)
+	}
+	backupDir := imagesDir + "_backup"
 	if _, err := os.Stat(backupDir); os.IsNotExist(err) {
 		return nil
 	}
-
-	imagesDir := "/app/data/images"
 	if err := os.RemoveAll(imagesDir); err != nil {
 		return err
 	}
-
 	return copyDir(backupDir, imagesDir)
 }
 
 func cleanupImageBackup() {
-	backupDir := "/app/data/images_backup"
-	os.RemoveAll(backupDir)
+	wd, _ := os.Getwd()
+	exePath, _ := os.Executable()
+	exeDir := filepath.Dir(exePath)
+	sp := strings.TrimRight(config.Config.Upload.SavePath, "/")
+	if sp == "" {
+		sp = "data/images"
+	}
+	candidates := []string{
+		sp + "_backup",
+		"./" + sp + "_backup",
+		filepath.Join(wd, sp+"_backup"),
+		filepath.Join(exeDir, sp+"_backup"),
+		"./data/images_backup",
+		filepath.Join(wd, "data/images_backup"),
+		filepath.Join(exeDir, "data/images_backup"),
+		"/data/images_backup",
+		"/app/data/images_backup",
+	}
+	for _, d := range candidates {
+		_ = os.RemoveAll(d)
+	}
 }
 
 func copyDir(src, dst string) error {
@@ -973,20 +1150,55 @@ func copyFile(src, dst string) error {
 
 // 添加视频备份相关辅助函数
 func backupCurrentVideos() error {
-	videoDir := "/app/data/video"
-	if _, err := os.Stat(videoDir); os.IsNotExist(err) {
+	wd, _ := os.Getwd()
+	exePath, _ := os.Executable()
+	exeDir := filepath.Dir(exePath)
+	candidates := []string{
+		"./data/video",
+		filepath.Join(wd, "data/video"),
+		filepath.Join(exeDir, "data/video"),
+		"/data/video",
+		"/app/data/video",
+	}
+	var videoDir string
+	for _, d := range candidates {
+		if info, err := os.Stat(d); err == nil && info.IsDir() {
+			videoDir = d
+			break
+		}
+	}
+	if videoDir == "" {
 		return nil
 	}
-	backupDir := "/app/data/video_backup"
+	backupDir := videoDir + "_backup"
 	return copyDir(videoDir, backupDir)
 }
 
 func restoreCurrentVideos() error {
-	backupDir := "/app/data/video_backup"
+	wd, _ := os.Getwd()
+	exePath, _ := os.Executable()
+	exeDir := filepath.Dir(exePath)
+	candidates := []string{
+		"./data/video",
+		filepath.Join(wd, "data/video"),
+		filepath.Join(exeDir, "data/video"),
+		"/data/video",
+		"/app/data/video",
+	}
+	var videoDir string
+	for _, d := range candidates {
+		if info, err := os.Stat(d); err == nil && info.IsDir() {
+			videoDir = d
+			break
+		}
+	}
+	if videoDir == "" {
+		videoDir = filepath.Join(wd, "data/video")
+	}
+	backupDir := videoDir + "_backup"
 	if _, err := os.Stat(backupDir); os.IsNotExist(err) {
 		return nil
 	}
-	videoDir := "/app/data/video"
 	if err := os.RemoveAll(videoDir); err != nil {
 		return err
 	}
@@ -994,12 +1206,39 @@ func restoreCurrentVideos() error {
 }
 
 func cleanupVideoBackup() {
-	backupDir := "/app/data/video_backup"
-	os.RemoveAll(backupDir)
+	wd, _ := os.Getwd()
+	exePath, _ := os.Executable()
+	exeDir := filepath.Dir(exePath)
+	candidates := []string{
+		"./data/video_backup",
+		filepath.Join(wd, "data/video_backup"),
+		filepath.Join(exeDir, "data/video_backup"),
+		"/data/video_backup",
+		"/app/data/video_backup",
+	}
+	for _, d := range candidates {
+		_ = os.RemoveAll(d)
+	}
 }
 func backupVideos(tempDir string) error {
-	videoDir := "/app/data/video"
-	if _, err := os.Stat(videoDir); os.IsNotExist(err) {
+	wd, _ := os.Getwd()
+	exePath, _ := os.Executable()
+	exeDir := filepath.Dir(exePath)
+	candidates := []string{
+		"./data/video",
+		filepath.Join(wd, "data/video"),
+		filepath.Join(exeDir, "data/video"),
+		"/data/video",
+		"/app/data/video",
+	}
+	var videoDir string
+	for _, d := range candidates {
+		if info, err := os.Stat(d); err == nil && info.IsDir() {
+			videoDir = d
+			break
+		}
+	}
+	if videoDir == "" {
 		return nil
 	}
 	destDir := filepath.Join(tempDir, "video")
@@ -1011,7 +1250,27 @@ func restoreVideos(tempDir string) error {
 	if _, err := os.Stat(srcDir); os.IsNotExist(err) {
 		return nil
 	}
-	destDir := "/app/data/video"
+	wd, _ := os.Getwd()
+	exePath, _ := os.Executable()
+	exeDir := filepath.Dir(exePath)
+	candidates := []string{
+		"./data/video",
+		filepath.Join(wd, "data/video"),
+		filepath.Join(exeDir, "data/video"),
+		"/data/video",
+		"/app/data/video",
+	}
+	var destDir string
+	for _, d := range candidates {
+		if info, err := os.Stat(d); err == nil && info.IsDir() {
+			destDir = d
+			break
+		}
+	}
+	if destDir == "" {
+		destDir = filepath.Join(wd, "data/video")
+	}
+	_ = os.MkdirAll(destDir, 0755)
 	if err := os.RemoveAll(destDir); err != nil {
 		return err
 	}

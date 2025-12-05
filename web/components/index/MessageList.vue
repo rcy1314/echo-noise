@@ -6,7 +6,7 @@
       <p>暂无消息内容</p>
     </div>
     
-    <div class="flex-grow mx-auto w-full sm:max-w-2xl px-2">
+    <div :class="outerContainerClass">
       <!-- 搜索模式提示 -->
       <div 
         v-if="isSearchMode" 
@@ -32,80 +32,77 @@
   </div>
         <!-- 消息列表内容 -->
         <div v-for="msg in displayMessages" :key="msg.id" class="w-full h-auto overflow-hidden flex flex-col justify-between">
-           <!-- 修改头部布局 -->
-           <div class="flex justify-between items-center">
-            <div class="flex justify-start items-center h-auto overflow-x-auto whitespace-nowrap hide-scrollbar">
-  <div class="w-2 h-2 rounded-full bg-orange-600 mr-2 flex-shrink-0"></div>
-  <div class="flex justify-start items-center text-sm">
-    <span class="text-orange-500">{{ formatDate(msg.created_at) }}</span>
-    <span class="gradient-dot mx-2 flex-shrink-0">@</span>
-    <span class="text-orange-500">{{ msg.username || '匿名用户' }}</span>
-    <div v-if="msg.pinned" class="flex items-center text-orange-500 flex-shrink-0 ml-1" title="置顶">
-      <UIcon name="i-mdi-pin" class="w-4 h-4" />
-    </div>
-  </div>
-</div>
-            <!-- 优化操作按钮组样式 -->
-          <div class="message-actions flex justify-end items-center space-x-2 flex-shrink-0 px-3 py-1.5 mr-[9px] -mb-[1px]">
-            <!-- ... 按钮内容 ... -->
-              <div v-if="msg.private" class="w-5 h-5 flex-shrink-0 transition-transform duration-200 hover:scale-110">
-                <UIcon name="i-mdi-lock-outline" class="text-gray-400" />
-              </div>
-              <div v-if="canPin(msg)" class="w-5 h-5 cursor-pointer flex-shrink-0 transition-all duration-200 hover:scale-110" @click="togglePin(msg)" :title="msg.pinned ? '取消置顶' : '置顶内容'">
-                <UIcon :name="msg.pinned ? 'i-mdi-pin' : 'i-mdi-pin-outline'" class="text-gray-400 hover:text-orange-500" />
-              </div>
-              <div v-if="isLogin" class="w-5 h-5 cursor-pointer flex-shrink-0 transition-all duration-200 hover:scale-110" @click="editMessage(msg)" :title="'编辑内容'">
-                <UIcon name="i-mdi-pencil-outline" class="text-gray-400 hover:text-orange-500" />
-              </div>
-              <div class="w-5 h-5 cursor-pointer flex-shrink-0 transition-all duration-200 hover:scale-110" @click="copyContent(msg.content)" :title="'复制内容'">
-                <UIcon name="i-mdi-content-copy" class="text-gray-400 hover:text-orange-500" />
-              </div>
-              <div class="w-5 h-5 cursor-pointer flex-shrink-0 transition-all duration-200 hover:scale-110" @click="downloadAsImage(msg.id)" :title="'下载为图片'">
-                <UIcon name="i-mdi-image-outline" class="text-gray-400 hover:text-orange-500" />
-              </div>
-              <div class="w-5 h-5 cursor-pointer flex-shrink-0 transition-all duration-200 hover:scale-110" @click="toggleComment(msg.id)" :title="'评论'">
-                <UIcon name="i-mdi-comment-outline" class="text-gray-400 hover:text-orange-500" />
-              </div>
-              <div v-if="isLogin" class="w-5 h-5 cursor-pointer flex-shrink-0 transition-all duration-200 hover:scale-110" @click="deleteMsg(msg.id)" :title="'删除'">
-                <UIcon name="i-mdi-paper-roll-outline" class="text-gray-400 hover:text-orange-500" />
-              </div>
-            </div>
-          </div>
 
-          <div class="border-l-2 border-gray-300 p-4 ml-1">
-            <div class="content-container" :class="listThemeClass" v-if="msg.image_url || msg.content" :data-msg-id="msg.id">
+          <div class="p-0">
+            <div :class="['content-container', innerContainerClass, listThemeClass]" v-if="msg.image_url || msg.content" :data-msg-id="msg.id">
+              <div class="flex items-center gap-2 mb-2 author-row">
+                <img :src="authorAvatar(msg)" alt="avatar" class="avatar-img w-8 h-8 rounded-full object-cover" @error="authorAvatarOnError($event, msg.username || '匿名')" />
+                <div class="min-w-0">
+                  <div class="text-sm font-semibold leading-tight">{{ msg.username || siteConfig.username || '匿名' }}</div>
+                  <div class="text-xs opacity-70">{{ formatDate(msg.created_at) }}</div>
+                </div>
+                <div v-if="msg.pinned" class="ml-auto text-xs opacity-80"><UIcon name="i-mdi-pin" class="w-4 h-4" /></div>
+              </div>
               
-              <!-- 图片内容 -->
-              <img 
-  v-if="msg.image_url" 
-  :src="`${BASE_API}${msg.image_url}`" 
-  alt="Image" 
-  class="max-w-full object-cover rounded-lg mb-4"
-  loading="lazy"
-  :fetchpriority="index < 3 ? 'high' : 'low'"
-/>
+              <!-- 图片内容（支持放大预览 + 悬停效果） -->
+              <a v-if="msg.image_url" :href="`${BASE_API}${msg.image_url}`" :data-fancybox="`message-image-${msg.id}`" class="block">
+                <img 
+                  :src="`${BASE_API}${msg.image_url}`" 
+                  alt="Image" 
+                  class="message-image-box"
+                  loading="lazy"
+                  :fetchpriority="index < 3 ? 'high' : 'low'"
+                />
+              </a>
               <!-- 分隔线 -->
               <div v-if="msg.image_url && msg.content" class="border-t border-gray-600 my-4"></div>
               <!-- 文本内容区域 -->
               <div class="overflow-y-hidden relative" :class="[{ 'max-h-[700px]': !isExpanded[msg.id] && !hasGrid[msg.id] }, listThemeTextClass]">
                 <MarkdownRenderer :content="msg.content" :enableGithubCard="siteConfig?.enableGithubCard === true" @tagClick="handleTagClick" @rendered="checkContentHeight" link-target="_blank"/>
                 <div v-if="shouldShowExpandButton[msg.id] && !isExpanded[msg.id]"
-    :class="['absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t', gradientClass]">
-  </div>
+    :class="['absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t', gradientClass]" style="z-index:1"></div>
               </div>
-              <!-- 展开/折叠按钮 -->
-              <div v-if="shouldShowExpandButton[msg.id]" class="text-center mt-2 relative" style="z-index: 9999;">
-                <button @click="toggleExpand(msg.id)"
-                  :class="['expand-toggle-btn flex items-center justify-center space-x-1 mx-auto px-4 py-2 focus:outline-none transition-colors duration-200', expandBtnClass]">
-                  <span>{{ isExpanded[msg.id] ? "收起内容" : "展开全文" }}</span>
-                  <UIcon :name="isExpanded[msg.id] ? 'i-mdi-chevron-up' : 'i-mdi-chevron-down'" class="w-5 h-5" />
+              <button
+                v-if="shouldShowExpandButton[msg.id]"
+                class="expand-toggle-btn absolute bottom-0 left-1/2 -translate-x-1/2 px-4 py-1.5 text-sm inline-flex items-center gap-1"
+                :class="expandBtnClass"
+                @click="toggleExpand(msg.id)"
+                aria-label="toggle-expand"
+              >
+                {{ isExpanded[msg.id] ? '收起全文' : '展开全文' }}
+                <UIcon :name="isExpanded[msg.id] ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'" class="w-4 h-4" />
+              </button>
+              <div class="border-t border-gray-300 dark:border-gray-700 my-3"></div>
+              <div class="message-socialbar">
+                <button class="social-item" @click="like(msg.id)" :title="'点赞'">
+                  <UIcon :name="(likedMap[msg.id] ? 'i-mdi-heart' : 'i-mdi-heart-outline')" :class="['w-5 h-5', likedMap[msg.id] ? 'text-red-500' : '']" />
+                  <span class="ml-1 text-xs opacity-80">{{ likesMap[msg.id] ?? (msg.like_count || 0) }}</span>
                 </button>
+                <button v-if="!isGuestbookMessage(msg)" class="social-item" @click="toggleComment(msg.id)" :title="'评论'">
+                  <UIcon name="i-mdi-comment-outline" class="w-5 h-5" />
+                  <span class="ml-1 text-xs opacity-80">{{ commentCountMap[msg.id] || 0 }}</span>
+                </button>
+                <div class="flex-1"></div>
+                <div class="toolbox-anchor">
+                  <UButton size="xs" color="gray" variant="ghost" :ui="{ base: 'rounded-full' }" class="tool-open-btn" @click="toggleToolbox(msg.id)" title="展开工具">
+                    <UIcon name="i-heroicons-ellipsis-horizontal" class="w-5 h-5" />
+                  </UButton>
+                  <div class="message-toolbox overlay" :class="toolboxClass" v-show="openToolboxId === msg.id">
+                    <div class="tool-icons">
+                      <div v-if="msg.private" class="tool-icon"><UIcon name="i-mdi-lock-outline" /></div>
+                      <div v-if="canPin(msg)" class="tool-icon" @click="togglePin(msg)" :title="msg.pinned ? '取消置顶' : '置顶内容'"><UIcon :name="msg.pinned ? 'i-mdi-pin' : 'i-mdi-pin-outline'" /></div>
+                      <div v-if="isLogin" class="tool-icon" @click="editMessage(msg)" title="编辑"><UIcon name="i-mdi-pencil-outline" /></div>
+                      <div class="tool-icon" @click="copyContent(msg.content)" title="复制"><UIcon name="i-mdi-content-copy" /></div>
+                      <div class="tool-icon" @click="downloadAsImage(msg.id)" title="下载卡片"><UIcon name="i-mdi-image-outline" /></div>
+                      <div v-if="isLogin" class="tool-icon" @click="deleteMsg(msg.id)" title="删除"><UIcon name="i-mdi-trash-can-outline" /></div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-            <!-- 评论区域（仅默认展开有评论的消息；无评论默认折叠） -->
-            <div v-if="(expandedCommentsMap[msg.id] || activeCommentId === msg.id) && isCommentEnabled" :id="`comment-container-${msg.id}`" class="mt-4" :class="commentThemeClass" style="position: relative;">
-              <BuiltinComments v-if="isBuiltin && apiReachable" :key="(commentRefreshKey[msg.id] || 0)" :message-id="msg.id" :site-config="siteConfig" :show-input="activeCommentId === msg.id" />
-              <div v-else-if="useWaline && apiReachable" :id="`waline-${msg.id}`"></div>
+              <div v-if="(expandedCommentsMap[msg.id] || activeCommentId === msg.id) && isCommentEnabled && !isGuestbookMessage(msg)" :id="`comment-container-${msg.id}`" class="mt-2" style="position: relative;">
+                <BuiltinComments v-if="isBuiltin && apiReachable" :key="(commentRefreshKey[msg.id] || 0)" :message-id="msg.id" :site-config="siteConfig" :show-input="activeCommentId === msg.id" @cancel="handleCancel(msg.id, $event)" />
+                <div v-else-if="useWaline && apiReachable" :id="`waline-${msg.id}`"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -226,15 +223,69 @@ const contentTheme = inject('contentTheme', ref<string>(typeof window !== 'undef
 const listThemeClass = computed(() => contentTheme.value === 'dark' ? 'bg-[rgba(36,43,50,0.95)] text-white' : 'bg-white text-black')
 const listThemeTextClass = computed(() => contentTheme.value === 'dark' ? 'text-white' : 'text-black')
 const gradientClass = computed(() => contentTheme.value === 'dark' ? 'from-[rgba(36,43,50,1)] via-[rgba(36,43,50,0.8)] to-transparent' : 'from-[rgba(255,255,255,1)] via-[rgba(255,255,255,0.8)] to-transparent')
-const commentThemeClass = computed(() => contentTheme.value === 'dark' 
-  ? 'bg-[rgba(36,43,50,0.95)] text-white rounded-lg p-3' 
-  : 'bg-white text-black rounded-lg p-3')
+// 作者头像：登录用户的头像优先；否则使用站点头像或首字母头像
+const authorAvatar = (msg: any) => {
+  const uname = String(((useUserStore().user as any)?.username || '')).trim()
+  const uav = String((((useUserStore().user as any)?.avatar_url || (useUserStore().user as any)?.AvatarURL) || '')).trim()
+  const siteAvatar = String(((props.siteConfig as any)?.avatarURL || '')).trim()
+  const pick = (s: string) => {
+    if (!s) return ''
+    if (/^https?:\/\//i.test(s)) return s
+    return `${BASE_API}${s}`
+  }
+  if (uname && String(msg?.username || '').trim() === uname && uav) return pick(uav)
+  return pick(siteAvatar) || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(String(msg?.username || '匿名'))}&backgroundType=gradient&radius=50&scale=100&size=64`
+}
+const authorAvatarOnError = (e: Event, seed: string) => {
+  const img = e.target as HTMLImageElement
+  const fallback = `https://i.pravatar.cc/64?u=${encodeURIComponent(seed || '')}`
+  if (img) img.src = fallback
+}
 const expandBtnClass = computed(() => contentTheme.value === 'dark'
   ? 'bg-[rgba(36,43,50,0.95)] text-white hover:text-white border-none shadow-sm rounded-full'
   : 'bg-white text-black hover:text-black border border-gray-300 shadow-sm rounded-full')
 const pagerBtnClass = computed(() => contentTheme.value === 'dark'
   ? 'bg-[rgba(36,43,50,0.75)] text-white hover:text-white hover:bg-[rgba(36,43,50,0.85)] active:bg-[rgba(36,43,50,0.9)] focus:bg-[rgba(36,43,50,0.85)] border border-white/70'
   : 'bg-[rgba(24,28,32,0.6)] text-white hover:text-white hover:bg-[rgba(24,28,32,0.7)] active:bg-[rgba(24,28,32,0.75)] focus:bg-[rgba(24,28,32,0.7)] border border-white/70')
+
+// 内容工具栏折叠与样式
+const openToolboxId = ref<number | null>(null)
+const toggleToolbox = (id: number) => {
+  openToolboxId.value = openToolboxId.value === id ? null : id
+}
+const closeToolboxIfOutside = (e: Event) => {
+  const target = e.target as HTMLElement
+  if (!target) { openToolboxId.value = null; return }
+  const inPanel = !!target.closest('.message-toolbox')
+  const onToggle = !!target.closest('.tool-open-btn')
+  if (!inPanel && !onToggle) openToolboxId.value = null
+}
+onMounted(() => {
+  window.addEventListener('scroll', () => { openToolboxId.value = null })
+  document.addEventListener('click', closeToolboxIfOutside, true)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closeToolboxIfOutside, true)
+})
+const toolboxClass = computed(() => contentTheme.value === 'dark' ? 'toolbox-dark' : 'toolbox-light')
+
+// 点赞与评论计数
+const likesMap = ref<Record<number, number>>({})
+const likedMap = ref<Record<number, boolean>>({})
+const commentCountMap = ref<Record<number, number>>({})
+const like = async (id: number) => {
+  try {
+    const resp = await fetch(`${BASE_API}/messages/${id}/like/toggle`, { method: 'POST', credentials: 'include', headers: { 'Accept': 'application/json' } })
+    if (!resp.ok) throw new Error('点赞失败')
+    const js = await resp.json()
+    const count = js?.data?.like_count ?? (likesMap.value[id] || 0)
+    const liked = !!js?.data?.liked
+    likesMap.value[id] = count
+    likedMap.value[id] = liked
+  } catch (e) {
+    useToast().add({ title: '点赞失败', color: 'red', timeout: 2000 })
+  }
+}
 
 const targetPage = ref('');
 const totalPages = computed(() => Math.ceil(message.total / 15));
@@ -284,16 +335,19 @@ const props = defineProps({
     type: Object,
     required: true
   },
-  targetMessageId: {  // 添加新的 prop
+  targetMessageId: {
     type: String,
     default: null
+  },
+  wide: {
+    type: Boolean,
+    default: false
   }
 });
+const outerContainerClass = computed(() => props.wide ? 'flex-grow w-full px-1 sm:px-2' : 'flex-grow mx-auto w-full sm:max-w-4xl px-1 sm:px-2')
+const innerContainerClass = computed(() => props.wide ? '' : 'mx-auto sm:max-w-4xl')
 const useWaline = computed(() => {
-  const s: any = props.siteConfig || {}
-  const system = String(s.commentSystem || 'waline').toLowerCase()
-  const enabled = typeof s.commentEnabled === 'boolean' ? !!s.commentEnabled : true
-  return enabled && system === 'waline' && !!s.walineServerURL
+  return false
 })
 // 添加监听器
 watch(() => props.targetMessageId, async (newId) => {
@@ -332,9 +386,26 @@ const isCommentEnabled = computed(() => {
   return v === true || v === 'true'
 })
 const isBuiltin = computed(() => {
-  const s: any = props.siteConfig || {}
-  return String(s.commentSystem || 'waline').toLowerCase() === 'builtin'
+  return true
 })
+const guestbookId = ref<number | null>(null)
+const isGuestbookMessage = (m: any) => {
+  if (!m) return false
+  if (guestbookId.value && m.id === guestbookId.value) return true
+  const text = String(m.content || '').toLowerCase()
+  return /#guestbook|#留言|留言板/.test(text)
+}
+const fetchGuestbookId = async () => {
+  try {
+    const resp = await fetch(`${BASE_API}/guestbook/message`, { credentials: 'include', headers: { 'Accept': 'application/json' } })
+    if (resp.ok) {
+      const js = await resp.json()
+      const id = js?.data?.id
+      if (id) guestbookId.value = Number(id)
+    }
+  } catch {}
+}
+const getMessageById = (id: number) => (message.messages || []).find((m: any) => m.id === id)
 const userStore = useUserStore();
 const isLogin = computed(() => userStore.isLogin);
 const openInNewTab = (url: string) => {
@@ -470,6 +541,8 @@ const initFancybox = () => {
 };
 
 const toggleComment = async (msgId: number) => {
+  const m = getMessageById(msgId)
+  if (isGuestbookMessage(m)) return
   const isShown = !!(expandedCommentsMap.value[msgId] || activeCommentId.value === msgId)
   if (isShown) {
     expandedCommentsMap.value[msgId] = false
@@ -517,6 +590,15 @@ const toggleComment = async (msgId: number) => {
     }
   }
 };
+
+const handleCancel = (msgId: number, payload?: { empty?: boolean }) => {
+  if (payload && payload.empty === true) {
+    toggleComment(msgId); // 与点击评论图标行为一致（当前显示则关闭）
+    return;
+  }
+  if (activeCommentId.value === msgId) activeCommentId.value = null
+  commentRefreshKey.value[msgId] = (commentRefreshKey.value[msgId] || 0) + 1
+}
 
 // 置顶权限：作者或管理员
 const canPin = (msg: any) => {
@@ -647,6 +729,7 @@ const loadWalineAssets = async () => {
 onMounted(async () => {
   try {
     await checkApi()
+    await fetchGuestbookId()
     // 获取路由中的消息ID
     const messageId = route.hash.split('/messages/').pop();
     
@@ -663,10 +746,14 @@ onMounted(async () => {
     if (!response.ok) throw new Error('消息加载失败');
     const data = await response.json();
     if (data.code === 1 && data.data) {
-      // 设置单条消息模式
-      message.messages = [data.data];
-        message.hasMore = false;
-        message.page = 1;
+      const item = data.data
+      if (!isGuestbookMessage(item)) {
+        message.messages = [item];
+      } else {
+        message.messages = []
+      }
+      message.hasMore = false;
+      message.page = 1;
         
         await nextTick();
         const targetElement = document.querySelector(`.content-container[data-msg-id="${messageId}"]`);
@@ -688,10 +775,14 @@ onMounted(async () => {
         if (response.ok) {
           const data = await response.json();
           if (data.code === 1 && data.data) {
-            message.messages = data.data.items || [];
-            message.total = data.data.total || 0;
-            message.hasMore = (message.messages.length < message.total);
+            const items = (data.data.items || []).filter((m: any) => !isGuestbookMessage(m));
+            message.messages = items;
+            const totalRaw = data.data.total || 0;
+            const adjustedTotal = totalRaw - (guestbookId.value ? 1 : 0);
+            message.total = Math.max(0, adjustedTotal);
+            const lastPage = Math.max(1, Math.ceil((message.total || 0) / 15));
             message.page = 1;
+            message.hasMore = message.page < lastPage;
           }
         }
       }
@@ -704,7 +795,7 @@ onMounted(async () => {
 
     // 默认仅展开已有评论的消息
     try {
-      const tasks = (message.messages || []).map(async (m: any) => {
+      const tasks = (message.messages || []).filter((m: any) => !isGuestbookMessage(m)).map(async (m: any) => {
         try {
           let js: any = null
           const resp1 = await fetch(`${BASE_API}/messages/${m.id}/comments`, { credentials: 'include', headers: { 'Accept': 'application/json' } });
@@ -715,6 +806,7 @@ onMounted(async () => {
             if (resp2 && resp2.ok) js = await resp2.json();
           }
           const count = js && Array.isArray(js.data) ? js.data.length : 0;
+          commentCountMap.value[m.id] = count;
           if (isBuiltin.value && count > 0) expandedCommentsMap.value[m.id] = true;
       } catch {}
     });
@@ -751,18 +843,23 @@ watch(() => route.hash, async (newHash) => {
       if (response.ok) {
         const data = await response.json();
         if (data.code === 1 && data.data) {
-          message.messages = data.data.items || [];
-          message.total = data.data.total || 0;
-          message.hasMore = (message.messages.length < message.total);
+          const items = (data.data.items || []).filter((m: any) => !isGuestbookMessage(m));
+          message.messages = items;
+          const totalRaw = data.data.total || 0;
+          const adjustedTotal = totalRaw - (guestbookId.value ? 1 : 0);
+          message.total = Math.max(0, adjustedTotal);
+          const lastPage = Math.max(1, Math.ceil((message.total || 0) / 15));
           message.page = 1;
+          message.hasMore = message.page < lastPage;
           expandedCommentsMap.value = {};
           try {
-            const tasks = (message.messages || []).map(async (m: any) => {
+            const tasks = (message.messages || []).filter((m: any) => !isGuestbookMessage(m)).map(async (m: any) => {
               try {
                 const resp = await fetch(`${BASE_API}/messages/${m.id}/comments`, { credentials: 'include', headers: { 'Accept': 'application/json' } });
                 if (resp.ok) {
                   const js = await resp.json();
                   const count = Array.isArray(js.data) ? js.data.length : 0;
+                  commentCountMap.value[m.id] = count;
                   if (isBuiltin.value && count > 0) expandedCommentsMap.value[m.id] = true;
                 }
               } catch {}
@@ -785,9 +882,9 @@ watch(() => route.hash, async (newHash) => {
     if (!response.ok) throw new Error('消息加载失败');
     const data = await response.json();
     if (data.code === 1 && data.data) {
-      message.messages = [data.data];
-      message.hasMore = false;
-      message.page = 1;
+          message.messages = isGuestbookMessage(data.data) ? [] : [data.data];
+          message.hasMore = false;
+          message.page = 1;
       
       await nextTick();
       const targetElement = document.querySelector(`.content-container[data-msg-id="${messageId}"]`);
@@ -823,9 +920,14 @@ const loadPreviousPage = async () => {
       pageSize: 15,
     });
     if (result && Array.isArray(result.items)) {
-      const nonPinned = result.items.filter((m: any) => !m.pinned);
+      const nonPinned = result.items.filter((m: any) => !m.pinned && !isGuestbookMessage(m));
       message.messages = [...pinnedTopItems.value, ...nonPinned];
-      message.page = result.page || targetPage;
+      const totalRaw = (result as any).total || message.total || 0;
+      const adjustedTotal = totalRaw - (guestbookId.value ? 1 : 0);
+      message.total = Math.max(0, adjustedTotal);
+      message.page = (result as any).page || targetPage;
+      const lastPage = Math.max(1, Math.ceil((message.total || 0) / 15));
+      message.hasMore = message.page < lastPage;
     } else {
       message.page = targetPage;
     }
@@ -854,9 +956,14 @@ const loadNextPage = async () => {
       pageSize: 15,
     });
     if (result && Array.isArray(result.items)) {
-      const nonPinned = result.items.filter((m: any) => !m.pinned);
+      const nonPinned = result.items.filter((m: any) => !m.pinned && !isGuestbookMessage(m));
       message.messages = [...pinnedTopItems.value, ...nonPinned];
-      message.page = result.page || targetPage;
+      const totalRaw = (result as any).total || message.total || 0;
+      const adjustedTotal = totalRaw - (guestbookId.value ? 1 : 0);
+      message.total = Math.max(0, adjustedTotal);
+      message.page = (result as any).page || targetPage;
+      const lastPage = Math.max(1, Math.ceil((message.total || 0) / 15));
+      message.hasMore = message.page < lastPage;
     } else {
       message.page = targetPage;
     }
@@ -892,10 +999,24 @@ watch(
   async () => {
     try {
       if (message.page === 1) {
-        const pins = (message.messages || []).filter((m: any) => m.pinned);
+        const pins = (message.messages || []).filter((m: any) => m.pinned && !isGuestbookMessage(m));
         const unique = pins.filter((m: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.id === m.id) === i);
         pinnedTopItems.value = unique;
       }
+      try {
+        const list = (message.messages || []).filter((m: any) => !isGuestbookMessage(m));
+        const tasks = list.map(async (m: any) => {
+          try {
+            const resp = await fetch(`${BASE_API}/messages/${m.id}/comments`, { credentials: 'include', headers: { 'Accept': 'application/json' } });
+            if (resp.ok) {
+              const js = await resp.json();
+              const count = Array.isArray(js.data) ? js.data.length : 0;
+              commentCountMap.value[m.id] = count;
+            }
+          } catch {}
+        });
+        await Promise.allSettled(tasks);
+      } catch {}
       await nextTick();
       checkContentHeight();
       initFancybox();
@@ -1086,7 +1207,15 @@ const downloadAsImage = async (msgId: number) => {
     const textColor = parentStyles.color || '#333';
     
     // 移除所有控制元素和限制
-    contentClone.querySelectorAll('.text-center.mt-2, .bg-gradient-to-t').forEach(el => el.remove());
+    contentClone.querySelectorAll('.text-center.mt-2, .bg-gradient-to-t, .expand-toggle-btn, .message-socialbar, .message-toolbox, .toolbox-anchor, .tool-open-btn, .builtin-comments, [id^="comment-container-"], [id^="waline-"]').forEach(el => el.remove());
+    // 删除置顶图标及其包裹容器
+    contentClone.querySelectorAll('.i-mdi-pin, .i-mdi-pin-outline').forEach(el => {
+      const parent = el.parentElement;
+      if (parent && parent.classList.contains('opacity-80')) parent.remove();
+      else el.remove();
+    });
+    // 兼容不同渲染结构：移除作者行中的右侧置顶容器
+    contentClone.querySelectorAll('.author-row .ml-auto').forEach(el => el.remove());
     contentClone.style.cssText = `
       max-height: none;
       overflow: visible;
@@ -1233,7 +1362,7 @@ await processImages();
     // 生成图片
     await nextTick();
     const canvas = await html2canvas(tempContainer, {
-      backgroundColor: null,
+      backgroundColor: bgColor,
       scale: 2,
       useCORS: true,
       allowTaint: true,
@@ -1320,6 +1449,8 @@ const handleSearchResult = async (results: any) => {
       throw new Error('无效的数据格式');
     }
     
+    // 排除留言板消息
+    items = items.filter((m: any) => !isGuestbookMessage(m))
     total = items.length;
     
     // 更新搜索状态和结果
@@ -1381,9 +1512,9 @@ const resetSearch = () => {
 // 修改displayMessages计算属性以支持搜索模式
 const displayMessages = computed(() => {
   if (isSearchMode.value && Array.isArray(searchResults.value)) {
-    return searchResults.value;
+    return (searchResults.value || []).filter((m: any) => !isGuestbookMessage(m));
   }
-  const base = message.messages || [];
+  const base = (message.messages || []).filter((m: any) => !isGuestbookMessage(m));
   if (!pinnedTopItems.value.length) return base;
   const rest = base.filter((m: any) => !pinnedTopItems.value.some((p: any) => p.id === m.id));
   return [...pinnedTopItems.value, ...rest];
@@ -1413,6 +1544,16 @@ watch(isSearchMode, (newVal) => {
     initFancybox();
   });
 });
+const onCommentCountUpdated = (e: any) => {
+  try {
+    const d = e?.detail || {}
+    const id = Number(d?.messageId || 0)
+    const cnt = Number(d?.count || 0)
+    if (id) commentCountMap.value[id] = cnt
+  } catch {}
+}
+onMounted(() => { try { window.addEventListener('comment-count-updated', onCommentCountUpdated) } catch {} })
+onBeforeUnmount(() => { try { window.removeEventListener('comment-count-updated', onCommentCountUpdated) } catch {} })
 // 优化图片加载
 const optimizeImage = (url: string) => {
   if (!url) return url;
@@ -1435,14 +1576,32 @@ const footerConfig = computed(() => ({
   padding: 12px;
   border-radius: 12px;
   transition: all 0.3s ease;
-  margin: 4px 0 0.2rem 0; /* 调整外边距 */
+  margin: 2px 0 0.6rem 0;
   width: 100%;
   box-sizing: border-box;
   position: relative;
   overflow: hidden;
 }
+/* 内容图片 box 效果与悬停预览动画 */
+.message-image-box {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  display: block;
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.10);
+}
+.message-image-box:hover {
+  transform: translate3d(0,0,0) scale(1.02);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.28);
+  filter: saturate(1.06) contrast(1.02);
+}
+@media (prefers-color-scheme: dark) {
+  .message-image-box { box-shadow: 0 1px 2px rgba(255,255,255,0.06); }
+  .message-image-box:hover { box-shadow: 0 8px 22px rgba(255,255,255,0.12); }
+}
 /* 优化图片渲染 */
-.content-container img {
+.content-container img:not(.avatar-img) {
   width: 100%;
   height: auto;
   min-height: 150px;
@@ -1456,35 +1615,30 @@ const footerConfig = computed(() => ({
   transition: max-height 0.2s ease;  /* 缩短动画时间 */
 }
 /* 优化移动端滚动 */
-@media screen and (max-width: 768px) {
+@media screen and (max-width: 1024px) {
   html, body {
     -webkit-overflow-scrolling: touch;
     overflow-scrolling: touch;
   }
 }
 /* 添加移动端适配 */
-@media screen and (max-width: 768px) {
+@media screen and (max-width: 1024px) {
   .content-container {
-    margin: 2px 0;
+    margin: 2px 0 0.4rem 0;
     padding: 8px;
     box-shadow: none;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
   
-  /* 调整内容区域的内边距 */
-  .border-l-2 {
-    padding: 0.8rem !important;
-  }
-  /* 优化移动端滚动 */
+  
   .message-list-container {
     transform: translate3d(0, 0, 0);
     -webkit-overflow-scrolling: touch;
   }
-  .content-container img {
+  .content-container img:not(.avatar-img) {
     min-height: 100px;
   }
-  /* 移除移动端动画效果 */
   .message-actions > div {
     transition: none;
   }
@@ -1498,6 +1652,38 @@ const footerConfig = computed(() => ({
   bottom: 0;
   z-index: -1;
   border-radius: inherit;
+}
+
+.content-container.text-black { background: #fff; }
+.content-container .bg-gradient-to-t { pointer-events: none; }
+
+/* 内容区工具栏（融合/可折叠） */
+.message-toolbox { 
+  margin-top: 10px; 
+  border-radius: 12px; 
+}
+.toolbox-anchor { position: relative; display: inline-block; }
+.message-toolbox.overlay { position:absolute; right:0; bottom:calc(100% + 8px); z-index:100; }
+.tool-icons { 
+  display: flex; 
+  align-items: center; 
+  gap: 12px; 
+  padding: 8px 10px; 
+}
+.tool-icon { 
+  width: 22px; height: 22px; display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:0.85; 
+}
+.tool-icon:hover { opacity: 1; transform: scale(1.06); transition: transform .12s ease; }
+.toolbox-dark { background: rgba(36,43,50,0.95); border: 1px solid rgba(255,255,255,0.1); }
+.toolbox-light { background: #fff; border: 1px solid rgba(0,0,0,0.08); }
+.author-row { line-height: 1.1; }
+.message-socialbar { display:flex; align-items:center; gap:12px; padding:0; margin-top:6px; }
+.social-item { display:flex; align-items:center; gap:6px; opacity:.85; cursor:pointer; }
+.social-item:hover { opacity:1; }
+@media (max-width: 640px) {
+  .tool-icons { gap:10px; padding:6px 8px; }
+  .tool-icon { width:20px; height:20px; }
+  .message-socialbar { gap:10px; padding:0; }
 }
 
 /* 添加展开/折叠按钮样式（按主题自适应） */
@@ -1537,6 +1723,7 @@ const footerConfig = computed(() => ({
   position: relative;
   z-index: 1;
 }
+.overflow-visible { overflow: visible !important; }
 /* 添加内容过渡动画 */
 .overflow-y-hidden {
   transition: max-height 0.3s ease-in-out;
@@ -1556,8 +1743,8 @@ const footerConfig = computed(() => ({
 :global(html.dark) :deep(.wl-comment) {
   background: rgba(36, 43, 50, 0.95) !important;
   border-radius: 8px;
-  padding: 12px !important;
-  margin-bottom: 12px !important;
+  padding: 8px !important;
+  margin-bottom: 6px !important;
 }
 :global(html.dark) :deep(.wl-input) {
   color: #ffffff !important;
@@ -1588,8 +1775,8 @@ const footerConfig = computed(() => ({
 :global(html:not(.dark)) :deep(.wl-comment) {
   background: #fff !important;
   border-radius: 8px;
-  padding: 12px !important;
-  margin-bottom: 12px !important;
+  padding: 8px !important;
+  margin-bottom: 6px !important;
 }
 :global(html:not(.dark)) :deep(.wl-input) {
   color: #111 !important;
@@ -1624,6 +1811,11 @@ const footerConfig = computed(() => ({
   position: relative;
   z-index: 1;
 }
+/* 缩小回复列表的垂直间距 */
+:global(html.dark) :deep(.wl-replies),
+:global(html:not(.dark)) :deep(.wl-replies) { margin-top: 6px !important; }
+:global(html.dark) :deep(.wl-comment .wl-content),
+:global(html:not(.dark)) :deep(.wl-comment .wl-content) { margin-bottom: 6px !important; }
 /* 添加评论内容文本颜色 */
 :global(html.dark) :deep(.wl-comment .wl-content) {
   color: #fff !important;

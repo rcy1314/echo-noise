@@ -65,7 +65,7 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      baseApi: process.env.NODE_ENV === 'development' ? 'http://localhost:1315/api' : (process.env.BASE_API || '/api'),
+      baseApi: process.env.NODE_ENV === 'development' ? '/api' : (process.env.BASE_API || '/api'),
     }
   },
   // 添加以下配置

@@ -1,1 +1,0 @@
-import{ay as s,O as u,az as c,aA as n}from"./B5Ug7n5G.js";const l=s(async i=>{let e,a;const r=u().public.baseApi||"/api";try{const t=([e,a]=c(()=>$fetch(`${r}/user`,{credentials:"include"})),e=await e,a(),e);if((t==null?void 0:t.code)===1)return}catch{}return n({path:"/auth/login",query:{redirect:i.fullPath}})});export{l as default};

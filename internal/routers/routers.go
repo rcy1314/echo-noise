@@ -118,15 +118,19 @@ func SetupRouter() *gin.Engine {
 	api.GET("/messages/calendar", controllers.GetMessagesCalendar) // 新增热力图专用路由
 	api.GET("/messages/search", controllers.SearchMessages)        // 新增搜索消息路由
 	api.GET("/version/check", controllers.CheckVersion)            // 添加版本检查路由
+	api.GET("/version", controllers.GetVersion)                    // 当前运行版本（镜像标签/环境变量）
 	// GitHub OAuth
 	api.GET("/oauth/github/login", controllers.GithubLogin)
 	r.GET("/oauth/github/callback", controllers.GithubCallback)
 	api.POST("/password/forgot", controllers.PasswordForgot)
 
 	// 添加标签和图像相关路由
-	api.GET("/messages/tags/:tag", controllers.GetMessagesByTag) // 获取指定标签的消息
-	api.GET("/messages/tags", controllers.GetAllTags)            // 获取所有标签列表
-	api.GET("/messages/images", controllers.GetAllImages)        // 获取所有图片列表
+	api.GET("/messages/tags/:tag", controllers.GetMessagesByTag)         // 获取指定标签的消息
+	api.GET("/messages/tags", controllers.GetAllTags)                    // 获取所有标签列表
+	api.GET("/messages/images", controllers.GetAllImages)                // 获取所有图片列表
+	api.POST("/messages/:id/like", controllers.IncrementMessageLike)     // 点赞接口
+	api.POST("/messages/:id/like/toggle", controllers.ToggleMessageLike) // 点赞切换
+	api.GET("/guestbook/message", controllers.GetGuestbookMessageID)     // 获取留言板消息ID
 
 	// 需要鉴权的路由
 	authRoutes := api.Group("")
@@ -154,8 +158,8 @@ func SetupRouter() *gin.Engine {
 	// 评论系统（内置）公共路由
 	api.GET("/messages/:id/comments", controllers.GetComments)
 	api.POST("/messages/:id/comments", controllers.PostComment)
-	// 管理员评论列表（提供公共路径，函数内再校验管理员权限）
-	api.GET("/comments", controllers.ListComments)
+	// 管理员评论列表（提供公共路径，附加会话中间件以注入用户上下文）
+	api.GET("/comments", middleware.SessionAuthMiddleware(), controllers.ListComments)
 	// 评论删除（管理员）
 	authRoutes.DELETE("/messages/:id/comments/:cid", controllers.DeleteComment)
 	// 一次性回填评论 parent_id（管理员）

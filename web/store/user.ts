@@ -17,6 +17,7 @@ export const useUserStore = defineStore("userStore", () => {
                 userid: u.user_id ?? u.ID,
                 username: u.username ?? u.Username,
                 is_admin: u.is_admin ?? u.IsAdmin,
+                avatar_url: u.avatar_url ?? u.AvatarURL,
                 total_messages: (newStatus as any).total_messages ?? 0
             } as any
             isLogin.value = true
@@ -72,7 +73,8 @@ export const useUserStore = defineStore("userStore", () => {
             user.value = {
                 userid: u.id ?? u.ID ?? u.user_id,
                 username: u.username ?? u.Username,
-                is_admin: u.is_admin ?? u.IsAdmin
+                is_admin: u.is_admin ?? u.IsAdmin,
+                avatar_url: u.avatar_url ?? u.AvatarURL
             } as any
             isLogin.value = true;
             await getStatus();
@@ -131,7 +133,8 @@ export const useUserStore = defineStore("userStore", () => {
             user.value = {
                 userid: u.id ?? u.ID ?? u.user_id,
                 username: u.username ?? u.Username,
-                is_admin: u.is_admin ?? u.IsAdmin
+                is_admin: u.is_admin ?? u.IsAdmin,
+                avatar_url: u.avatar_url ?? u.AvatarURL
             } as any
             isLogin.value = true;
             await getStatus();

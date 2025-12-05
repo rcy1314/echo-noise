@@ -58,7 +58,8 @@ export const getRequest = async <T>(url: string, params?: any, options?: { crede
         const e: any = error;
         const status = e?.response?.status || e?.status;
         if (status === 401) {
-            return { code: 0, msg: 'Unauthorized' } as any as Response<T>;
+            const msg = e?.response?._data?.msg || e?.response?.statusText || '未登录或登录已过期';
+            return { code: 0, msg } as any as Response<T>;
         }
         const toast = useToast();
         toast.add({ title: '请求失败', description: '网络异常或服务器不可用', color: 'red', timeout: 2000 });

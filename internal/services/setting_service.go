@@ -41,6 +41,12 @@ func GetFrontendConfig() (map[string]interface{}, error) {
 		dbType = "sqlite"
 	}
 
+	// 解析左侧广告 JSON
+	var leftAdsList []map[string]interface{}
+	if strings.TrimSpace(config.LeftAds) != "" {
+		_ = json.Unmarshal([]byte(config.LeftAds), &leftAdsList)
+	}
+
 	configMap := map[string]interface{}{
 		"allowRegistration": allowReg,
 		"dbType":            dbType,
@@ -88,9 +94,18 @@ func GetFrontendConfig() (map[string]interface{}, error) {
 			"musicCssCdnURL":        choose(config.MusicCssCdnURL, ""),
 			"musicJsCdnURL":         choose(config.MusicJsCdnURL, ""),
 			// 评论系统
-			"commentEnabled":      config.CommentEnabled,
-			"commentSystem":       choose(config.CommentSystem, "waline"),
-			"commentEmailEnabled": config.CommentEmailEnabled,
+			"commentEnabled":       config.CommentEnabled,
+			"commentSystem":        choose(config.CommentSystem, "builtin"),
+			"commentEmailEnabled":  config.CommentEmailEnabled,
+			"commentLoginRequired": config.CommentLoginRequired,
+			// 扩展组件开关
+			"calendarEnabled": config.CalendarEnabled,
+			"timeEnabled":     config.TimeEnabled,
+			"hitokotoEnabled": config.HitokotoEnabled,
+			// 广告位配置
+			"leftAdEnabled":     config.LeftAdEnabled,
+			"leftAds":           leftAdsList,
+			"leftAdsIntervalMs": config.LeftAdsIntervalMs,
 		},
 		"storageEnabled": config.StorageEnabled,
 		"storageConfig": map[string]interface{}{
@@ -196,6 +211,21 @@ func UpdateFrontendSetting(userID uint, settingMap map[string]interface{}) error
 	if v, ok := frontendSettings["walineServerURL"].(string); ok {
 		config.WalineServerURL = v
 	}
+	if vb, ok := frontendSettings["calendarEnabled"].(bool); ok {
+		config.CalendarEnabled = vb
+	} else if vs, ok := frontendSettings["calendarEnabled"].(string); ok {
+		config.CalendarEnabled = (vs == "true")
+	}
+	if vb, ok := frontendSettings["timeEnabled"].(bool); ok {
+		config.TimeEnabled = vb
+	} else if vs, ok := frontendSettings["timeEnabled"].(string); ok {
+		config.TimeEnabled = (vs == "true")
+	}
+	if vb, ok := frontendSettings["hitokotoEnabled"].(bool); ok {
+		config.HitokotoEnabled = vb
+	} else if vs, ok := frontendSettings["hitokotoEnabled"].(string); ok {
+		config.HitokotoEnabled = (vs == "true")
+	}
 	// 评论系统设置
 	if vb, ok := frontendSettings["commentEnabled"].(bool); ok {
 		config.CommentEnabled = vb
@@ -204,6 +234,46 @@ func UpdateFrontendSetting(userID uint, settingMap map[string]interface{}) error
 			config.CommentEnabled = true
 		} else if vs == "false" {
 			config.CommentEnabled = false
+		}
+
+		// 广告位设置
+		if vb, ok := frontendSettings["leftAdEnabled"].(bool); ok {
+			config.LeftAdEnabled = vb
+		} else if vs, ok := frontendSettings["leftAdEnabled"].(string); ok {
+			config.LeftAdEnabled = (vs == "true")
+		}
+		// 轮播间隔
+		if vi, ok := frontendSettings["leftAdsIntervalMs"].(float64); ok {
+			config.LeftAdsIntervalMs = int(vi)
+		} else if vi2, ok := frontendSettings["leftAdsIntervalMs"].(int); ok {
+			config.LeftAdsIntervalMs = vi2
+		} else if vs, ok := frontendSettings["leftAdsIntervalMs"].(string); ok {
+			if n, err := strconv.Atoi(vs); err == nil {
+				config.LeftAdsIntervalMs = n
+			}
+		}
+		// 多广告列表
+		if arr, ok := frontendSettings["leftAds"].([]interface{}); ok {
+			type adItem struct{ ImageURL, LinkURL, Description string }
+			list := make([]adItem, 0, len(arr))
+			for _, it := range arr {
+				m, ok := it.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				img := strings.TrimSpace(fmt.Sprintf("%v", m["imageURL"]))
+				if img == "" {
+					continue
+				}
+				link := strings.TrimSpace(fmt.Sprintf("%v", m["linkURL"]))
+				desc := strings.TrimSpace(fmt.Sprintf("%v", m["description"]))
+				list = append(list, adItem{ImageURL: img, LinkURL: link, Description: desc})
+			}
+			bs, _ := json.Marshal(list)
+			config.LeftAds = string(bs)
+		} else if arr2, ok := frontendSettings["leftAds"].([]map[string]string); ok {
+			bs, _ := json.Marshal(arr2)
+			config.LeftAds = string(bs)
 		}
 	}
 
@@ -253,6 +323,11 @@ func UpdateFrontendSetting(userID uint, settingMap map[string]interface{}) error
 	}
 	if v, ok := frontendSettings["commentSystem"].(string); ok {
 		config.CommentSystem = v
+	}
+	if vb, ok := frontendSettings["commentLoginRequired"].(bool); ok {
+		config.CommentLoginRequired = vb
+	} else if vs, ok := frontendSettings["commentLoginRequired"].(string); ok {
+		config.CommentLoginRequired = (vs == "true")
 	}
 	if vb, ok := frontendSettings["commentEmailEnabled"].(bool); ok {
 		config.CommentEmailEnabled = vb
@@ -550,35 +625,27 @@ func getDefaultConfig() map[string]interface{} {
 				"https://s2.loli.net/2025/03/27/PMRuX5loc6Uaimw.jpg",
 				"https://s2.loli.net/2025/03/27/U2WIslbNyTLt4rD.jpg",
 				"https://s2.loli.net/2025/03/27/xu1jZL5Og4pqT9d.jpg",
-				"https://s2.loli.net/2025/03/27/OXqwzZ6v3PVIns9.jpg",
-				"https://s2.loli.net/2025/03/27/HGuqlE6apgNywbh.jpg",
-				"https://s2.loli.net/2025/03/26/d7iyuPYA8cRqD1K.jpg",
-				"https://s2.loli.net/2025/03/27/wYy12qDMH6bGJOI.jpg",
-				"https://s2.loli.net/2025/03/27/y67m2k5xcSdTsHN.jpg",
 			},
-			"cardFooterTitle":  "Noise·说说·笔记~",
-			"cardFooterLink":   "note.noisework.cn",
-			"pageFooterHTML":   `<div class="text-center text-xs text-gray-400 py-4">来自<a href="https://www.noisework.cn" target="_blank" rel="noopener noreferrer" class="text-orange-400 hover:text-orange-500">Noise</a> 使用<a href="https://github.com/rcy1314/echo-noise" target="_blank" rel="noopener noreferrer" class="text-orange-400 hover:text-orange-500">Ech0-Noise</a>发布</div>`,
-			"rssTitle":         "Noise的说说笔记",
-			"rssDescription":   "一个说说笔记~",
-			"rssAuthorName":    "Noise",
-			"rssFaviconURL":    "/favicon-32x32.png",
-			"walineServerURL":  "请前往waline官网https://waline.js.org查看部署配置",
-			"enableGithubCard": false,
-			// GitHub OAuth 默认关闭
-			"githubOAuthEnabled": false,
-			"githubClientId":     "",
-			"githubClientSecret": "",
-			"githubCallbackURL":  "",
-			// PWA 设置默认值
-			"pwaEnabled":          true,
-			"pwaTitle":            "",
-			"pwaDescription":      "",
-			"pwaIconURL":          "",
-			"defaultContentTheme": "light",
-			"announcementText":    "欢迎访问我的说说笔记！",
-			"announcementEnabled": true,
-			// 音乐播放器默认关闭，但默认位置为左下角并最小化
+			"cardFooterTitle":       "Noise·说说·笔记~",
+			"cardFooterLink":        "note.noisework.cn",
+			"pageFooterHTML":        `<div class="text-center text-xs text-gray-400 py-4">来自<a href="https://www.noisework.cn" target="_blank" rel="noopener noreferrer" class="text-orange-400 hover:text-orange-500">Noise</a> 使用<a href="https://github.com/rcy1314/echo-noise" target="_blank" rel="noopener noreferrer" class="text-orange-400 hover:text-orange-500">Ech0-Noise</a>发布</div>`,
+			"rssTitle":              "Noise的说说笔记",
+			"rssDescription":        "一个说说笔记~",
+			"rssAuthorName":         "Noise",
+			"rssFaviconURL":         "/favicon-32x32.png",
+			"walineServerURL":       "请前往waline官网https://waline.js.org查看部署配置",
+			"enableGithubCard":      false,
+			"githubOAuthEnabled":    false,
+			"githubClientId":        "",
+			"githubClientSecret":    "",
+			"githubCallbackURL":     "",
+			"pwaEnabled":            true,
+			"pwaTitle":              "",
+			"pwaDescription":        "",
+			"pwaIconURL":            "",
+			"defaultContentTheme":   "light",
+			"announcementText":      "欢迎访问我的说说笔记！",
+			"announcementEnabled":   true,
 			"musicEnabled":          false,
 			"musicPlaylistId":       "",
 			"musicSongId":           "",
@@ -590,18 +657,19 @@ func getDefaultConfig() map[string]interface{} {
 			"musicEmbed":            false,
 			"musicCssCdnURL":        "",
 			"musicJsCdnURL":         "",
-			// 评论系统默认值
-			"commentEnabled":                false,
-			"commentSystem":                 "waline",
-			"commentEmailEnabled":           false,
-			"commentEmailReplyName":         "",
-			"commentEmailAdminPrefix":       "",
-			"commentEmailReplyPrefix":       "",
-			"commentEmailReplyTemplate":     "- 您在{site}主页上的内容有了新的评论\n- {nick} 回复说：\n- {content}\n- 您可以点击查看回复的完整内容：{url}",
-			"commentEmailAdminTemplate":     "",
-			"commentEmailSiteURL":           "",
-			"commentEmailReplyTemplateHTML": "",
-			"commentEmailAdminTemplateHTML": "",
+			"commentEnabled":        true,
+			"commentSystem":         "builtin",
+			"commentEmailEnabled":   false,
+			"commentLoginRequired":  false,
+			"hitokotoEnabled":       true,
+			// 广告默认参数（多广告位）
+			"leftAdEnabled": true,
+			"leftAds": []map[string]string{
+				{"imageURL": "https://picsum.photos/seed/ad-1/640/640", "linkURL": "https://note.noisework.cn", "description": "写作与记录，开启灵感之旅"},
+				{"imageURL": "https://picsum.photos/seed/ad-2/640/640", "linkURL": "https://noisework.cn", "description": "探索新主题与小工具"},
+				{"imageURL": "https://picsum.photos/seed/ad-3/640/640", "linkURL": "https://github.com", "description": "开源项目，欢迎 Star"},
+			},
+			"leftAdsIntervalMs": 4000,
 		},
 		"storageEnabled": false,
 		"storageConfig": map[string]interface{}{

@@ -6,7 +6,7 @@
         <div class="px-4 py-4 border-b border-slate-700/40 flex flex-col items-center gap-2">
           <img :src="avatarSrc" class="w-14 h-14 rounded-full ring-2 ring-indigo-400/60 shadow-lg object-cover" alt="avatar" />
           <div class="w-full text-center">
-            <div class="font-semibold truncate">{{ userStore.user?.username || frontendConfig.username || '未登录' }}</div>
+            <div class="font-semibold truncate">{{ userStore.user?.username || '未登录' }}</div>
             <div class="text-xs" :class="theme.mutedText">总笔记 {{ userStore?.status?.total_messages || 0 }}</div>
           </div>
         </div>
@@ -54,7 +54,7 @@
             </button>
             <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('site-configs', $event)">
               <UIcon name="i-heroicons-cog-6-tooth" class="w-5 h-5 text-indigo-300" />
-              <span class="text-sm text-center">站点文案</span>
+              <span class="text-sm text-center">站点信息</span>
             </button>
             <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('comments', $event)">
               <UIcon name="i-heroicons-chat-bubble-left-right" class="w-5 h-5 text-indigo-300" />
@@ -69,21 +69,21 @@
               <span class="text-sm text-center">管理员用户</span>
             </button>
           </div>
-          <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('notify', $event)">
+          <button v-if="isAdmin" class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('notify', $event)">
             <UIcon name="i-heroicons-bell-alert" class="w-5 h-5 text-indigo-300" />
             <span class="text-sm text-center">推送配置</span>
           </button>
-          <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('attachments', $event)">
+          <button v-if="isAdmin" class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('attachments', $event)">
             <UIcon name="i-heroicons-paper-clip" class="w-5 h-5 text-indigo-300" />
             <span class="text-sm text-center">附件管理</span>
           </button>
-          <button class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('db', $event)">
+          <button v-if="isAdmin" class="w-full flex justify-center items-center gap-2 px-3 py-2 rounded-lg transition shadow" :class="[theme.navBtnBg, theme.navBtnHoverBg]" @click="setActive('db', $event)">
             <UIcon name="i-heroicons-circle-stack" class="w-5 h-5 text-indigo-300" />
             <span class="text-sm text-center">数据库管理</span>
           </button>
         </nav>
         <div class="px-4 py-3 border-t border-slate-700/40">
-          <div class="text-xs text-slate-400">当前版本: latest</div>
+          <div class="text-xs text-slate-400">当前版本: {{ versionInfo.currentVersion || '最新' }}</div>
           <div class="mt-2 flex items-center gap-2">
             <UButton size="xs" color="gray" variant="soft" :loading="versionInfo.checking" class="shadow-md" @click="checkVersion">{{ versionInfo.checking ? '检测中...' : '检查版本发布时间' }}</UButton>
           </div>
@@ -124,6 +124,100 @@
                 
                 <div class="flex items-center gap-2">
                   <UButton size="sm" color="green" class="shadow" @click="saveAdminTheme">保存</UButton>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="ads-section" class="col-span-12" v-if="false">
+            <div :class="[theme.cardBg, theme.border, cardCls]">
+              <div class="flex items-center justify-between px-4 py-3">
+                <div class="font-semibold flex items-center gap-2" :class="theme.text">
+                  <UIcon name="i-heroicons-megaphone" class="w-5 h-5" />
+                  <span>左侧广告模块</span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span class="text-sm" :class="theme.mutedText">状态</span>
+                  <span :class="[frontendConfig.leftAdEnabled ? 'text-green-400' : 'text-red-400', 'text-sm']">{{ frontendConfig.leftAdEnabled ? '已启用' : '未启用' }}</span>
+                  <UToggle v-model="frontendConfig.leftAdEnabled" />
+                  <UButton color="green" @click="saveConfig" class="shadow">保存</UButton>
+                </div>
+              </div>
+              <div class="px-4 pb-4">
+                <div class="rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-3" :class="theme.subtleBg">
+                  <div class="md:col-span-2">
+                    <div class="text-sm mb-2" :class="theme.text">海报图片 URL</div>
+                    <UInput v-model="frontendConfig.leftAdImageURL" placeholder="支持 http/https 或以 /api 开头的站内路径" />
+                  </div>
+                  <div>
+                    <div class="text-sm mb-2" :class="theme.text">跳转链接</div>
+                    <UInput v-model="frontendConfig.leftAdLinkURL" placeholder="http/https 链接" />
+                  </div>
+                  <div>
+                    <div class="text-sm mb-2" :class="theme.text">描述文本</div>
+                    <UTextarea v-model="frontendConfig.leftAdDescription" placeholder="可选" />
+                  </div>
+                  <div class="md:col-span-2 mt-4">
+                    <div class="text-sm font-semibold mb-2" :class="theme.text">多广告（自动轮播）</div>
+                    <div class="text-xs mb-2" :class="theme.mutedText">若同时配置单条与多条，优先显示多条</div>
+                    <div class="space-y-2">
+                      <div v-for="(ad, i) in frontendConfig.leftAds" :key="i" class="rounded-md border p-3" :class="theme.border">
+                        <div class="flex items-center justify-between mb-2">
+                          <div class="text-sm" :class="theme.text">广告 #{{ i + 1 }}</div>
+                          <div class="flex items-center gap-2">
+                            <UButton size="xs" color="red" variant="soft" @click="frontendConfig.leftAds.splice(i, 1)">删除</UButton>
+                          </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <UInput v-model="ad.imageURL" placeholder="海报图片 URL" />
+                          <UInput v-model="ad.linkURL" placeholder="跳转链接" />
+                          <UTextarea v-model="ad.description" placeholder="描述文本（可选）" class="md:col-span-2" />
+                        </div>
+                      </div>
+                      <div class="flex items-center justify-between">
+                        <UButton size="sm" color="indigo" variant="soft" class="shadow" @click="frontendConfig.leftAds.push({ imageURL: '', linkURL: '', description: '' })">新增广告</UButton>
+                        <div class="flex items-center gap-2">
+                          <span class="text-sm" :class="theme.mutedText">轮播间隔(ms)</span>
+                          <UInput v-model.number="frontendConfig.leftAdsIntervalMs" type="number" class="w-28" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="social-links-section" class="col-span-12" v-if="false">
+            <div :class="[theme.cardBg, theme.border, cardCls]">
+              <div class="flex items-center justify-between px-4 py-3">
+                <div class="font-semibold flex items-center gap-2" :class="theme.text">
+                  <UIcon name="i-heroicons-link" class="w-5 h-5" />
+                  <span>社交链接配置</span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <UButton size="sm" @click="editItem.socialLinks = !editItem.socialLinks" :color="editItem.socialLinks ? 'gray' : 'green'" :variant="editItem.socialLinks ? 'soft' : 'solid'" class="shadow">{{ editItem.socialLinks ? '取消' : '编辑' }}</UButton>
+                  <UButton color="green" class="shadow" @click="saveSocialLinks">保存</UButton>
+                </div>
+              </div>
+              <div class="px-4 pb-4">
+                <div class="rounded-lg p-4" :class="theme.subtleBg">
+                  <div v-if="editItem.socialLinks" class="space-y-2">
+                    <div v-for="(item, i) in frontendConfig.socialLinks" :key="i" class="rounded-md border p-3" :class="theme.border">
+                      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <UInput v-model="item.name" placeholder="名称" />
+                        <UInput v-model="item.url" placeholder="链接 URL" />
+                        <UInput v-model="item.icon" placeholder="图标名称(可选)" />
+                      </div>
+                      <div class="flex justify-end mt-2">
+                        <UButton size="xs" color="red" variant="soft" @click="removeSocialLink(i)">删除</UButton>
+                      </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <UButton size="sm" color="indigo" variant="soft" class="shadow" @click="addSocialLink">新增链接</UButton>
+                    </div>
+                  </div>
+                  <div v-else class="text-sm" :class="theme.mutedText">共有 {{ (frontendConfig.socialLinks || []).length }} 条社交链接</div>
                 </div>
               </div>
             </div>
@@ -170,28 +264,78 @@
                     <div v-else>
                       <UBadge color="primary" variant="soft" class="ml-0 text-xs px-2 py-1 rounded-md !text-slate-800 dark:!text-slate-200">{{ userStore.user?.username }}</UBadge>
                     </div>
-                </div>
-                <div class="rounded-lg p-3 h-full md:col-span-2" :class="theme.subtleBg">
+                  <div class="mt-3">
                   <div class="flex justify-between items-center mb-2">
+                    <span :class="theme.mutedText">头像</span>
                     <div class="flex items-center gap-2">
-                      <span :class="theme.mutedText">API Token</span>
-                      <UBadge color="primary" variant="subtle" class="text-xs px-2 py-1 rounded-md !text-primary-600 dark:!text-primary-300">{{ userToken ? '已生成' : '未生成' }}</UBadge>
-                      <UButton size="xs" :loading="regeneratingToken" @click="regenerateToken" color="gray" variant="soft" class="shadow text-xs px-2 py-1 rounded-md text-slate-600 dark:text-slate-200" title="重新生成将使旧 Token 失效">重新生成</UButton>
+                      <UButton size="sm" @click="chooseAvatar" color="gray" variant="soft" class="shadow">上传头像</UButton>
+                      <UButton size="sm" :loading="avatarUploading" @click="useInitialsAvatar" color="orange" variant="soft" class="shadow">使用首字母头像</UButton>
                     </div>
                   </div>
-                  <div v-if="userToken" class="mb-2">
-                    <div class="flex items-center gap-2 w-full flex-nowrap">
-                      <UInput v-model="userToken" :type="showToken ? 'text' : 'password'" readonly class="font-mono text-sm flex-1 min-w-0" />
-                      <UButton :icon="showToken ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'" color="gray" variant="ghost" @click="showToken = !showToken" :title="showToken ? '隐藏' : '显示'" />
-                      <UButton icon="i-heroicons-clipboard" color="gray" variant="ghost" @click="copyToken" title="复制 Token" />
+                    <div class="flex items-center gap-3">
+                      <img :src="avatarSrc" class="w-10 h-10 rounded-full object-cover" alt="avatar" />
                     </div>
-                    <p class="text-xs mt-1" :class="theme.mutedText">请妥善保管此 Token</p>
-                  </div>
-                  <div v-else>
-                    <p :class="theme.mutedText">暂无 Token</p>
+                    <p class="text-xs mt-1" :class="theme.mutedText">选择图片后自动进入裁剪，裁剪完成即可保存并预览</p>
+                    <input ref="avatarInput" type="file" accept="image/*" class="hidden" @change="onAvatarFileChange" />
+                    <div class="flex items-center gap-2 w-full mt-2">
+                      <UInput v-model="avatarLink" placeholder="头像链接（http或/api开头）" class="flex-1" />
+                      <UButton size="sm" :loading="avatarUploading" @click="saveAvatarLink" color="primary" variant="solid" class="shadow">保存链接</UButton>
+                    </div>
+                    <UModal v-model="cropperOpen">
+                      <div class="p-4">
+                        <div :class="theme.mutedText" class="mb-2">裁剪头像（拖动图片调整位置，滑块调整缩放）</div>
+                        <div class="mx-auto" style="width:240px;height:240px;border-radius:9999px;overflow:hidden;position:relative;background:#111">
+                          <img v-if="cropImageUrl" :src="cropImageUrl" alt="to-crop" 
+                               :style="{ position: 'absolute', left: '50%', top: '50%', transform: `translate(-50%, -50%) translate(${cropX}px, ${cropY}px) scale(${cropScale})`, userSelect: 'none' }"
+                               @mousedown="startDrag" @touchstart="startDrag" />
+                        </div>
+                        <div class="mt-3 flex items-center gap-3">
+                          <span :class="theme.mutedText">缩放</span>
+                          <input type="range" min="0.5" max="3" step="0.01" v-model.number="cropScale" />
+                          <UButton :loading="avatarUploading" color="green" @click="performCropAndUpload">裁剪并保存</UButton>
+                          <UButton color="gray" variant="soft" @click="closeCropper">取消</UButton>
+                        </div>
+                      </div>
+                    </UModal>
+                    <div class="mt-3">
+                      <div class="flex justify-between items-center mb-2">
+                        <span :class="theme.mutedText">个性签名</span>
+                        <UButton size="sm" @click="editUserInfo.description = !editUserInfo.description" :color="editUserInfo.description ? 'gray' : 'green'" :variant="editUserInfo.description ? 'soft' : 'solid'" class="shadow">{{ editUserInfo.description ? '取消' : '编辑' }}</UButton>
+                      </div>
+                      <div v-if="editUserInfo.description">
+                        <UTextarea v-model="userForm.description" placeholder="一句话介绍自己" class="w-full mb-2" />
+                        <div class="flex justify-end gap-2">
+                          <UButton @click="updateDescription" color="primary" class="shadow">保存</UButton>
+                        </div>
+                      </div>
+                      <div v-else>
+                        <div :class="[theme.subtleBg, theme.border, 'rounded-md p-3 border']">
+                          <p :class="[theme.text, 'break-words']">{{ (userStore.user as any)?.description || '执迷不悟' }}</p>
+                        </div>
+                      </div>
+                    </div>
+                </div>
+              </div>
+              <div class="rounded-lg p-3 md:col-span-2" :class="theme.subtleBg">
+                <div class="flex justify-between items-center mb-2">
+                  <div class="flex items-center gap-2">
+                    <span :class="theme.mutedText">API Token</span>
+                    <UBadge color="primary" variant="subtle" class="text-xs px-2 py-1 rounded-md !text-primary-600 dark:!text-primary-300">{{ userToken ? '已生成' : '未生成' }}</UBadge>
+                    <UButton size="xs" :loading="regeneratingToken" @click="regenerateToken" color="gray" variant="soft" class="shadow text-xs px-2 py-1 rounded-md text-slate-600 dark:text-slate-200" title="重新生成将使旧 Token 失效">重新生成</UButton>
                   </div>
                 </div>
-                <div class="rounded-lg p-3 md:col-span-3" :class="theme.subtleBg">
+                <div v-if="userToken" class="mb-2">
+                  <div class="flex items-center gap-2 w-full flex-nowrap">
+                    <UInput v-model="userToken" :type="showToken ? 'text' : 'password'" readonly class="font-mono text-sm flex-1 min-w-0" />
+                    <UButton :icon="showToken ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'" color="gray" variant="ghost" @click="showToken = !showToken" :title="showToken ? '隐藏' : '显示'" />
+                    <UButton icon="i-heroicons-clipboard" color="gray" variant="ghost" @click="copyToken" title="复制 Token" />
+                  </div>
+                  <p class="text-xs mt-1" :class="theme.mutedText">请妥善保管此 Token</p>
+                </div>
+                <div v-else>
+                  <p :class="theme.mutedText">暂无 Token</p>
+                </div>
+                <div class="border-t mt-4 pt-3" :class="theme.border">
                   <div class="flex justify-between items-center mb-2">
                     <span :class="theme.mutedText">修改密码</span>
                     <UButton size="sm" @click="editUserInfo.password = !editUserInfo.password" :color="editUserInfo.password ? 'gray' : 'green'" :variant="editUserInfo.password ? 'soft' : 'solid'" class="shadow">{{ editUserInfo.password ? '取消' : '编辑' }}</UButton>
@@ -216,6 +360,8 @@
                   </div>
                 </div>
               </div>
+              </div>
+              
             </div>
           </div>
 
@@ -393,19 +539,41 @@
                       <UButton size="sm" @click="editItem[key] = !editItem[key]" :color="editItem[key] ? 'gray' : 'green'" :variant="editItem[key] ? 'soft' : 'solid'" class="shadow">{{ editItem[key] ? '取消' : '编辑' }}</UButton>
                     </div>
                     <div v-if="editItem[key]">
-                      <template v-if="key === 'backgrounds'">
-                        <div class="space-y-2">
-                          <div v-for="(bg, index) in frontendConfig.backgrounds" :key="index" class="flex gap-2">
+                      <template v-if="key === '背景图片' || key === 'backgrounds'">
+                        <div class="space-y-3">
+                          <div v-for="(bg, index) in frontendConfig.backgrounds" :key="index" class="flex items-center gap-3">
+                            <img :src="bg || '/favicon.ico'" class="w-14 h-14 rounded object-cover border" :class="theme.border" @click="previewImage(bg)" />
                             <UInput v-model="frontendConfig.backgrounds[index]" placeholder="输入图片URL" class="flex-1" />
-                            <UButton @click="removeBackground(index)" icon="i-heroicons-trash" color="red" variant="ghost" />
+                            <div class="flex items-center gap-2">
+                              <UButton size="xs" variant="soft" icon="i-heroicons-arrow-up" @click="moveBackgroundUp(index)">上移</UButton>
+                              <UButton size="xs" variant="soft" icon="i-heroicons-arrow-down" @click="moveBackgroundDown(index)">下移</UButton>
+                              <UButton size="xs" variant="soft" icon="i-heroicons-eye" @click="previewImage(bg)">预览</UButton>
+                              <UButton size="xs" color="red" variant="soft" icon="i-heroicons-trash" @click="removeBackground(index)">删除</UButton>
+                            </div>
                           </div>
-                          <div class="flex gap-2">
-                            <UButton @click="addBackground" icon="i-heroicons-plus" variant="ghost" class="mr-2">添加链接</UButton>
-                            <UButton @click="triggerFileInput" icon="i-heroicons-cloud-arrow-up" variant="ghost">上传图片</UButton>
+                          <div class="rounded border-2 border-dashed p-4 text-center" :class="theme.border" @dragover.prevent @drop.prevent="onDropFiles">
+                            <div class="flex items-center justify-center gap-3">
+                              <UButton @click="addBackground" icon="i-heroicons-plus" variant="ghost">添加链接</UButton>
+                              <UButton @click="triggerFileInput" icon="i-heroicons-cloud-arrow-up" variant="ghost">上传图片</UButton>
+                            </div>
+                            <div v-if="isUploading" class="mt-3">
+                              <div class="text-xs" :class="theme.mutedText">{{ uploadingFileName }}</div>
+                              <UProgress :value="uploadProgress" class="mt-1" />
+                            </div>
                           </div>
                         </div>
                       </template>
-                      <template v-else-if="key === 'subtitleText'">
+                      <template v-else-if="key === 'avatarURL'">
+                        <div class="space-y-2">
+                          <div class="flex items-center gap-3">
+                            <img :src="frontendConfig.avatarURL" class="w-12 h-12 rounded-full object-cover" alt="site-avatar" />
+                            <UButton size="sm" color="gray" variant="soft" @click="siteAvatarInput?.click()">上传图片</UButton>
+                            <input ref="siteAvatarInput" type="file" accept="image/*" class="hidden" @change="handleSiteAvatarUpload" />
+                          </div>
+                          <UInput v-model="frontendConfig.avatarURL" placeholder="输入图片URL" class="w-full" />
+                        </div>
+                      </template>
+                      <template v-else-if="key === 'subtitleText' || key === 'linksDescription' || key === 'commentPageDescription' || key === 'aboutPageDescription' || key === 'aboutMarkdown'">
                         <UTextarea v-model="frontendConfig[key]" :placeholder="`输入${label}`" class="w-full mb-2" />
                       </template>
                       <template v-else>
@@ -419,7 +587,13 @@
                     <div v-else>
                       <template v-if="key === 'backgrounds'">
                         <div class="grid grid-cols-3 gap-2">
-                          <img v-for="(bg, index) in frontendConfig.backgrounds" :key="index" :src="bg" class="w-full h-20 object-cover rounded cursor-pointer" @click="previewImage(bg)" />
+                          <img v-for="(bg, index) in frontendConfig.backgrounds" :key="index" :src="bg" class="w-full h-24 object-cover rounded cursor-pointer border" :class="theme.border" @click="previewImage(bg)" />
+                        </div>
+                      </template>
+                      <template v-else-if="key === 'avatarURL'">
+                        <div class="flex items-center gap-3">
+                          <img :src="frontendConfig.avatarURL" class="w-12 h-12 rounded-full object-cover" alt="site-avatar" />
+                          <span :class="theme.mutedText">站点头像预览</span>
                         </div>
                       </template>
                       <template v-else>
@@ -433,6 +607,138 @@
                 <div v-if="editMode" class="flex justify-end gap-2">
                   <UButton @click="resetConfig" variant="ghost" color="gray">重置</UButton>
                   <UButton @click="saveConfig" color="primary" class="shadow">保存所有更改</UButton>
+                </div>
+                <div id="site-ads-section" class="col-span-12">
+                  <div :class="[theme.cardBg, theme.border, cardCls]">
+                    <div class="flex items-center justify-between px-4 py-3">
+                      <div class="font-semibold flex items-center gap-2" :class="theme.text">
+                        <UIcon name="i-heroicons-megaphone" class="w-5 h-5" />
+                        <span>左侧广告模块</span>
+                      </div>
+                      <div class="flex items-center gap-3">
+                        <span class="text-sm" :class="theme.mutedText">状态</span>
+                        <span :class="[frontendConfig.leftAdEnabled ? 'text-green-400' : 'text-red-400', 'text-sm']">{{ frontendConfig.leftAdEnabled ? '已启用' : '未启用' }}</span>
+                        <UToggle v-model="frontendConfig.leftAdEnabled" />
+                        <UButton color="green" @click="saveConfigItem('leftAdEnabled')" class="shadow">保存</UButton>
+                      </div>
+                    </div>
+                    <div class="px-4 pb-4">
+                      <div class="rounded-lg p-4" :class="theme.subtleBg">
+                        <div class="mt-2">
+                          <div class="text-sm font-semibold mb-2" :class="theme.text">多广告（自动轮播）</div>
+                          <div class="text-xs mb-2" :class="theme.mutedText">若同时配置单条与多条，优先显示多条</div>
+                          <div class="space-y-2">
+                            <div v-for="(ad, i) in frontendConfig.leftAds" :key="i" class="rounded-md border p-3" :class="theme.border">
+                              <div class="flex items-center justify-between mb-2">
+                                <div class="text-sm" :class="theme.text">广告 #{{ i + 1 }}</div>
+                                <div class="flex items-center gap-2">
+                                  <UButton size="xs" color="red" variant="soft" @click="frontendConfig.leftAds.splice(i, 1)">删除</UButton>
+                                </div>
+                              </div>
+                              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <UInput v-model="ad.imageURL" placeholder="海报图片 URL" />
+                                <UInput v-model="ad.linkURL" placeholder="跳转链接" />
+                                <UTextarea v-model="ad.description" placeholder="描述文本（可选）" class="md:col-span-2" />
+                              </div>
+                            </div>
+                            <div class="flex items-center justify-between">
+                              <UButton size="sm" color="indigo" variant="soft" class="shadow" @click="frontendConfig.leftAds.push({ imageURL: '', linkURL: '', description: '' })">新增广告</UButton>
+                              <div class="flex items-center gap-2">
+                                <span class="text-sm" :class="theme.mutedText">轮播间隔(ms)</span>
+                                <UInput v-model.number="frontendConfig.leftAdsIntervalMs" type="number" class="w-28" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="flex justify-end mt-3">
+                          <UButton color="primary" class="shadow" @click="saveConfigItem('leftAds')">保存广告配置</UButton>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div id="hitokoto-section" class="col-span-12">
+                  <div :class="[theme.cardBg, theme.border, cardCls]">
+                    <div class="flex items-center justify-between px-4 py-3">
+                      <div class="font-semibold flex items-center gap-2" :class="theme.text">
+                        <UIcon name="i-heroicons-sparkles" class="w-5 h-5" />
+                        <span>随机一言（Hitokoto）</span>
+                      </div>
+                      <div class="flex items-center gap-3">
+                        <UToggle v-model="frontendConfig.hitokotoEnabled" />
+                        <UButton color="green" @click="saveConfigItem('hitokotoEnabled')" class="shadow">保存</UButton>
+                      </div>
+                    </div>
+                    <div class="px-4 pb-4">
+                      <div class="rounded-lg p-4" :class="theme.subtleBg">
+                        <div class="text-sm" :class="theme.mutedText">开启后，首页左栏广告位下方显示随机一言</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div id="site-social-links-section" class="col-span-12">
+                  <div :class="[theme.cardBg, theme.border, cardCls]">
+                    <div class="flex items-center justify-between px-4 py-3">
+                      <div class="font-semibold flex items-center gap-2" :class="theme.text">
+                        <UIcon name="i-heroicons-link" class="w-5 h-5" />
+                        <span>社交链接配置</span>
+                      </div>
+                      <div class="flex items-center gap-3">
+                        <UButton size="sm" @click="editItem.socialLinks = !editItem.socialLinks" :color="editItem.socialLinks ? 'gray' : 'green'" :variant="editItem.socialLinks ? 'soft' : 'solid'" class="shadow">{{ editItem.socialLinks ? '取消' : '编辑' }}</UButton>
+                        <UButton color="green" class="shadow" @click="saveSocialLinks">保存</UButton>
+                      </div>
+                    </div>
+                    <div class="px-4 pb-4">
+                      <div class="rounded-lg p-4" :class="theme.subtleBg">
+                        <div v-if="editItem.socialLinks" class="space-y-2">
+                          <div v-for="(item, i) in frontendConfig.socialLinks" :key="i" class="rounded-md border p-3" :class="theme.border">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              <UInput v-model="item.name" placeholder="名称" />
+                              <UInput v-model="item.url" placeholder="链接 URL" />
+                              <UInput v-model="item.icon" placeholder="图标名称(可选)" />
+                            </div>
+                            <div class="flex justify-end mt-2">
+                              <UButton size="xs" color="red" variant="soft" @click="removeSocialLink(i)">删除</UButton>
+                            </div>
+                          </div>
+                          <div class="flex items-center justify-between">
+                            <UButton size="sm" color="indigo" variant="soft" class="shadow" @click="addSocialLink">新增链接</UButton>
+                          </div>
+                        </div>
+                        <div v-else class="text-sm" :class="theme.mutedText">共有 {{ (frontendConfig.socialLinks || []).length }} 条社交链接</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div id="friend-links-section" class="col-span-12 mt-4">
+                  <div :class="[theme.cardBg, theme.border, cardCls]">
+                    <div class="flex items-center justify-between px-4 py-3">
+                      <div class="font-semibold flex items-center gap-2" :class="theme.text">
+                        <UIcon name="i-heroicons-link" class="w-5 h-5" />
+                        <span>友链配置</span>
+                      </div>
+                      <div class="flex items-center gap-3">
+                        <UButton size="sm" color="indigo" variant="soft" class="shadow" @click="frontendConfig.friendLinks.push({ title: '', link: '', icon: '', description: '' })">新增友链</UButton>
+                        <UButton color="primary" class="shadow" @click="saveConfigItem('friendLinks')">保存</UButton>
+                      </div>
+                    </div>
+                    <div class="px-4 pb-4">
+                      <div class="rounded-lg p-4 space-y-3" :class="theme.subtleBg">
+                        <div v-for="(fl, i) in frontendConfig.friendLinks" :key="i" class="rounded-md border p-3 space-y-2" :class="theme.border">
+                          <div class="flex items-center justify-between">
+                            <div class="text-sm" :class="theme.text">友链 #{{ i + 1 }}</div>
+                            <UButton size="xs" color="red" variant="soft" @click="frontendConfig.friendLinks.splice(i, 1)">删除</UButton>
+                          </div>
+                          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <UInput v-model="fl.title" placeholder="网站标题" />
+                            <UInput v-model="fl.link" placeholder="链接 (http/https)" />
+                            <UInput v-model="fl.icon" placeholder="图标名称 (如 i-mdi-github，可选)" />
+                            <UTextarea v-model="fl.description" placeholder="网站介绍 (可选)" class="md:col-span-2" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -453,6 +759,10 @@
                   <div class="flex items-center gap-2">
                     <span class="text-sm" :class="theme.mutedText">邮件通知</span>
                     <UToggle v-model="frontendConfig.commentEmailEnabled" :disabled="!frontendConfig.commentEnabled" />
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm" :class="theme.mutedText">仅登录后评论</span>
+                    <UToggle v-model="frontendConfig.commentLoginRequired" :disabled="!frontendConfig.commentEnabled" />
                   </div>
                   <UButton color="green" @click="saveCommentConfig" class="shadow">保存</UButton>
                 </div>
@@ -478,7 +788,7 @@
                         <div><span :class="theme.mutedText">邮箱</span>：<span :class="theme.text">{{ c.mail || '-' }}</span></div>
                         <div class="md:col-span-3"><span :class="theme.mutedText">网址</span>：<a v-if="c.link" :href="c.link" target="_blank" rel="noopener" class="underline">{{ c.link }}</a><span v-else :class="theme.text">-</span></div>
                         <div class="md:col-span-3 flex gap-2">
-                          <UButton color="red" variant="soft" @click="adminDeleteComment(c)">删除该评论</UButton>
+                          <UButton color="red" variant="soft" @click="openAdminDeleteConfirm(c)">删除该评论</UButton>
                         </div>
                       </div>
                     </div>
@@ -486,14 +796,43 @@
                       <UButton variant="soft" @click="loadAdminCommentsMore">加载更多</UButton>
                     </div>
                   </div>
-                </div>
-              </div>
             </div>
           </div>
+        </div>
 
-          <div class="mx-4 my-2 border-t" :class="theme.border"></div>
+        <UModal v-model="showAdminDeleteConfirm" :ui="{ width: 'sm:max-w-md' }">
+          <UCard>
+            <template #header>
+              <div class="flex justify-between items-center">
+                <h3 class="text-lg font-medium">再次确认删除</h3>
+                <UButton color="gray" variant="ghost" icon="i-mdi-close" class="-my-1" @click="resetAdminDeleteConfirm" />
+              </div>
+            </template>
+            <div class="space-y-3">
+              <div class="text-sm">此操作不可恢复，确认删除该评论？</div>
+              <div class="text-sm">评论ID：{{ adminPendingDelete?.id }}</div>
+              <div class="text-sm">消息ID：{{ adminPendingDelete?.message_id }}</div>
+              <div class="text-sm">昵称：{{ adminPendingDelete?.nick || '匿名' }}</div>
+              <div class="text-sm break-words">内容片段：{{ adminDeletePreviewText }}</div>
+              <label class="flex items-center gap-2 text-sm">
+                <input type="checkbox" v-model="adminConfirmAcknowledged" />
+                我已知晓此操作不可恢复
+              </label>
+            </div>
+            <template #footer>
+              <div class="flex justify-end gap-2">
+                <UButton color="gray" variant="outline" @click="resetAdminDeleteConfirm">取消</UButton>
+                <UButton color="red" :disabled="!adminConfirmAcknowledged" @click="doAdminDelete">确认删除</UButton>
+              </div>
+            </template>
+          </UCard>
+        </UModal>
 
-          <div id="email-section" class="col-span-12">
+      </div>
+      
+      <div class="mx-4 my-2 border-t" :class="theme.border"></div>
+
+          <div id="email-section" v-if="isAdmin" class="col-span-12">
             <div :class="[theme.cardBg, theme.border, cardCls]">
               <div class="flex items-center justify-between px-4 py-3">
                 <div class="font-semibold flex items-center gap-2" :class="theme.text">
@@ -553,7 +892,7 @@
             </div>
           </div>
 
-          <div id="admin-users-section" class="col-span-12">
+          <div id="admin-users-section" v-if="isAdmin" class="col-span-12">
             <div :class="[theme.cardBg, theme.border, cardCls]">
               <div class="flex items-center justify-between px-4 py-3">
                 <div class="font-semibold flex items-center gap-2" :class="theme.text">
@@ -633,7 +972,7 @@
             </UCard>
           </UModal>
 
-          <div id="notify-section" class="col-span-12">
+          <div id="notify-section" v-if="isAdmin" class="col-span-12">
             <div class="rounded-xl border shadow-xl" :class="[theme.cardBg, theme.border]">
               <div class="flex items-center justify-between px-4 py-3">
                 <div class="font-semibold flex items-center gap-2" :class="theme.text">
@@ -659,7 +998,7 @@
           </div>
           
 
-          <div id="site-github-login-section" class="col-span-12">
+          <div id="site-github-login-section" v-if="isAdmin" class="col-span-12">
             <div class="rounded-xl border shadow-xl" :class="[theme.cardBg, theme.border]">
               <div class="flex items-center justify-between px-4 py-3">
                 <div class="font-semibold flex items-center gap-2" :class="theme.text">
@@ -704,13 +1043,13 @@
             </div>
           </div>
 
-          <div id="attachments-section" class="col-span-12">
+          <div id="attachments-section" v-if="isAdmin" class="col-span-12">
             <div class="rounded-xl border shadow-xl" :class="[theme.cardBg, theme.border]">
               <AttachmentManager :theme="theme" />
             </div>
           </div>
 
-          <div id="db-section" class="col-span-12">
+          <div id="db-section" v-if="isAdmin" class="col-span-12">
             <div class="rounded-xl border shadow-xl" :class="[theme.cardBg, theme.border]">
               <div class="flex items-center justify-between px-4 py-3">
                 <div class="font-semibold flex items-center gap-2" :class="theme.text">
@@ -860,7 +1199,7 @@
             
                     <div id="section-version" class="mb-6">
                         <div class="text-center mb-6 flex items-center justify-center gap-2">
-                            <span class="text-gray-300">当前版本: latest</span>
+                            <span class="text-gray-300">当前版本: {{ versionInfo.currentVersion || '最新' }}</span>
                             <UButton
                                 size="xs"
                                 color="gray"
@@ -885,7 +1224,7 @@
                             </div>
                         </div>
                     </div>
-                    <div id="section-status" class="bg-gray-700 rounded-lg p-4 mb-6">
+                    <div id="section-status" class="rounded-lg p-4 mb-6" :class="theme.cardBg">
                         <h2 class="text-xl font-semibold text-white mb-4">系统状态</h2>
                         <div class="grid gap-4">
                             <div class="flex justify-between items-center">
@@ -911,12 +1250,12 @@
                 <div v-if="isLogin" class="rounded-lg p-4 mb-6" :class="theme.cardBg">
                     <h2 class="text-xl font-semibold mb-4" :class="theme.text">用户信息配置</h2>
  
-                <div id="section-user" v-if="isLogin" class="bg-gray-700 rounded-lg p-4 mb-6">
+                <div id="section-user" v-if="isLogin" class="rounded-lg p-4 mb-6" :class="theme.cardBg">
                     <h2 class="text-xl font-semibold text-white mb-4">用户信息配置</h2>
  
                     <div class="space-y-4">
                         <!-- 用户名修改 -->
-                        <div class="bg-gray-800 rounded p-3">
+                        <div class="rounded p-3" :class="theme.subtleBg">
                             <div class="flex justify-between items-center mb-2">
                                 <span class="text-gray-300">用户名</span>
                                 <UButton
@@ -945,7 +1284,7 @@
                             </div>
                         </div>
                          <!-- 在用户信息配置面板中添加 -->
-<div class="bg-gray-800 rounded p-3">
+<div class="rounded p-3" :class="theme.subtleBg">
     <div class="flex justify-between items-center mb-2">
         <span class="text-gray-300">API Token</span>
         <UButton
@@ -978,7 +1317,7 @@
     </div>
 </div>
                         <!-- 密码修改 -->
-                        <div class="bg-gray-800 rounded p-3 mt-4">
+                        <div class="rounded p-3 mt-4" :class="theme.subtleBg">
                             <div class="flex justify-between items-center mb-2">
                                 <span class="text-gray-300">修改密码</span>
                                 <UButton
@@ -1016,12 +1355,12 @@
                     </div>
                 </div>
                                <!-- 网站配置区域 -->
-                <div id="section-site" v-if="isAdmin" class="bg-gray-700 rounded-lg p-4 mb-6">
+                <div id="section-site" v-if="isAdmin" class="rounded-lg p-4 mb-6" :class="theme.cardBg">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-semibold" :class="theme.text">网站配置</h2>
                     </div>
                     <!-- 新用户注册开关 -->
-                    <div class="flex items-center bg-gray-800 rounded p-3 mb-4 justify-between">
+                    <div class="flex items-center rounded p-3 mb-4 justify-between" :class="theme.subtleBg">
                         <span :class="theme.text">新用户注册</span>
                         <div class="flex items-center gap-4">
                             <div class="flex items-center">
@@ -1037,7 +1376,7 @@
                     </div>
 
                     <!-- PWA 配置区域 -->
-                    <div class="bg-gray-800 rounded p-4 mb-4">
+                    <div class="rounded p-4 mb-4" :class="theme.subtleBg">
                         <div class="flex justify-between items-center mb-3">
                             <span :class="theme.text">PWA 模式</span>
                         <div class="flex items-center gap-4">
@@ -1062,23 +1401,24 @@
                 </div>
                     </div>
 
-                    <!-- GitHub 链接卡片解析（独立设置） -->
-                    <div class="flex items-center bg-gray-800 rounded p-3 mb-4 justify-between">
-                        <span :class="theme.text">GitHub 链接卡片解析</span>
-                        <div class="flex items-center gap-4">
-                            <div class="flex items-center">
-                                <URadio v-model="githubCardEnabled" :value="true" class="mr-2" />
-                                <span :class="githubCardEnabled ? theme.text : 'text-gray-400'">开启</span>
-                            </div>
-                            <div class="flex items-center">
-                                <URadio v-model="githubCardEnabled" :value="false" class="mr-2" />
-                                <span :class="!githubCardEnabled ? theme.text : 'text-gray-400'">关闭</span>
-                            </div>
-                            <UButton color="green" @click="saveGithubCardConfig">保存</UButton>
+                <!-- GitHub 链接卡片解析（独立设置） -->
+                <div class="flex items-center rounded p-3 mb-4 justify-between" :class="theme.subtleBg">
+                    <span :class="theme.text">GitHub 链接卡片解析</span>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center">
+                            <URadio v-model="githubCardEnabled" :value="true" class="mr-2" />
+                            <span :class="githubCardEnabled ? theme.text : 'text-gray-400'">开启</span>
                         </div>
+                        <div class="flex items-center">
+                            <URadio v-model="githubCardEnabled" :value="false" class="mr-2" />
+                            <span :class="!githubCardEnabled ? theme.text : 'text-gray-400'">关闭</span>
+                        </div>
+                        <UButton color="green" @click="saveGithubCardConfig">保存</UButton>
                     </div>
+                </div>
+
                     <!-- 公告栏开关（独立设置） -->
-                    <div class="flex items-center bg-gray-800 rounded p-3 mb-4 justify-between">
+                    <div class="flex items-center rounded p-3 mb-4 justify-between" :class="theme.subtleBg">
                         <span :class="theme.text">公告栏开关</span>
                         <div class="flex items-center gap-4">
                             <UToggle v-model="frontendConfig.announcementEnabled" />
@@ -1087,7 +1427,7 @@
                     </div>
 
                 <!-- 默认主题色设置 -->
-                <div class="flex items-center bg-gray-800 rounded p-3 mb-4 justify-between">
+                <div class="flex items-center rounded p-3 mb-4 justify-between" :class="theme.subtleBg">
                     <span :class="theme.text">默认主题色</span>
                     <div class="flex items-center gap-4">
                         <div class="flex items-center">
@@ -1198,7 +1538,7 @@
 
                     <!-- 配置展示/编辑表单 -->
                     <div class="space-y-4">
-                        <div v-for="(label, key) in configLabels" :key="key" class="bg-gray-800 rounded p-3">
+                        <div v-for="(label, key) in configLabels" :key="key" class="rounded p-3" :class="theme.subtleBg">
                             <div class="flex justify-between items-center mb-2">
                                 <span :class="theme.mutedText">{{ label }}</span>
                                 <UButton
@@ -1213,34 +1553,43 @@
                             
                             <div v-if="editItem[key]">
                         <template v-if="key === 'backgrounds'">
-                            <div class="space-y-2">
-                                <div v-for="(bg, index) in frontendConfig.backgrounds" 
-                                     :key="index" 
-                                     class="flex gap-2">
-                                    <UInput v-model="frontendConfig.backgrounds[index]" 
-                                           placeholder="输入图片URL" 
-                                           class="flex-1" />
-                                    <UButton @click="removeBackground(index)" 
-                                            icon="i-heroicons-trash" 
-                                            color="red" 
-                                            variant="ghost" />
+                            <div class="space-y-3">
+                                <div v-for="(bg, index) in frontendConfig.backgrounds"
+                                     :key="index"
+                                     class="flex items-center gap-3">
+                                    <img :src="bg || '/favicon.ico'" class="w-14 h-14 rounded object-cover border" :class="theme.border" @click="previewImage(bg)" />
+                                    <UInput v-model="frontendConfig.backgrounds[index]" placeholder="输入图片URL" class="flex-1" />
+                                    <div class="flex items-center gap-2">
+                                      <UButton size="xs" variant="soft" icon="i-heroicons-arrow-up" @click="moveBackgroundUp(index)">上移</UButton>
+                                      <UButton size="xs" variant="soft" icon="i-heroicons-arrow-down" @click="moveBackgroundDown(index)">下移</UButton>
+                                      <UButton size="xs" variant="soft" icon="i-heroicons-eye" @click="previewImage(bg)">预览</UButton>
+                                      <UButton size="xs" color="red" variant="soft" icon="i-heroicons-trash" @click="removeBackground(index)">删除</UButton>
+                                    </div>
                                 </div>
-                                <div class="flex gap-2">
-                                    <UButton @click="addBackground" 
-                                            icon="i-heroicons-plus" 
-                                            variant="ghost" 
-                                            class="mr-2">
-                                        添加链接
-                                            </UButton>
-                                            <UButton @click="triggerFileInput" 
-                                                    icon="i-heroicons-cloud-arrow-up" 
-                                                    variant="ghost">
-                                                上传图片
-                                            </UButton>
-                                        </div>
+                                <div class="rounded border-2 border-dashed p-4 text-center" :class="theme.border" @dragover.prevent @drop.prevent="onDropFiles">
+                                  <div class="flex items-center justify-center gap-3">
+                                    <UButton @click="addBackground" icon="i-heroicons-plus" variant="ghost">添加链接</UButton>
+                                    <UButton @click="triggerFileInput" icon="i-heroicons-cloud-arrow-up" variant="ghost">上传图片</UButton>
+                                  </div>
+                                  <div v-if="isUploading" class="mt-3">
+                                    <div class="text-xs" :class="theme.mutedText">{{ uploadingFileName }}</div>
+                                    <UProgress :value="uploadProgress" class="mt-1" />
+                                  </div>
+                                </div>
+                            </div>
+                        </template>
+                                <template v-else-if="key === 'aboutMarkdown'">
+                                    <div class="resizable-wrapper" ref="aboutMdWrap">
+                                        <UTextarea
+                                            v-model="frontendConfig[key]"
+                                            :placeholder="`输入${label}`"
+                                            class="w-full mb-1 resizable-textarea"
+                                            :rows="12"
+                                        />
+                                        <div class="textarea-resize-handle" @mousedown="startAboutResize" title="拖拽调整高度"></div>
                                     </div>
                                 </template>
-                                <template v-else-if="key === 'subtitleText'">
+                                <template v-else-if="key === 'subtitleText' || key === 'linksDescription' || key === 'commentPageDescription' || key === 'aboutPageDescription'">
                                     <UTextarea
                                         v-model="frontendConfig[key]"
                                         :placeholder="`输入${label}`"
@@ -1269,7 +1618,8 @@
                                 <img v-for="(bg, index) in frontendConfig.backgrounds"
                                      :key="index"
                                      :src="bg"
-                                     class="w-full h-20 object-cover rounded cursor-pointer"
+                                     class="w-full h-24 object-cover rounded cursor-pointer border"
+                                     :class="theme.border"
                                      @click="previewImage(bg)" />
                             </div>
                         </template>
@@ -1306,7 +1656,7 @@
       </div>
     <!-- 登录模态框 -->
     <UModal v-model="showLoginModal">
-        <div class="bg-gray-800 p-6 rounded-lg">
+        <div class="p-6 rounded-lg" :class="theme.cardBg">
             <h3 class="text-xl font-semibold mb-4" :class="theme.text">
                 {{ authmode ? '用户登录' : '用户注册' }}
             </h3>
@@ -1343,9 +1693,14 @@
                 </UForm>
             </div> 
         </UModal>
+        <UModal v-model="showBgPreview">
+          <div class="p-2">
+            <img :src="bgPreviewUrl" class="max-h-[70vh] w-auto mx-auto rounded" />
+          </div>
+        </UModal>
         <input
             type="file"
-            ref="fileInput"
+            ref="bgFileInput"
             accept="image/*"
             multiple
             class="hidden"
@@ -1382,18 +1737,18 @@ const panelTheme = ref<'dark' | 'midnight' | 'slate' | 'light'>(
   (typeof window !== 'undefined' && (localStorage.getItem('adminTheme') as any)) || 'dark'
 )
 const baseApi = useRuntimeConfig().public.baseApi || '/api'
+const localPreview = ref('')
 const avatarSrc = computed(() => {
-  const siteAvatar = (frontendConfig.avatarURL || '').trim()
-  const username = (userStore.user as any)?.username || (userStore.user as any)?.Username || frontendConfig.username
-  if (siteAvatar) {
-    if (siteAvatar.startsWith('http')) return siteAvatar
-    if (siteAvatar.startsWith('/api')) return `${baseApi}${siteAvatar}`
-    return `${baseApi}${siteAvatar}`
+  if (localPreview.value) return localPreview.value
+  const userAvatar = String(((userStore.user as any)?.avatar_url || (userStore.user as any)?.AvatarURL || '')).trim()
+  const username = (userStore.user as any)?.username || (userStore.user as any)?.Username || ''
+  const pick = (s: string) => {
+    if (!s) return ''
+    if (/^https?:\/\//i.test(s)) return s
+    return `${baseApi}${s}`
   }
-  if (username) {
-    return `https://i.pravatar.cc/100?u=${encodeURIComponent(username)}`
-  }
-  return '/favicon.ico'
+  const dice = (seed: string, size = 100) => seed ? `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(seed)}&backgroundType=gradient&radius=50&scale=100&size=${size}` : ''
+  return pick(userAvatar) || (username ? dice(String(username)) : '') || '/favicon-32x32.png'
 })
 
 const setActive = async (name: 'system' | 'user' | 'site' | 'notify' | 'attachments' | 'db' | 'site-register' | 'site-pwa' | 'site-github-card' | 'site-github-login' | 'site-announcement' | 'site-music' | 'site-default-theme' | 'site-configs' | 'comments' | 'email', evt?: MouseEvent) => {
@@ -1407,6 +1762,12 @@ const setActive = async (name: 'system' | 'user' | 'site' | 'notify' | 'attachme
 onMounted(() => {
   loadStorageConfig()
   sidebarOpen.value = window.innerWidth >= 768
+  try {
+    // 后台页内切换 adminTheme 时，同步 html.dark 以保持 UI 组件配色一致
+    const html = document.documentElement
+    html.classList.remove('dark')
+    if (panelTheme.value !== 'light') html.classList.add('dark')
+  } catch {}
 })
 
 const showBottomBar = ref(typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
@@ -1507,6 +1868,11 @@ const theme = computed(() => {
 const saveAdminTheme = async () => {
   localStorage.setItem('adminTheme', panelTheme.value)
   try {
+    const html = document.documentElement
+    html.classList.remove('dark')
+    if (panelTheme.value !== 'light') html.classList.add('dark')
+  } catch {}
+  try {
     const resConfig = await fetch('/api/frontend/config', { credentials: 'include' })
     const dataConfig = await resConfig.json()
     let payload: any = {}
@@ -1583,7 +1949,8 @@ const userToken = ref('')
 const versionInfo = reactive({
     checking: false,
     hasUpdate: false,
-    latestVersion: ''
+    latestVersion: '',
+    currentVersion: ''
 })
 // 推送配置
 let notifyConfig = reactive({
@@ -1927,6 +2294,18 @@ const checkVersion = async () => {
         versionInfo.checking = false;
     }
 };
+
+const fetchVersion = async () => {
+  try {
+    const response = await fetch('/api/version', { credentials: 'include' })
+    const data = await response.json()
+    if (data && data.code === 1) {
+      versionInfo.currentVersion = String(data.data?.version || '')
+    }
+  } catch {}
+}
+
+onMounted(fetchVersion)
 // 重新生成 Token
 // 修改 regenerateToken 函数
 const regenerateToken = async () => {
@@ -2026,16 +2405,30 @@ const isAdmin = computed(() => {
 const authmode = ref(true)
 const showLoginModal = ref(false)
 const editMode = ref(false)
-const fileInput = ref<HTMLInputElement | null>(null) 
-    const userForm = reactive({
+const avatarInput = ref<HTMLInputElement | null>(null)
+const bgFileInput = ref<HTMLInputElement | null>(null)
+const siteAvatarInput = ref<HTMLInputElement | null>(null)
+const avatarFile = ref<File | null>(null)
+const avatarUploading = ref(false)
+const avatarLink = ref('')
+const cropperOpen = ref(false)
+const cropImageUrl = ref('')
+const cropScale = ref(1)
+const cropX = ref(0)
+const cropY = ref(0)
+let dragging = false
+let lastPos = { x: 0, y: 0 }
+const userForm = reactive({
     username: '',
+    description: '',
     oldPassword: '',
     newPassword: '',
     confirmPassword: ''
 })
 const editUserInfo = reactive({
     username: false,
-    password: false
+    description: false,
+    password: true
 })
 const showToken = ref(false)
 const regeneratingToken = ref(false)
@@ -2093,6 +2486,23 @@ const updateUsername = async () => {
     }
 }
 
+const updateDescription = async () => {
+    try {
+        const desc = (userForm.description || '').trim()
+        const res = await putRequest<any>('user/update', { description: desc }, { credentials: 'include' })
+        if (res && res.code === 1) {
+            await userStore.getUser()
+            editUserInfo.description = false
+            userForm.description = ''
+            useToast().add({ title: '成功', description: '个性签名已更新', color: 'green' })
+        } else {
+            throw new Error(res?.msg || '保存失败')
+        }
+    } catch (e: any) {
+        useToast().add({ title: '错误', description: e?.message || '更新失败', color: 'red' })
+    }
+}
+
 const updatePassword = async () => {
     try {
         if (!userForm.newPassword || !userForm.oldPassword || !userForm.confirmPassword) {
@@ -2130,14 +2540,176 @@ const updatePassword = async () => {
     }
 }
 
+const chooseAvatar = () => {
+  avatarInput.value?.click()
+}
+const onAvatarFileChange = () => {
+  const f = avatarInput.value?.files?.[0] || null
+  avatarFile.value = f || null
+  if (f) {
+    cropImageUrl.value = URL.createObjectURL(f)
+    localPreview.value = cropImageUrl.value
+    cropScale.value = 1
+    cropX.value = 0
+    cropY.value = 0
+    cropperOpen.value = true
+  }
+}
+const openCropperOrUpload = async () => {
+  if (avatarFile.value && cropImageUrl.value) {
+    cropperOpen.value = true
+    return
+  }
+  await uploadAvatarRaw(avatarFile.value)
+}
+const uploadAvatarRaw = async (file: File | null) => {
+  try {
+    if (!file) {
+      useToast().add({ title: '错误', description: '请先选择头像图片', color: 'red' })
+      return
+    }
+    avatarUploading.value = true
+    const fd = new FormData()
+    fd.append('image', file)
+    const resp = await fetch('/api/images/upload', { method: 'POST', body: fd, credentials: 'include' })
+    const js = await resp.json().catch(() => ({}))
+    if (!resp.ok || js.code !== 1 || !js.data) {
+      throw new Error(js?.msg || '上传失败')
+    }
+    const url = String(js.data || '').trim()
+    const res = await putRequest<any>('user/update', { avatar_url: url }, { credentials: 'include' })
+    if (!res || res.code !== 1) {
+      throw new Error(res?.msg || '保存失败')
+    }
+    await userStore.getUser()
+    useToast().add({ title: '成功', description: '头像已更新', color: 'green' })
+    avatarFile.value = null
+    if (avatarInput.value) avatarInput.value.value = ''
+    localPreview.value = ''
+  } catch (e: any) {
+    useToast().add({ title: '错误', description: e.message || '操作失败', color: 'red' })
+  } finally {
+    avatarUploading.value = false
+  }
+}
+
+const saveAvatarLink = async () => {
+  try {
+    const u = String(avatarLink.value || '').trim()
+    if (!u) throw new Error('请填写头像链接')
+    if (!/^https?:\/\//i.test(u) && !u.startsWith('/api')) throw new Error('链接需以 http 或 /api 开头')
+    avatarUploading.value = true
+    localPreview.value = u.startsWith('http') ? u : `${baseApi}${u}`
+    const res = await putRequest<any>('user/update', { avatar_url: u }, { credentials: 'include' })
+    if (!res || res.code !== 1) throw new Error(res?.msg || '保存失败')
+    await userStore.getUser()
+    useToast().add({ title: '成功', description: '头像链接已保存', color: 'green' })
+  } catch (e: any) {
+    useToast().add({ title: '错误', description: e.message || '操作失败', color: 'red' })
+  } finally {
+    avatarUploading.value = false
+  }
+}
+
+watch(avatarLink, (val) => {
+  const u = String(val || '').trim()
+  if (!u) { localPreview.value = ''; return }
+  if (/^https?:\/\//i.test(u)) localPreview.value = u
+  else if (u.startsWith('/api')) localPreview.value = `${baseApi}${u}`
+})
+
+const startDrag = (e: any) => {
+  dragging = true
+  const pt = e.touches ? e.touches[0] : e
+  lastPos = { x: pt.clientX, y: pt.clientY }
+  window.addEventListener('mousemove', onDrag)
+  window.addEventListener('mouseup', endDrag)
+  window.addEventListener('touchmove', onDrag)
+  window.addEventListener('touchend', endDrag)
+}
+const onDrag = (e: any) => {
+  if (!dragging) return
+  const pt = e.touches ? e.touches[0] : e
+  const dx = pt.clientX - lastPos.x
+  const dy = pt.clientY - lastPos.y
+  cropX.value += dx
+  cropY.value += dy
+  lastPos = { x: pt.clientX, y: pt.clientY }
+}
+const endDrag = () => {
+  dragging = false
+  window.removeEventListener('mousemove', onDrag)
+  window.removeEventListener('mouseup', endDrag)
+  window.removeEventListener('touchmove', onDrag)
+  window.removeEventListener('touchend', endDrag)
+}
+const performCropAndUpload = async () => {
+  try {
+    if (!cropImageUrl.value) return
+    avatarUploading.value = true
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image()
+      image.crossOrigin = 'anonymous'
+      image.onload = () => resolve(image)
+      image.onerror = reject
+      image.src = cropImageUrl.value
+    })
+    const size = 400
+    const canvas = document.createElement('canvas')
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')!
+    const s = cropScale.value
+    const iw = img.naturalWidth
+    const ih = img.naturalHeight
+    const dw = iw * s
+    const dh = ih * s
+    const dx = size / 2 + cropX.value - dw / 2
+    const dy = size / 2 + cropY.value - dh / 2
+    ctx.clearRect(0, 0, size, size)
+    ctx.drawImage(img, dx, dy, dw, dh)
+    const blob: Blob = await new Promise((resolve) => canvas.toBlob(b => resolve(b as Blob), 'image/png'))
+    const file = new File([blob], 'avatar.png', { type: 'image/png' })
+    await uploadAvatarRaw(file)
+    cropperOpen.value = false
+    if (cropImageUrl.value) URL.revokeObjectURL(cropImageUrl.value)
+    cropImageUrl.value = ''
+    localPreview.value = ''
+  } catch (e: any) {
+    useToast().add({ title: '错误', description: e.message || '裁剪失败', color: 'red' })
+  } finally {
+    avatarUploading.value = false
+  }
+}
+const closeCropper = () => {
+  cropperOpen.value = false
+}
+
+// 移除站点头像依赖
+
+const useInitialsAvatar = async () => {
+  try {
+    const name = String((userStore.user as any)?.username || (userStore.user as any)?.Username || '').trim()
+    if (!name) throw new Error('请先设置用户名')
+    const dice = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundType=gradient&radius=50&scale=100&size=100`
+    avatarUploading.value = true
+    const res = await putRequest<any>('user/update', { avatar_url: dice }, { credentials: 'include' })
+    if (!res || res.code !== 1) throw new Error(res?.msg || '保存失败')
+    await userStore.getUser()
+    localPreview.value = ''
+    useToast().add({ title: '成功', description: '已切换为首字母头像', color: 'green' })
+  } catch (e: any) {
+    useToast().add({ title: '错误', description: e?.message || '操作失败', color: 'red' })
+  } finally {
+    avatarUploading.value = false
+  }
+}
+
 
 // 配置相关
 const configLabels = {
     siteTitle: '站点标题',
     subtitleText: '欢迎语',
-    avatarURL: '头像链接',
-    username: '用户名',
-    description: '个人描述',
     backgrounds: '背景图片',
     cardFooterTitle: '卡片页脚标题',
     cardFooterLink: '卡片页脚链接',
@@ -2146,14 +2718,18 @@ const configLabels = {
     rssDescription: 'RSS 描述',
     rssAuthorName: 'RSS 作者',
     rssFaviconURL: 'RSS 图标链接',
+    linksTitle: '友链页面标题',
+    linksDescription: '友链页面说明',
+    commentPageTitle: '留言页面标题',
+    commentPageDescription: '留言页面说明',
+    aboutPageTitle: '关于页面标题',
+    aboutPageDescription: '关于页面说明',
+    aboutMarkdown: '关于页面 Markdown 内容',
 }
 
 const frontendConfig = reactive({
     siteTitle: '',
     subtitleText: '',
-    avatarURL: '',
-    username: '',
-    description: '',
     backgrounds: [] as string[],
     cardFooterTitle: '',
     cardFooterLink: '',
@@ -2162,10 +2738,20 @@ const frontendConfig = reactive({
     rssDescription: '',
     rssAuthorName: '',
     rssFaviconURL: '',
-  walineServerURL: '',
-  commentEnabled: false,
-  commentSystem: 'waline',
-  commentEmailEnabled: false,
+    hitokotoEnabled: true,
+  friendLinks: [] as Array<{ title: string; link: string; icon?: string; description?: string }>,
+    linksTitle: '',
+    linksDescription: '',
+    commentPageTitle: '',
+    commentPageDescription: '',
+    aboutPageTitle: '',
+    aboutPageDescription: '',
+    aboutMarkdown: '',
+    walineServerURL: '',
+    commentEnabled: true,
+    commentSystem: 'builtin',
+    commentEmailEnabled: false,
+  commentLoginRequired: true,
   githubOAuthEnabled: false,
   githubClientId: '',
   githubClientSecret: '',
@@ -2192,6 +2778,19 @@ const frontendConfig = reactive({
     musicEmbed: false,
     musicCssCdnURL: '',
     musicJsCdnURL: '',
+    socialLinks: [] as Array<{ name?: string; url: string; icon?: string }>,
+    calendarEnabled: true,
+    timeEnabled: true,
+    leftAdEnabled: true,
+    leftAdImageURL: 'https://picsum.photos/seed/single-ad/640/640',
+    leftAdLinkURL: 'https://note.noisework.cn',
+    leftAdDescription: '示例广告（单条配置）',
+    leftAds: [
+      { imageURL: 'https://picsum.photos/seed/ad-1/640/640', linkURL: 'https://note.noisework.cn', description: '写作与记录，开启灵感之旅' },
+      { imageURL: 'https://picsum.photos/seed/ad-2/640/640', linkURL: 'https://noisework.cn', description: '探索新主题与小工具' },
+      { imageURL: 'https://picsum.photos/seed/ad-3/640/640', linkURL: 'https://github.com', description: '开源项目，欢迎 Star' },
+    ] as Array<{ imageURL: string, linkURL: string, description: string }>,
+    leftAdsIntervalMs: 4000,
 })
 
 // GitHub 链接卡片解析开关的双向绑定（与 frontendConfig.enableGithubCard 同步）
@@ -2211,9 +2810,6 @@ const authForm = reactive<UserToLogin | UserToRegister>({
 const editItem = reactive({
     siteTitle: false,
     subtitleText: false,
-    avatarURL: false,
-    username: false,
-    description: false,
     backgrounds: false,
     cardFooterTitle: false,
     cardFooterLink: false, 
@@ -2223,15 +2819,21 @@ const editItem = reactive({
     rssAuthorName: false,
     rssFaviconURL: false,
     walineServerURL: false,
+    socialLinks: false,
+    linksTitle: false,
+    linksDescription: false,
+    commentPageTitle: false,
+    commentPageDescription: false,
+    aboutPageTitle: false,
+    aboutPageDescription: false,
 })
 
 // 更新默认配置
 const defaultConfig = {
-    siteTitle: 'Noise的说说笔记',
+    siteTitle: '说说笔记',
     subtitleText: '欢迎访问，点击头像可更换封面背景！',
-    avatarURL: 'https://s2.loli.net/2025/03/24/HnSXKvibAQlosIW.png',
-    username: 'Noise',
-    description: '执迷不悟',
+    avatarURL: '',
+    
     backgrounds: [
         "https://s2.loli.net/2025/03/27/KJ1trnU2ksbFEYM.jpg",
         "https://s2.loli.net/2025/03/27/MZqaLczCvwjSmW7.jpg",
@@ -2254,6 +2856,14 @@ const defaultConfig = {
     rssDescription: '一个说说笔记~',
     rssAuthorName: 'Noise',
     rssFaviconURL: '/favicon.ico',
+    hitokotoEnabled: true,
+    linksTitle: '友情链接',
+    linksDescription: '推荐站点和朋友们的主页',
+    commentPageTitle: '留言',
+    commentPageDescription: '欢迎留下你的看法',
+    aboutPageTitle: '关于本站',
+    aboutPageDescription: '这里是站点的介绍与说明',
+    aboutMarkdown: '# 关于我\n\n这里是一个默认的个人简介示例：\n\n- 喜欢记录与分享\n- 热爱开源与学习\n- 持续打磨产品体验\n\n欢迎通过友链或留言与我交流！',
     walineServerURL: '请前往waline官网https://waline.js.org查看部署配置',
     githubOAuthEnabled: false,
     githubClientId: '',
@@ -2279,6 +2889,25 @@ const defaultConfig = {
     ,musicEmbed: false
     ,musicCssCdnURL: 'https://api.hypcvgm.top/NeteaseMiniPlayer/netease-mini-player-v2.css'
     ,musicJsCdnURL: 'https://api.hypcvgm.top/NeteaseMiniPlayer/netease-mini-player-v2.js'
+  ,socialLinks: [
+      { name: 'GitHub', url: 'https://github.com/rcy1314', icon: 'i-mdi-github' },
+      { name: 'X', url: 'https://x.com/liangwenhao3', icon: 'i-mdi-twitter' },
+      { name: '主页', url: 'https://www.noisework.cn/', icon: 'i-mdi-home' },
+      { name: '博客', url: 'https://www.noiseblogs.top/', icon: 'i-mdi-notebook' }
+  ]
+  ,friendLinks: [
+    { title: 'NoiseWork', link: 'https://www.noisework.cn/', icon: 'i-mdi-home', description: '个人主页与作品集合' },
+    { title: 'NoiseBlogs', link: 'https://www.noiseblogs.top/', icon: 'i-mdi-notebook', description: '技术随笔与学习记录' },
+  ]
+    ,calendarEnabled: true
+    ,timeEnabled: true
+    ,leftAdEnabled: true
+    ,leftAds: [
+      { imageURL: 'https://picsum.photos/seed/ad-1/640/640', linkURL: 'https://note.noisework.cn', description: '写作与记录，开启灵感之旅' },
+      { imageURL: 'https://picsum.photos/seed/ad-2/640/640', linkURL: 'https://noisework.cn', description: '探索新主题与小工具' },
+      { imageURL: 'https://picsum.photos/seed/ad-3/640/640', linkURL: 'https://github.com', description: '开源项目，欢迎 Star' }
+    ]
+    ,leftAdsIntervalMs: 4000
 }
 // 添加单个配置项保存方法
 
@@ -2305,12 +2934,33 @@ const fetchConfig = async () => {
             const settings = data.data.frontendSettings;
             
             // 遍历配置项进行更新（布尔型键需强制转换）
-            const booleanKeys = ['enableGithubCard', 'pwaEnabled', 'announcementEnabled', 'musicEnabled', 'musicLyric', 'musicAutoplay', 'musicDefaultMinimized', 'musicEmbed', 'commentEnabled', 'commentEmailEnabled', 'githubOAuthEnabled', 'notifyEnabled']
+            const booleanKeys = ['enableGithubCard', 'pwaEnabled', 'announcementEnabled', 'hitokotoEnabled', 'musicEnabled', 'musicLyric', 'musicAutoplay', 'musicDefaultMinimized', 'musicEmbed', 'commentEnabled', 'commentEmailEnabled', 'commentLoginRequired', 'githubOAuthEnabled', 'notifyEnabled', 'calendarEnabled', 'timeEnabled', 'leftAdEnabled']
             Object.keys(frontendConfig).forEach(key => {
                 if (key === 'backgrounds') {
                     const serverBackgrounds = settings[key];
                     if (Array.isArray(serverBackgrounds)) {
                         frontendConfig[key] = [...serverBackgrounds];
+                    }
+                } else if (key === 'socialLinks') {
+                    const arr = settings[key];
+                    if (Array.isArray(arr)) {
+                        frontendConfig[key] = [...arr];
+                    } else {
+                        frontendConfig[key] = [...(defaultConfig.socialLinks || [])];
+                    }
+                } else if (key === 'leftAds') {
+                    const arr = settings[key];
+                    if (Array.isArray(arr)) {
+                        frontendConfig[key] = [...arr];
+                    } else {
+                        frontendConfig[key] = [...(defaultConfig.leftAds || [])];
+                    }
+                } else if (key === 'friendLinks') {
+                    const arr = settings[key];
+                    if (Array.isArray(arr)) {
+                        frontendConfig[key] = [...arr];
+                    } else {
+                        frontendConfig[key] = [...(defaultConfig.friendLinks || [])];
                     }
                 } else if (booleanKeys.includes(key)) {
                     const v = settings[key] ?? defaultConfig[key]
@@ -2331,19 +2981,34 @@ const fetchConfig = async () => {
             // 自动应用到页面 Head（标题、描述、图标）
             const title = (frontendConfig.pwaTitle || frontendConfig.siteTitle || '说说笔记').trim()
             const icon = (frontendConfig.rssFaviconURL || '/favicon.ico').trim()
-            const description = (frontendConfig.pwaDescription || frontendConfig.description || '').trim()
-            useHead({
+            const description = (frontendConfig.pwaDescription || '').trim()
+            const enabled = !!frontendConfig.pwaEnabled
+            if (enabled) {
+              useHead({
                 title,
                 meta: [
-                    { name: 'description', content: description },
-                    { name: 'theme-color', content: '#000000' }
+                  { name: 'description', content: description },
+                  { name: 'theme-color', content: '#000000' }
                 ],
                 link: [
-                    { rel: 'manifest', href: '/manifest.webmanifest' },
-                    { rel: 'icon', href: icon },
-                    { rel: 'apple-touch-icon', href: icon }
+                  { rel: 'manifest', href: '/manifest.webmanifest' },
+                  { rel: 'icon', href: icon },
+                  { rel: 'apple-touch-icon', href: icon }
                 ]
-            })
+              })
+            } else {
+              try {
+                const manifestEl = document.querySelector('link[rel="manifest"]')
+                if (manifestEl) manifestEl.parentElement?.removeChild(manifestEl)
+                if ('serviceWorker' in navigator) {
+                  navigator.serviceWorker.getRegistrations().then(async regs => {
+                    for (const r of regs) await r.unregister()
+                    const keys = await caches.keys()
+                    await Promise.all(keys.map(k => caches.delete(k)))
+                  })
+                }
+              } catch {}
+            }
             const css = String((frontendConfig as any).musicCssCdnURL || '').trim()
             const js = String((frontendConfig as any).musicJsCdnURL || '').trim()
             if (css || js) applyMusicCdnAssets()
@@ -2394,21 +3059,15 @@ const saveConfigItem = async (key: string) => {
             editItem[key] = false;
             // 重新获取配置
             await fetchConfig();
-            // 特殊提示：公告开关
-            if (key === 'announcementEnabled') {
+            // 广告模块专用提示
+            if (key === 'leftAds' || key === 'leftAdEnabled') {
+                useToast().add({ title: '成功', description: '广告模块更新成功', color: 'green' })
+            } else if (key === 'announcementEnabled') {
                 const enabled = !!frontendConfig.announcementEnabled
-                useToast().add({
-                    title: '成功',
-                    description: enabled ? '已开启公告' : '已关闭公告',
-                    color: enabled ? 'green' : 'gray'
-                })
+                useToast().add({ title: '成功', description: enabled ? '已开启公告' : '已关闭公告', color: enabled ? 'green' : 'gray' })
             } else {
                 const label = key === 'defaultContentTheme' ? '默认主题色' : (configLabels[key] || (key === 'pwa' ? 'PWA 设置' : key))
-                useToast().add({
-                    title: '成功',
-                    description: `${label}已更新`,
-                    color: 'green'
-                })
+                useToast().add({ title: '成功', description: `${label}已更新`, color: 'green' })
             }
             if (key === 'defaultContentTheme') {
                 const theme = (frontendConfig.defaultContentTheme || 'dark').trim();
@@ -2466,14 +3125,35 @@ const savePWAConfig = async () => {
     }
 }
 
+const handleSiteAvatarUpload = async (event: Event) => {
+    const files = (event.target as HTMLInputElement).files
+    if (!files || !files[0]) return
+    try {
+        const file = files[0]
+        const formData = new FormData()
+        formData.append('image', file)
+        const resp = await fetch('/api/images/upload', { method: 'POST', credentials: 'include', body: formData })
+        const js = await resp.json().catch(() => ({}))
+        if (!resp.ok || js.code !== 1 || !js.data) throw new Error(js?.msg || '上传失败')
+        const imageUrl = String(js.data || '').startsWith('http') ? js.data : `/api${js.data}`
+        ;(frontendConfig as any).avatarURL = imageUrl
+        await saveConfigItem('avatarURL')
+        useToast().add({ title: '成功', description: '站点头像已更新', color: 'green' })
+    } catch (e: any) {
+        useToast().add({ title: '失败', description: e?.message || '上传失败', color: 'red' })
+    } finally {
+        if (siteAvatarInput.value) siteAvatarInput.value.value = ''
+    }
+}
+
 const saveCommentConfig = async () => {
   try {
     const payload = {
       frontendSettings: {
         commentEnabled: !!frontendConfig.commentEnabled,
-        commentSystem: String(frontendConfig.commentSystem || 'waline'),
+        commentSystem: 'builtin',
         commentEmailEnabled: !!frontendConfig.commentEmailEnabled,
-        walineServerURL: String(frontendConfig.walineServerURL || '')
+        commentLoginRequired: !!frontendConfig.commentLoginRequired
       }
     }
     const response = await fetch('/api/settings', {
@@ -2495,13 +3175,42 @@ const saveCommentConfig = async () => {
   }
 }
 
+const commentLoginRequiredInitialized = ref(false)
+watch(() => frontendConfig.commentLoginRequired, async () => {
+  if (!commentLoginRequiredInitialized.value || isLoading.value) {
+    commentLoginRequiredInitialized.value = true
+    return
+  }
+  try {
+    await saveCommentConfig()
+  } catch {}
+})
+
+const addSocialLink = () => {
+  frontendConfig.socialLinks.push({ name: '', url: '', icon: '' })
+}
+
+const removeSocialLink = (index: number) => {
+  frontendConfig.socialLinks.splice(index, 1)
+}
+
+const saveSocialLinks = async () => {
+  try {
+    await saveConfigItem('socialLinks')
+    window.dispatchEvent(new Event('frontend-config-updated'))
+    useToast().add({ title: '成功', description: '社交链接已更新', color: 'green' })
+  } catch (e: any) {
+    useToast().add({ title: '错误', description: e?.message || '保存失败', color: 'red' })
+  }
+}
+
 const commentSearch = ref('')
 const showAdminComments = ref(false)
 const adminComments = ref<any[]>([])
 const adminCommentsPage = ref(1)
 const adminCommentsHasMore = ref(false)
 const expandedCommentsMap = ref<Record<number, boolean>>({})
-const uiCommentSystem = ref(String(((frontendConfig as any).commentSystem || 'waline')))
+const uiCommentSystem = ref('builtin')
 const formatDate = (v: any) => {
   try {
     const d = new Date(v)
@@ -2528,12 +3237,15 @@ const loadAdminComments = async () => {
     adminComments.value.splice(0)
     adminCommentsPage.value = 1
     const q = (commentSearch.value || '').trim()
-    const res: any = await getRequest<any>('comments', { q, page: adminCommentsPage.value, pageSize: 30 }, { credentials: 'include' })
+    const res: any = await getRequest<any>('comments', { q, page: adminCommentsPage.value, pageSize: 5 }, { credentials: 'include' })
     if (res && res.code === 1) {
       const items = Array.isArray(res.data?.items) ? res.data.items : []
-      items.forEach((x: any) => adminComments.value.push(x))
+      items.forEach((x: any) => {
+        adminComments.value.push(x)
+        expandedCommentsMap.value[x.id] = true
+      })
       const total = Number(res.data?.total || 0)
-      adminCommentsHasMore.value = (adminCommentsPage.value * 30) < total
+      adminCommentsHasMore.value = (adminCommentsPage.value * 5) < total
       if (items.length === 0) {
         useToast().add({ title: '无结果', description: '未找到匹配评论', color: 'gray' })
       } else {
@@ -2550,12 +3262,12 @@ const loadAdminCommentsMore = async () => {
   try {
     adminCommentsPage.value += 1
     const q = (commentSearch.value || '').trim()
-    const res: any = await getRequest<any>('comments', { q, page: adminCommentsPage.value, pageSize: 30 }, { credentials: 'include' })
+    const res: any = await getRequest<any>('comments', { q, page: adminCommentsPage.value, pageSize: 5 }, { credentials: 'include' })
     if (res && res.code === 1) {
       const items = Array.isArray(res.data?.items) ? res.data.items : []
       items.forEach((x: any) => adminComments.value.push(x))
       const total = Number(res.data?.total || 0)
-      adminCommentsHasMore.value = (adminCommentsPage.value * 30) < total
+      adminCommentsHasMore.value = (adminCommentsPage.value * 5) < total
     } else {
       throw new Error(res?.msg || '加载失败')
     }
@@ -2577,6 +3289,33 @@ const adminDeleteComment = async (c: any) => {
   } catch (e: any) {
     useToast().add({ title: '删除失败', description: e.message, color: 'red' })
   }
+}
+
+const showAdminDeleteConfirm = ref(false)
+const adminConfirmAcknowledged = ref(false)
+const adminPendingDelete = ref<any>(null)
+const adminDeletePreviewText = computed(() => {
+  const s = String(adminPendingDelete.value?.content || '').trim()
+  return s.length > 120 ? (s.slice(0, 120) + '...') : s
+})
+const openAdminDeleteConfirm = (c: any) => {
+  if (!confirm('确认删除该评论吗？此操作不可恢复。')) return
+  adminPendingDelete.value = c
+  adminConfirmAcknowledged.value = false
+  showAdminDeleteConfirm.value = true
+}
+const resetAdminDeleteConfirm = () => {
+  adminConfirmAcknowledged.value = false
+  showAdminDeleteConfirm.value = false
+  adminPendingDelete.value = null
+}
+const doAdminDelete = async () => {
+  if (!adminConfirmAcknowledged.value || !adminPendingDelete.value) {
+    useToast().add({ title: '请先勾选确认', color: 'orange' })
+    return
+  }
+  await adminDeleteComment(adminPendingDelete.value)
+  resetAdminDeleteConfirm()
 }
 
 watch(() => String((frontendConfig as any).commentSystem || '').toLowerCase(), (sys) => {
@@ -2737,80 +3476,92 @@ const saveGithubOAuthConfig = async () => {
 }
 
 const applyPWAConfig = () => {
-    const title = (frontendConfig.pwaTitle || frontendConfig.siteTitle || '说说笔记')
-    const icon = (frontendConfig.rssFaviconURL || '/favicon.ico')
-    const description = (frontendConfig.pwaDescription || frontendConfig.description || '')
-
+  const title = (frontendConfig.pwaTitle || frontendConfig.siteTitle || '说说笔记')
+  const icon = (frontendConfig.rssFaviconURL || '/favicon.ico')
+  const description = (frontendConfig.pwaDescription || frontendConfig.description || '')
+  const enabled = !!frontendConfig.pwaEnabled
+  if (enabled) {
     useHead({
-        title,
-        meta: [
-            { name: 'description', content: description },
-            { name: 'theme-color', content: '#000000' }
-        ],
-        link: [
-            { rel: 'manifest', href: '/manifest.webmanifest' },
-            { rel: 'icon', href: icon }
-        ]
+      title,
+      meta: [
+        { name: 'description', content: description },
+        { name: 'theme-color', content: '#000000' }
+      ],
+      link: [
+        { rel: 'manifest', href: '/manifest.webmanifest' },
+        { rel: 'icon', href: icon }
+      ]
     })
+  } else {
+    try {
+      const manifestEl = document.querySelector('link[rel="manifest"]')
+      if (manifestEl) manifestEl.parentElement?.removeChild(manifestEl)
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(async regs => {
+          for (const r of regs) await r.unregister()
+          const keys = await caches.keys()
+          await Promise.all(keys.map(k => caches.delete(k)))
+        })
+      }
+    } catch {}
+  }
 }
 
-// 修改文件上传处理
+const isUploading = ref(false)
+const uploadProgress = ref(0)
+const uploadingFileName = ref('')
 const handleFileUpload = async (event: Event) => {
-    const files = (event.target as HTMLInputElement).files
-    if (!files) return
-
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
-    
-    for (const file of Array.from(files)) {
-        try {
-            if (!allowedTypes.includes(file.type)) {
-                throw new Error('仅支持 JPG/PNG/WEBP 格式')
-            }
-
-            const formData = new FormData()
-            formData.append('image', file)
-
-            const response = await fetch('/api/images/upload', {
-                method: 'POST',
-                credentials: 'include',
-                body: formData
-            })
-
-            const data = await response.json()
-            
-            if (!response.ok || data.code !== 1) {
-                throw new Error(data.msg || '上传失败')
-            }
-
-            if (data.code === 1 && data.data) {
-                const imageUrl = data.data.startsWith('http') 
-                    ? data.data 
-                    : `/api${data.data}`
-                
-                // 更新背景图片列表并保存
-                const newBackgrounds = [...frontendConfig.backgrounds, imageUrl];
-                frontendConfig.backgrounds = newBackgrounds;
-                await saveConfigItem('backgrounds');
-
-                useToast().add({
-                    title: '上传成功',
-                    description: `${file.name} 已添加到背景图片列表`,
-                    color: 'green'
-                })
-            }
-        } catch (error: any) {
-            useToast().add({
-                title: '上传失败',
-                description: error.message || '文件上传失败',
-                color: 'red'
-            })
+  const files = (event.target as HTMLInputElement).files
+  if (!files) return
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+  for (const file of Array.from(files)) {
+    try {
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error('仅支持 JPG/PNG/WEBP 格式')
+      }
+      isUploading.value = true
+      uploadProgress.value = 0
+      uploadingFileName.value = file.name
+      const formData = new FormData()
+      formData.append('image', file)
+      const xhr = new XMLHttpRequest()
+      const data: any = await new Promise((resolve, reject) => {
+        xhr.upload.onprogress = (e: ProgressEvent) => {
+          if (e.lengthComputable) {
+            uploadProgress.value = Math.round((e.loaded / e.total) * 100)
+          }
         }
+        xhr.onreadystatechange = () => {
+          if (xhr.readyState === 4) {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try { resolve(JSON.parse(xhr.responseText)) } catch { reject(new Error('响应解析失败')) }
+            } else {
+              reject(new Error('上传失败'))
+            }
+          }
+        }
+        xhr.open('POST', '/api/images/upload', true)
+        xhr.withCredentials = true
+        xhr.send(formData)
+      })
+      if (!data || data.code !== 1) {
+        throw new Error(data?.msg || '上传失败')
+      }
+      const imageUrl = String(data.data || '')
+      const finalUrl = imageUrl.startsWith('http') ? imageUrl : `/api${imageUrl}`
+      const newBackgrounds = [...frontendConfig.backgrounds, finalUrl]
+      frontendConfig.backgrounds = newBackgrounds
+      await saveConfigItem('backgrounds')
+      useToast().add({ title: '上传成功', description: `${file.name} 已添加到背景图片列表`, color: 'green' })
+    } catch (error: any) {
+      useToast().add({ title: '错误', description: error?.message || '上传失败', color: 'red' })
+    } finally {
+      isUploading.value = false
+      uploadProgress.value = 0
+      uploadingFileName.value = ''
     }
-
-    // 清空文件输入框
-    if (fileInput.value) {
-        fileInput.value.value = ''
-    }
+  }
+  if (bgFileInput.value) { bgFileInput.value.value = '' }
 }
 
 // 添加配置更新监听器
@@ -2838,10 +3589,38 @@ const removeBackground = async (index: number) => {
 }
 
 const triggerFileInput = () => {
-    fileInput.value?.click()
+    bgFileInput.value?.click()
 }
+const showBgPreview = ref(false)
+const bgPreviewUrl = ref('')
 const previewImage = (url: string) => {
-    window.open(url, '_blank')
+  if (!url) return
+  bgPreviewUrl.value = url
+  showBgPreview.value = true
+}
+const moveBackgroundUp = (index: number) => {
+  if (index <= 0) return
+  const arr = [...frontendConfig.backgrounds]
+  const [item] = arr.splice(index, 1)
+  arr.splice(index - 1, 0, item)
+  frontendConfig.backgrounds = arr
+}
+const moveBackgroundDown = (index: number) => {
+  const arr = [...frontendConfig.backgrounds]
+  if (index >= arr.length - 1) return
+  const [item] = arr.splice(index, 1)
+  arr.splice(index + 1, 0, item)
+  frontendConfig.backgrounds = arr
+}
+const onDropFiles = (e: DragEvent) => {
+  const files = e.dataTransfer?.files
+  if (!files || files.length === 0) return
+  const input = bgFileInput.value
+  if (!input) return
+  const dt = new DataTransfer()
+  Array.from(files).forEach(f => dt.items.add(f))
+  input.files = dt.files
+  input.dispatchEvent(new Event('change'))
 }
 
 // 监听器
@@ -3137,10 +3916,43 @@ const themeOptions = [
   { label: '浅色', value: 'light' },
   { label: '深色', value: 'dark' },
 ]
+const aboutMdWrap = ref<HTMLElement | null>(null)
+const startAboutResize = (e: MouseEvent) => {
+  const ta = aboutMdWrap.value?.querySelector('textarea') as HTMLTextAreaElement | null
+  if (!ta) return
+  const startY = e.clientY
+  const startH = ta.offsetHeight
+  const onMove = (ev: MouseEvent) => {
+    const delta = ev.clientY - startY
+    const next = Math.max(120, Math.min(1600, startH + delta))
+    ta.style.height = next + 'px'
+    ta.style.minHeight = next + 'px'
+  }
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+  }
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
+}
 </script>
 
 <style scoped>
 .hidden {
     display: none;
 }
+.resizable-textarea :deep(textarea) {
+    resize: vertical !important;
+    min-height: 180px;
+}
+.resizable-wrapper { position: relative; }
+.textarea-resize-handle {
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.12);
+  cursor: ns-resize;
+}
+html.dark .textarea-resize-handle { background: rgba(255,255,255,0.16); }
+.textarea-resize-handle:hover { background: rgba(251,146,60,0.6); }
 </style>

@@ -26,7 +26,7 @@ let vditorInstance: Vditor | null = null;
 const editorOptions: IOptions = {
   mode: "ir",
   height: "auto",
-  minHeight: 140,
+  minHeight: 150,
   resize: {
     enable: true,
     position: 'bottom'
@@ -36,7 +36,7 @@ const editorOptions: IOptions = {
   theme: "classic",
   toolbar: [
     "emoji",
-    "headings", // 标题选项
+    "headings",
     "bold",
     "italic",
     "strike",
@@ -50,6 +50,10 @@ const editorOptions: IOptions = {
     "line",
     "code",
     "inline-code",
+    "table",
+    "upload",
+    "undo",
+    "redo",
     "|",
     "preview",
     "fullscreen"
@@ -84,13 +88,19 @@ const editorOptions: IOptions = {
 onMounted(async () => {
   if (!editorContainer.value) return;
 
-  vditorInstance = new Vditor(editorContainer.value, {
+  const opts: IOptions = {
     ...editorOptions,
+    theme: props.theme === 'dark' ? 'dark' : 'classic',
+    preview: {
+      ...editorOptions.preview,
+      hljs: { style: props.theme === 'dark' ? 'native' : 'github' }
+    },
     after: () => {
       vditorInstance?.setValue(props.modelValue);
       vditorInstance?.setTheme(props.theme === 'dark' ? 'dark' : 'classic');
     },
-  });
+  }
+  vditorInstance = new Vditor(editorContainer.value, opts);
 });
 
 onBeforeUnmount(() => {
@@ -161,33 +171,13 @@ watch(() => props.theme, (newTheme) => {
   content: counter(list-counter) ".";
   counter-increment: list-counter;
 }
-.vditor-toolbar {
-  display: flex;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
-  width: 100%;
-  max-width: 100%;
-  white-space: nowrap;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  background-color: #f8f9fab7;
-  border-bottom: 1px solid #e9ecef;
-  position: sticky; /* 修改为 sticky 定位 */
-  top: 0; /* 添加 top 值 */
-  z-index: 100;
-}
+.vditor-toolbar { display:flex; flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; width:100%; max-width:100%; white-space:nowrap; -webkit-overflow-scrolling:touch; scrollbar-width:none; -ms-overflow-style:none; background-color:#f8f9fab7; border-bottom:none; position:sticky; top:0; z-index:100; }
 
 .vditor-toolbar::-webkit-scrollbar {
   display: none; /* Chrome, Safari and Opera */
 }
 
-.vditor-toolbar--pin {
-  padding-left: 6px !important;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #e9ecef;
-}
+.vditor-toolbar--pin { padding-left:6px !important; background-color:#f8f9fa; border-bottom:none; }
 
 /* 修改弹出面板样式 */
 .vditor-panel--none {
@@ -195,25 +185,26 @@ watch(() => props.theme, (newTheme) => {
 }
 
 .vditor-panel {
-  position: fixed; /* 改为固定定位 */
-  z-index: 1000;  /* 确保在工具栏之上 */
+  position: fixed; /* 恢复为 fixed，避免被容器裁剪 */
+  z-index: 10000;
   background: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.16);
+  border-radius: 8px;
   border: 1px solid #e9ecef;
+  max-height: 50vh;
+  overflow: auto;
 }
 .vditor-hint {
   position: fixed;
-  z-index: 1000;
+  z-index: 10000;
   background: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.16);
+  border-radius: 8px;
   border: 1px solid #e9ecef;
+  max-height: 50vh;
+  overflow: auto;
 }
-.vditor-tip, .vditor-tooltip {
-  position: fixed;
-  z-index: 1000;
-}
+.vditor-tip, .vditor-tooltip { position: fixed; z-index: 10000; }
 .vditor-toolbar__item {
   flex-shrink: 0;
   padding: 6px !important;
@@ -226,10 +217,11 @@ watch(() => props.theme, (newTheme) => {
 }
 
 .vditor-ir pre.vditor-reset {
-  padding: 10px 16px !important;
+  padding: 8px 12px !important;
   color: #1a2634 !important;
-  line-height: 1.6;
+  line-height: 1.5;
   font-size: 14px;
+  min-height: 120px !important;
 }
 
 .vditor-ir pre.vditor-reset:empty:before {
@@ -244,15 +236,9 @@ watch(() => props.theme, (newTheme) => {
   color: #e9ecef !important;
 }
 
-html.dark .vditor-container {
-  background-color: rgba(24, 28, 32, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
+html.dark .vditor-container { background-color: rgba(36, 43, 50, 0.95); border: 1px solid rgba(255, 255, 255, 0.08); }
 
-html.dark .vditor-toolbar {
-  background-color: rgba(36, 43, 50, 0.5) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-}
+html.dark .vditor-toolbar { background-color: rgba(36, 43, 50, 0.6) !important; border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important; }
 
 html.dark .vditor-toolbar__item:hover {
   background-color: rgba(255, 255, 255, 0.06);
@@ -275,9 +261,12 @@ html.dark .vditor-tooltip, html.dark .vditor-tip {
   color: #ffffff;
 }
 
-html.dark .vditor-preview {
-  background-color: rgba(24, 28, 32, 0.3) !important;
-}
+html.dark .vditor-preview { background-color: rgba(36, 43, 50, 0.6) !important; }
+
+/* 全屏沉浸模式统一色彩 */
+.vditor--fullscreen { background: rgba(36,43,50,0.95) !important; }
+.vditor--fullscreen .vditor-toolbar { background: rgba(36,43,50,0.6) !important; }
+.vditor--fullscreen .vditor-ir pre.vditor-reset { font-size: 16px; line-height: 1.9; }
 
 @media screen and (max-width: 520px) {
   .vditor-toolbar__item {

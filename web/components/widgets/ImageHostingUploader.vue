@@ -204,8 +204,8 @@ const getPopupPosition = computed(() => {
   }
   if (y < 0) y = 20;
   
-  // 移动端居中显示
-  if (screenWidth < 768) {
+  // 移动端/平板居中显示
+  if (screenWidth < 1024) {
     x = (screenWidth - popupWidth) / 2;
     y = 60;
   }
