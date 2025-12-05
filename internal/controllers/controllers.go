@@ -52,6 +52,9 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	// 隐藏敏感字段
+	user.Password = ""
+
 	session := sessions.Default(c)
 	session.Clear()
 	session.Set("user_id", user.ID)
@@ -1903,20 +1906,24 @@ func PasswordForgot(c *gin.Context) {
 	}
 	var user *models.User
 	var err error
-	if !strings.Contains(account, "@") {
+	if strings.Contains(account, "@") {
+		user, err = repository.GetUserByEmail(account)
+		if err != nil || user == nil {
+			c.JSON(http.StatusOK, dto.Fail[string]("用户不存在"))
+			return
+		}
+	} else {
 		user, err = services.GetUserByUsername(account)
 		if err != nil || user == nil {
 			c.JSON(http.StatusOK, dto.Fail[string]("用户不存在"))
 			return
 		}
 	}
-	to := cfg.SmtpFrom
-	if to == "" {
-		to = cfg.SmtpUser
+	if strings.TrimSpace(user.Email) == "" || !user.EmailVerified {
+		c.JSON(http.StatusOK, dto.Fail[string]("未绑定邮箱或未验证"))
+		return
 	}
-	if strings.Contains(account, "@") {
-		to = account
-	}
+	to := strings.TrimSpace(user.Email)
 	temp := models.GenerateToken(16)
 	if user != nil {
 		hashed := models.HashPassword(temp)
@@ -2041,6 +2048,150 @@ func GithubCallback(c *gin.Context) {
 	}
 	// 跳转到后台
 	c.Redirect(http.StatusFound, "/#/status")
+}
+
+func BindEmail(c *gin.Context) {
+	user, err := checkUser(c)
+	if err != nil {
+		c.JSON(http.StatusOK, dto.Fail[any](err.Error()))
+		return
+	}
+	db, _ := database.GetDB()
+	var cfg models.SiteConfig
+	if err := db.Table("site_configs").First(&cfg).Error; err != nil || !cfg.SmtpEnabled {
+		c.JSON(http.StatusOK, dto.Fail[any]("邮件未开启"))
+		return
+	}
+	var req struct {
+		Email string `json:"email"`
+	}
+	if e := c.ShouldBindJSON(&req); e != nil || strings.TrimSpace(req.Email) == "" {
+		c.JSON(http.StatusOK, dto.Fail[any]("邮箱不能为空"))
+		return
+	}
+	code := fmt.Sprintf("%06d", time.Now().UnixNano()%1000000)
+	exp := time.Now().Add(10 * time.Minute)
+	user.EmailPending = strings.TrimSpace(req.Email)
+	user.EmailVerifyCode = code
+	user.EmailVerifyExpires = &exp
+	if e := repository.UpdateUser(user); e != nil {
+		c.JSON(http.StatusOK, dto.Fail[any]("保存失败"))
+		return
+	}
+	if e := models.SendEmail(user.EmailPending, "邮箱绑定验证码", "验证码: "+code+"，10分钟内有效"); e != nil {
+		c.JSON(http.StatusOK, dto.Fail[any](e.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, dto.OK[any](nil, "验证码已发送"))
+}
+
+func VerifyEmail(c *gin.Context) {
+	user, err := checkUser(c)
+	if err != nil {
+		c.JSON(http.StatusOK, dto.Fail[any](err.Error()))
+		return
+	}
+	var req struct {
+		Code string `json:"code"`
+	}
+	if e := c.ShouldBindJSON(&req); e != nil || strings.TrimSpace(req.Code) == "" {
+		c.JSON(http.StatusOK, dto.Fail[any]("验证码不能为空"))
+		return
+	}
+	if user.EmailVerifyExpires == nil || time.Now().After(*user.EmailVerifyExpires) {
+		c.JSON(http.StatusOK, dto.Fail[any]("验证码已过期"))
+		return
+	}
+	if strings.TrimSpace(req.Code) != strings.TrimSpace(user.EmailVerifyCode) {
+		c.JSON(http.StatusOK, dto.Fail[any]("验证码错误"))
+		return
+	}
+	if strings.TrimSpace(user.EmailPending) == "" {
+		c.JSON(http.StatusOK, dto.Fail[any]("无待绑定邮箱"))
+		return
+	}
+	user.Email = user.EmailPending
+	user.EmailPending = ""
+	user.EmailVerified = true
+	user.EmailVerifyCode = ""
+	user.EmailVerifyExpires = nil
+	if e := repository.UpdateUser(user); e != nil {
+		c.JSON(http.StatusOK, dto.Fail[any]("更新失败"))
+		return
+	}
+	c.JSON(http.StatusOK, dto.OK[any](nil, "邮箱已绑定"))
+}
+
+func SendChangeEmailCode(c *gin.Context) {
+	user, err := checkUser(c)
+	if err != nil {
+		c.JSON(http.StatusOK, dto.Fail[any](err.Error()))
+		return
+	}
+	if strings.TrimSpace(user.Email) == "" || !user.EmailVerified {
+		c.JSON(http.StatusOK, dto.Fail[any]("未绑定邮箱或未验证"))
+		return
+	}
+	db, _ := database.GetDB()
+	var cfg models.SiteConfig
+	if err := db.Table("site_configs").First(&cfg).Error; err != nil || !cfg.SmtpEnabled {
+		c.JSON(http.StatusOK, dto.Fail[any]("邮件未开启"))
+		return
+	}
+	code := fmt.Sprintf("%06d", time.Now().UnixNano()%1000000)
+	exp := time.Now().Add(10 * time.Minute)
+	user.EmailVerifyCode = code
+	user.EmailVerifyExpires = &exp
+	if e := repository.UpdateUser(user); e != nil {
+		c.JSON(http.StatusOK, dto.Fail[any]("保存失败"))
+		return
+	}
+	if e := models.SendEmail(strings.TrimSpace(user.Email), "更换邮箱验证码", "验证码: "+code+"，10分钟内有效"); e != nil {
+		c.JSON(http.StatusOK, dto.Fail[any](e.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, dto.OK[any](nil, "验证码已发送"))
+}
+
+func ChangeEmail(c *gin.Context) {
+	user, err := checkUser(c)
+	if err != nil {
+		c.JSON(http.StatusOK, dto.Fail[any](err.Error()))
+		return
+	}
+	var req struct {
+		Code     string `json:"code"`
+		NewEmail string `json:"newEmail"`
+	}
+	if e := c.ShouldBindJSON(&req); e != nil || strings.TrimSpace(req.Code) == "" || strings.TrimSpace(req.NewEmail) == "" {
+		c.JSON(http.StatusOK, dto.Fail[any]("参数错误"))
+		return
+	}
+	if user.EmailVerifyExpires == nil || time.Now().After(*user.EmailVerifyExpires) {
+		c.JSON(http.StatusOK, dto.Fail[any]("验证码已过期"))
+		return
+	}
+	if strings.TrimSpace(req.Code) != strings.TrimSpace(user.EmailVerifyCode) {
+		c.JSON(http.StatusOK, dto.Fail[any]("验证码错误"))
+		return
+	}
+	// 第一步验证通过旧邮箱验证码，进入第二步：向新邮箱发送验证码并挂起
+	newEmail := strings.TrimSpace(req.NewEmail)
+	code2 := fmt.Sprintf("%06d", time.Now().UnixNano()%1000000)
+	exp2 := time.Now().Add(10 * time.Minute)
+	user.EmailPending = newEmail
+	user.EmailVerified = false
+	user.EmailVerifyCode = code2
+	user.EmailVerifyExpires = &exp2
+	if e := repository.UpdateUser(user); e != nil {
+		c.JSON(http.StatusOK, dto.Fail[any]("保存失败"))
+		return
+	}
+	if e := models.SendEmail(newEmail, "新邮箱验证", "验证码: "+code2+"，10分钟内有效"); e != nil {
+		c.JSON(http.StatusOK, dto.Fail[any](e.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, dto.OK[any](nil, "已向新邮箱发送验证码，请完成验证"))
 }
 
 // 删除用户

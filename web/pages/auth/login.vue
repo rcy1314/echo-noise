@@ -15,7 +15,7 @@
             <UInput v-model="form.username" placeholder="请输入用户名" />
           </UFormGroup>
           <UFormGroup label="密码" class="mb-2">
-            <UInput v-model="form.password" type="password" placeholder="请输入密码" />
+            <UInput v-model="form.password" type="password" placeholder="请输入密码" autocomplete="current-password" autocorrect="off" autocapitalize="off" spellcheck="false" />
           </UFormGroup>
           <div class="flex justify-between items-center mb-3">
             <UButton variant="ghost" size="sm" @click="showForgot = true">忘记密码</UButton>

@@ -5,7 +5,7 @@ import { EventEmitter } from 'events'
 import { parse } from 'url'
 import { z } from 'zod'
 
-const host = String(process.env.NOTE_HOST || 'http://localhost:8080').trim().replace(/^`+|`+$/g, '')
+const host = String(process.env.NOTE_HOST || 'http://localhost:1314').trim().replace(/^`+|`+$/g, '')
 const token = process.env.NOTE_TOKEN || ''
 let session = process.env.NOTE_SESSION || ''
 

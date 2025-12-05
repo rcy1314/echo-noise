@@ -41,10 +41,23 @@ func GetFrontendConfig() (map[string]interface{}, error) {
 		dbType = "sqlite"
 	}
 
-	// 解析左侧广告 JSON
-	var leftAdsList []map[string]interface{}
+	var leftAdsListRaw []map[string]interface{}
 	if strings.TrimSpace(config.LeftAds) != "" {
-		_ = json.Unmarshal([]byte(config.LeftAds), &leftAdsList)
+		_ = json.Unmarshal([]byte(config.LeftAds), &leftAdsListRaw)
+	}
+	normalizedAds := make([]map[string]string, 0, len(leftAdsListRaw))
+	for _, m := range leftAdsListRaw {
+		img := strings.TrimSpace(fmt.Sprintf("%v", pickAny(m, "imageURL", "ImageURL")))
+		link := strings.TrimSpace(fmt.Sprintf("%v", pickAny(m, "linkURL", "LinkURL")))
+		desc := strings.TrimSpace(fmt.Sprintf("%v", pickAny(m, "description", "Description")))
+		if img == "" {
+			continue
+		}
+		normalizedAds = append(normalizedAds, map[string]string{
+			"imageURL":    img,
+			"linkURL":     link,
+			"description": desc,
+		})
 	}
 
 	configMap := map[string]interface{}{
@@ -66,6 +79,11 @@ func GetFrontendConfig() (map[string]interface{}, error) {
 			"rssFaviconURL":    config.RSSFaviconURL,
 			"walineServerURL":  config.WalineServerURL,
 			"enableGithubCard": config.EnableGithubCard,
+			// 系统欢迎组件（与用户资料解耦；若未设置则回退默认）
+			"welcomeAvatarURL":   choose(config.WelcomeAvatarURL, getDefaultConfig()["frontendSettings"].(map[string]interface{})["welcomeAvatarURL"].(string)),
+			"welcomeName":        choose(config.WelcomeName, getDefaultConfig()["frontendSettings"].(map[string]interface{})["welcomeName"].(string)),
+			"welcomeDescription": choose(config.WelcomeDescription, getDefaultConfig()["frontendSettings"].(map[string]interface{})["welcomeDescription"].(string)),
+			"welcomeUseAdmin":    config.WelcomeUseAdmin,
 			// GitHub OAuth
 			"githubOAuthEnabled": config.GithubOAuthEnabled,
 			"githubClientId":     config.GithubClientId,
@@ -102,9 +120,9 @@ func GetFrontendConfig() (map[string]interface{}, error) {
 			"calendarEnabled": config.CalendarEnabled,
 			"timeEnabled":     config.TimeEnabled,
 			"hitokotoEnabled": config.HitokotoEnabled,
-			// 广告位配置
+
 			"leftAdEnabled":     config.LeftAdEnabled,
-			"leftAds":           leftAdsList,
+			"leftAds":           normalizedAds,
 			"leftAdsIntervalMs": config.LeftAdsIntervalMs,
 		},
 		"storageEnabled": config.StorageEnabled,
@@ -235,46 +253,65 @@ func UpdateFrontendSetting(userID uint, settingMap map[string]interface{}) error
 		} else if vs == "false" {
 			config.CommentEnabled = false
 		}
+	}
 
-		// 广告位设置
-		if vb, ok := frontendSettings["leftAdEnabled"].(bool); ok {
-			config.LeftAdEnabled = vb
-		} else if vs, ok := frontendSettings["leftAdEnabled"].(string); ok {
-			config.LeftAdEnabled = (vs == "true")
+	// 广告位设置（与评论系统无关，独立保存）
+	if vb, ok := frontendSettings["leftAdEnabled"].(bool); ok {
+		config.LeftAdEnabled = vb
+	} else if vs, ok := frontendSettings["leftAdEnabled"].(string); ok {
+		config.LeftAdEnabled = (vs == "true")
+	}
+	// 轮播间隔
+	if vi, ok := frontendSettings["leftAdsIntervalMs"].(float64); ok {
+		config.LeftAdsIntervalMs = int(vi)
+	} else if vi2, ok := frontendSettings["leftAdsIntervalMs"].(int); ok {
+		config.LeftAdsIntervalMs = vi2
+	} else if vs, ok := frontendSettings["leftAdsIntervalMs"].(string); ok {
+		if n, err := strconv.Atoi(vs); err == nil {
+			config.LeftAdsIntervalMs = n
 		}
-		// 轮播间隔
-		if vi, ok := frontendSettings["leftAdsIntervalMs"].(float64); ok {
-			config.LeftAdsIntervalMs = int(vi)
-		} else if vi2, ok := frontendSettings["leftAdsIntervalMs"].(int); ok {
-			config.LeftAdsIntervalMs = vi2
-		} else if vs, ok := frontendSettings["leftAdsIntervalMs"].(string); ok {
-			if n, err := strconv.Atoi(vs); err == nil {
-				config.LeftAdsIntervalMs = n
+	}
+	// 多广告列表
+	if arr, ok := frontendSettings["leftAds"].([]interface{}); ok {
+		list := make([]map[string]string, 0, len(arr))
+		for _, it := range arr {
+			m, ok := it.(map[string]interface{})
+			if !ok {
+				continue
 			}
-		}
-		// 多广告列表
-		if arr, ok := frontendSettings["leftAds"].([]interface{}); ok {
-			type adItem struct{ ImageURL, LinkURL, Description string }
-			list := make([]adItem, 0, len(arr))
-			for _, it := range arr {
-				m, ok := it.(map[string]interface{})
-				if !ok {
-					continue
-				}
-				img := strings.TrimSpace(fmt.Sprintf("%v", m["imageURL"]))
-				if img == "" {
-					continue
-				}
-				link := strings.TrimSpace(fmt.Sprintf("%v", m["linkURL"]))
-				desc := strings.TrimSpace(fmt.Sprintf("%v", m["description"]))
-				list = append(list, adItem{ImageURL: img, LinkURL: link, Description: desc})
+			img := strings.TrimSpace(fmt.Sprintf("%v", m["imageURL"]))
+			if img == "" {
+				continue
 			}
-			bs, _ := json.Marshal(list)
-			config.LeftAds = string(bs)
-		} else if arr2, ok := frontendSettings["leftAds"].([]map[string]string); ok {
-			bs, _ := json.Marshal(arr2)
-			config.LeftAds = string(bs)
+			link := strings.TrimSpace(fmt.Sprintf("%v", m["linkURL"]))
+			desc := strings.TrimSpace(fmt.Sprintf("%v", m["description"]))
+			list = append(list, map[string]string{
+				"imageURL":    img,
+				"linkURL":     link,
+				"description": desc,
+			})
 		}
+		bs, _ := json.Marshal(list)
+		config.LeftAds = string(bs)
+	} else if arr2, ok := frontendSettings["leftAds"].([]map[string]string); ok {
+		bs, _ := json.Marshal(arr2)
+		config.LeftAds = string(bs)
+	}
+
+	// 系统欢迎组件（与用户资料解耦）
+	if v, ok := frontendSettings["welcomeAvatarURL"].(string); ok {
+		config.WelcomeAvatarURL = strings.TrimSpace(v)
+	}
+	if v, ok := frontendSettings["welcomeName"].(string); ok {
+		config.WelcomeName = strings.TrimSpace(v)
+	}
+	if v, ok := frontendSettings["welcomeDescription"].(string); ok {
+		config.WelcomeDescription = strings.TrimSpace(v)
+	}
+	if vb, ok := frontendSettings["welcomeUseAdmin"].(bool); ok {
+		config.WelcomeUseAdmin = vb
+	} else if vs, ok := frontendSettings["welcomeUseAdmin"].(string); ok {
+		config.WelcomeUseAdmin = (strings.EqualFold(strings.TrimSpace(vs), "true"))
 	}
 
 	// 音乐播放器设置
@@ -626,15 +663,20 @@ func getDefaultConfig() map[string]interface{} {
 				"https://s2.loli.net/2025/03/27/U2WIslbNyTLt4rD.jpg",
 				"https://s2.loli.net/2025/03/27/xu1jZL5Og4pqT9d.jpg",
 			},
-			"cardFooterTitle":       "Noise·说说·笔记~",
-			"cardFooterLink":        "note.noisework.cn",
-			"pageFooterHTML":        `<div class="text-center text-xs text-gray-400 py-4">来自<a href="https://www.noisework.cn" target="_blank" rel="noopener noreferrer" class="text-orange-400 hover:text-orange-500">Noise</a> 使用<a href="https://github.com/rcy1314/echo-noise" target="_blank" rel="noopener noreferrer" class="text-orange-400 hover:text-orange-500">Ech0-Noise</a>发布</div>`,
-			"rssTitle":              "Noise的说说笔记",
-			"rssDescription":        "一个说说笔记~",
-			"rssAuthorName":         "Noise",
-			"rssFaviconURL":         "/favicon-32x32.png",
-			"walineServerURL":       "请前往waline官网https://waline.js.org查看部署配置",
-			"enableGithubCard":      false,
+			"cardFooterTitle":  "Noise·说说·笔记~",
+			"cardFooterLink":   "note.noisework.cn",
+			"pageFooterHTML":   `<div class="text-center text-xs text-gray-400 py-4">来自<a href="https://www.noisework.cn" target="_blank" rel="noopener noreferrer" class="text-orange-400 hover:text-orange-500">Noise</a> 使用<a href="https://github.com/rcy1314/echo-noise" target="_blank" rel="noopener noreferrer" class="text-orange-400 hover:text-orange-500">Ech0-Noise</a>发布</div>`,
+			"rssTitle":         "Noise的说说笔记",
+			"rssDescription":   "一个说说笔记~",
+			"rssAuthorName":    "Noise",
+			"rssFaviconURL":    "/favicon-32x32.png",
+			"walineServerURL":  "请前往waline官网https://waline.js.org查看部署配置",
+			"enableGithubCard": false,
+			// 系统欢迎组件默认参数
+			"welcomeAvatarURL":      "https://s2.loli.net/2025/03/24/HnSXKvibAQlosIW.png",
+			"welcomeName":           "Noise",
+			"welcomeDescription":    "执迷不悟",
+			"welcomeUseAdmin":       true,
 			"githubOAuthEnabled":    false,
 			"githubClientId":        "",
 			"githubClientSecret":    "",
@@ -689,6 +731,15 @@ func getDefaultConfig() map[string]interface{} {
 func choose(values ...string) string {
 	for _, v := range values {
 		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+func pickAny(m map[string]interface{}, keys ...string) interface{} {
+	for _, k := range keys {
+		if v, ok := m[k]; ok {
 			return v
 		}
 	}

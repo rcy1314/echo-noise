@@ -174,13 +174,14 @@
                           <UTextarea v-model="ad.description" placeholder="描述文本（可选）" class="md:col-span-2" />
                         </div>
                       </div>
-                      <div class="flex items-center justify-between">
-                        <UButton size="sm" color="indigo" variant="soft" class="shadow" @click="frontendConfig.leftAds.push({ imageURL: '', linkURL: '', description: '' })">新增广告</UButton>
-                        <div class="flex items-center gap-2">
-                          <span class="text-sm" :class="theme.mutedText">轮播间隔(ms)</span>
-                          <UInput v-model.number="frontendConfig.leftAdsIntervalMs" type="number" class="w-28" />
+                        <div class="flex items-center justify-between">
+                          <UButton size="sm" color="indigo" variant="soft" class="shadow" @click="frontendConfig.leftAds.push({ imageURL: '', linkURL: '', description: '' })">新增广告</UButton>
+                          <UButton size="sm" color="gray" variant="soft" class="shadow" @click="resetAdsConfig">重置为默认</UButton>
+                          <div class="flex items-center gap-2">
+                            <span class="text-sm" :class="theme.mutedText">轮播间隔(ms)</span>
+                            <UInput v-model.number="frontendConfig.leftAdsIntervalMs" type="number" class="w-28" />
+                          </div>
                         </div>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -359,6 +360,42 @@
                     </div>
                   </div>
                 </div>
+                <div class="border-t mt-4 pt-3" :class="theme.border">
+                  <div class="flex justify-between items-center mb-2">
+                    <span :class="theme.mutedText">绑定邮箱</span>
+                    <UButton size="sm" @click="editUserInfo.emailBind = !editUserInfo.emailBind" :color="editUserInfo.emailBind ? 'gray' : 'green'" :variant="editUserInfo.emailBind ? 'soft' : 'solid'" class="shadow">{{ editUserInfo.emailBind ? '取消' : '编辑' }}</UButton>
+                  </div>
+                  <div v-if="editUserInfo.emailBind">
+                    <div class="w-full mb-2 flex items-center gap-2">
+                      <UInput v-model="userForm.email" type="email" placeholder="输入邮箱" class="flex-1" />
+                      <UButton color="gray" variant="soft" @click="sendBindEmailCode">发送验证码</UButton>
+                    </div>
+                    <div class="w-full mb-2 flex items-center gap-2">
+                      <UInput v-model="userForm.emailCode" placeholder="验证码" class="flex-1" />
+                      <UButton color="primary" class="shadow" @click="verifyBindEmail">绑定</UButton>
+                    </div>
+                  </div>
+                </div>
+                <div class="border-t mt-4 pt-3" :class="theme.border">
+                  <div class="flex justify-between items-center mb-2">
+                    <span :class="theme.mutedText">更换邮箱</span>
+                    <UButton size="sm" @click="editUserInfo.emailChange = !editUserInfo.emailChange" :color="editUserInfo.emailChange ? 'gray' : 'green'" :variant="editUserInfo.emailChange ? 'soft' : 'solid'" class="shadow">{{ editUserInfo.emailChange ? '取消' : '编辑' }}</UButton>
+                  </div>
+                  <div v-if="editUserInfo.emailChange">
+                    <div class="w-full mb-2 flex items-center gap-2">
+                      <UButton color="gray" variant="soft" @click="sendChangeEmailCode">向当前邮箱发送验证码</UButton>
+                      <UInput v-model="userForm.changeCode" placeholder="收到的验证码" class="flex-1" />
+                    </div>
+                    <div class="w-full mb-2 flex items-center gap-2">
+                      <UInput v-model="userForm.newEmail" type="email" placeholder="新的邮箱" class="flex-1" />
+                      <UButton color="primary" class="shadow" @click="changeEmail">更换</UButton>
+                    </div>
+                    <div v-if="awaitingNewEmailVerify" class="w-full mb-2 flex items-center gap-2">
+                      <UInput v-model="userForm.emailCode" placeholder="新邮箱验证码" class="flex-1" />
+                      <UButton color="primary" class="shadow" @click="confirmChangeEmail">确认更换</UButton>
+                    </div>
+                  </div>
+                </div>
               </div>
               </div>
               
@@ -366,19 +403,44 @@
           </div>
 
           <div id="site-section" class="col-span-12">
-            <div class="rounded-xl border shadow-xl" :class="[theme.cardBg, theme.border]">
-              <div class="flex items-center justify-between px-4 py-3">
-                <div class="font-semibold flex items-center gap-2" :class="theme.text">
-                  <UIcon name="i-heroicons-cog-6-tooth" class="w-5 h-5" />
-                  <span>网站配置</span>
-                </div>
+          <div class="rounded-xl border shadow-xl" :class="[theme.cardBg, theme.border]">
+            <div class="flex items-center justify-between px-4 py-3">
+              <div class="font-semibold flex items-center gap-2" :class="theme.text">
+                <UIcon name="i-heroicons-cog-6-tooth" class="w-5 h-5" />
+                <span>网站配置</span>
               </div>
-              <div class="px-4 pb-4 space-y-4">
-                <div id="site-register-section" class="flex items-center rounded-lg p-3 justify-between" :class="theme.subtleBg">
-                  <div class="flex items-center gap-2" :class="theme.text"><UIcon name="i-heroicons-user-plus" class="w-4 h-4" /> <span>新用户注册</span></div>
-                  <div class="flex items-center gap-4">
-                    <div class="flex items-center">
-                      <URadio v-model="registerEnabled" :value="true" class="mr-2" />
+            </div>
+            <div class="px-4 pb-4 space-y-4">
+              <div class="rounded-lg p-3" :class="theme.subtleBg">
+                <div class="flex justify-between items-center mb-3">
+                  <div class="flex items-center gap-2" :class="theme.text"><UIcon name="i-heroicons-hand-thumb-up" class="w-4 h-4" /><span>系统欢迎组件</span></div>
+                  <div class="flex items-center gap-2">
+                    <UButton size="sm" color="gray" variant="soft" @click="applyWelcomeAdmin">使用管理员头像信息</UButton>
+                    <UButton size="sm" color="gray" variant="soft" @click="resetWelcomeConfig">重置</UButton>
+                    <UButton size="sm" color="primary" class="shadow" @click="saveConfigItem('welcome')">保存</UButton>
+                  </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label :class="[theme.mutedText, 'text-sm mb-1 block']">显示名称</label>
+                    <UInput v-model="frontendConfig.welcomeName" placeholder="如 Noise 或站点名" />
+                  </div>
+                  <div>
+                    <label :class="[theme.mutedText, 'text-sm mb-1 block']">头像URL</label>
+                    <UInput v-model="frontendConfig.welcomeAvatarURL" placeholder="http/https 或以 /api 开头的站内路径" />
+                  </div>
+                  <div class="md:col-span-2">
+                    <label :class="[theme.mutedText, 'text-sm mb-1 block']">简介文案</label>
+                    <UTextarea v-model="frontendConfig.welcomeDescription" placeholder="一句话欢迎语或个人签名" />
+                  </div>
+                </div>
+                <div class="text-xs mt-2" :class="theme.mutedText">未登录时展示该组件；登录后显示当前用户的头像与签名</div>
+              </div>
+              <div id="site-register-section" class="flex items-center rounded-lg p-3 justify-between" :class="theme.subtleBg">
+                <div class="flex items-center gap-2" :class="theme.text"><UIcon name="i-heroicons-user-plus" class="w-4 h-4" /> <span>新用户注册</span></div>
+                <div class="flex items-center gap-4">
+                  <div class="flex items-center">
+                    <URadio v-model="registerEnabled" :value="true" class="mr-2" />
                       <span :class="registerEnabled ? theme.text : 'text-slate-400'">允许</span>
                     </div>
                     <div class="flex items-center">
@@ -642,7 +704,10 @@
                               </div>
                             </div>
                             <div class="flex items-center justify-between">
-                              <UButton size="sm" color="indigo" variant="soft" class="shadow" @click="frontendConfig.leftAds.push({ imageURL: '', linkURL: '', description: '' })">新增广告</UButton>
+                              <div class="flex items-center gap-2">
+                                <UButton size="sm" color="indigo" variant="soft" class="shadow" @click="frontendConfig.leftAds.push({ imageURL: '', linkURL: '', description: '' })">新增广告</UButton>
+                                <UButton size="sm" color="gray" variant="soft" class="shadow" @click="resetAdsConfig">重置为默认</UButton>
+                              </div>
                               <div class="flex items-center gap-2">
                                 <span class="text-sm" :class="theme.mutedText">轮播间隔(ms)</span>
                                 <UInput v-model.number="frontendConfig.leftAdsIntervalMs" type="number" class="w-28" />
@@ -1354,10 +1419,35 @@
 
                     </div>
                 </div>
-                               <!-- 网站配置区域 -->
+                <!-- 网站配置区域 -->
                 <div id="section-site" v-if="isAdmin" class="rounded-lg p-4 mb-6" :class="theme.cardBg">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-semibold" :class="theme.text">网站配置</h2>
+                    </div>
+                    <!-- 系统欢迎组件（左栏头像卡片） -->
+                    <div class="rounded p-4 mb-4" :class="theme.subtleBg">
+                        <div class="flex justify-between items-center mb-3">
+                            <span :class="theme.text">系统欢迎组件</span>
+                            <div class="flex items-center gap-2">
+                                <UButton size="sm" color="gray" variant="soft" @click="applyWelcomeAdmin">使用管理员头像信息</UButton>
+                                <UButton size="sm" color="primary" class="shadow" @click="saveConfigItem('welcome')">保存</UButton>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label :class="[theme.mutedText, 'text-sm mb-1 block']">显示名称</label>
+                                <UInput v-model="frontendConfig.welcomeName" placeholder="如 Noise 或站点名" />
+                            </div>
+                            <div>
+                                <label :class="[theme.mutedText, 'text-sm mb-1 block']">头像URL</label>
+                                <UInput v-model="frontendConfig.welcomeAvatarURL" placeholder="http/https 或以 /api 开头的站内路径" />
+                            </div>
+                            <div class="md:col-span-2">
+                                <label :class="[theme.mutedText, 'text-sm mb-1 block']">简介文案</label>
+                                <UTextarea v-model="frontendConfig.welcomeDescription" placeholder="一句话欢迎语或个人签名" />
+                            </div>
+                        </div>
+                        <div class="text-xs mt-2" :class="theme.mutedText">未登录时展示该组件；登录后显示当前用户的头像与签名</div>
                     </div>
                     <!-- 新用户注册开关 -->
                     <div class="flex items-center rounded p-3 mb-4 justify-between" :class="theme.subtleBg">
@@ -1763,10 +1853,27 @@ onMounted(() => {
   loadStorageConfig()
   sidebarOpen.value = window.innerWidth >= 768
   try {
-    // 后台页内切换 adminTheme 时，同步 html.dark 以保持 UI 组件配色一致
     const html = document.documentElement
-    html.classList.remove('dark')
-    if (panelTheme.value !== 'light') html.classList.add('dark')
+    const wantDark = panelTheme.value !== 'light'
+    const hasDark = html.classList.contains('dark')
+    if (wantDark && !hasDark) {
+      html.classList.add('dark')
+    } else if (!wantDark && hasDark) {
+      html.classList.remove('dark')
+    }
+  } catch {}
+})
+
+watch(() => panelTheme.value, (val) => {
+  try {
+    const html = document.documentElement
+    const wantDark = val !== 'light'
+    const hasDark = html.classList.contains('dark')
+    if (wantDark && !hasDark) {
+      html.classList.add('dark')
+    } else if (!wantDark && hasDark) {
+      html.classList.remove('dark')
+    }
   } catch {}
 })
 
@@ -1869,8 +1976,13 @@ const saveAdminTheme = async () => {
   localStorage.setItem('adminTheme', panelTheme.value)
   try {
     const html = document.documentElement
-    html.classList.remove('dark')
-    if (panelTheme.value !== 'light') html.classList.add('dark')
+    const wantDark = panelTheme.value !== 'light'
+    const hasDark = html.classList.contains('dark')
+    if (wantDark && !hasDark) {
+      html.classList.add('dark')
+    } else if (!wantDark && hasDark) {
+      html.classList.remove('dark')
+    }
   } catch {}
   try {
     const resConfig = await fetch('/api/frontend/config', { credentials: 'include' })
@@ -2423,13 +2535,20 @@ const userForm = reactive({
     description: '',
     oldPassword: '',
     newPassword: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    email: '',
+    emailCode: '',
+    newEmail: '',
+    changeCode: ''
 })
 const editUserInfo = reactive({
     username: false,
     description: false,
-    password: true
+    password: false,
+    emailBind: false,
+    emailChange: false
 })
+const awaitingNewEmailVerify = ref(false)
 const showToken = ref(false)
 const regeneratingToken = ref(false)
 const showOldPassword = ref(false)
@@ -2538,6 +2657,79 @@ const updatePassword = async () => {
             color: 'red'
         })
     }
+}
+
+const sendBindEmailCode = async () => {
+  try {
+    const v = String(userForm.email || '').trim()
+    if (!v) throw new Error('邮箱不能为空')
+    const res = await postRequest<any>('user/email/bind', { email: v }, { credentials: 'include' })
+    if (!res || res.code !== 1) throw new Error(res?.msg || '发送失败')
+    useToast().add({ title: '成功', description: '验证码已发送', color: 'green' })
+  } catch (e: any) {
+    useToast().add({ title: '错误', description: e.message || '发送失败', color: 'red' })
+  }
+}
+
+const verifyBindEmail = async () => {
+  try {
+    const c = String(userForm.emailCode || '').trim()
+    if (!c) throw new Error('请输入验证码')
+    const res = await postRequest<any>('user/email/verify', { code: c }, { credentials: 'include' })
+    if (!res || res.code !== 1) throw new Error(res?.msg || '绑定失败')
+    await userStore.getUser()
+    editUserInfo.emailBind = false
+    userForm.email = ''
+    userForm.emailCode = ''
+    useToast().add({ title: '成功', description: '邮箱已绑定', color: 'green' })
+  } catch (e: any) {
+    useToast().add({ title: '错误', description: e.message || '绑定失败', color: 'red' })
+  }
+}
+
+const sendChangeEmailCode = async () => {
+  try {
+    const res = await postRequest<any>('user/email/change/send_code', {}, { credentials: 'include' })
+    if (!res || res.code !== 1) throw new Error(res?.msg || '发送失败')
+    useToast().add({ title: '成功', description: '验证码已发送到当前邮箱', color: 'green' })
+  } catch (e: any) {
+    useToast().add({ title: '错误', description: e.message || '发送失败', color: 'red' })
+  }
+}
+
+const changeEmail = async () => {
+  try {
+    const c = String(userForm.changeCode || '').trim()
+    const ne = String(userForm.newEmail || '').trim()
+    if (!c || !ne) throw new Error('请输入验证码与新邮箱')
+    const res = await postRequest<any>('user/email/change', { code: c, newEmail: ne }, { credentials: 'include' })
+    if (!res || res.code !== 1) throw new Error(res?.msg || '更换失败')
+    awaitingNewEmailVerify.value = true
+    userForm.email = ne
+    userForm.emailCode = ''
+    useToast().add({ title: '成功', description: '已向新邮箱发送验证码，请在下方输入验证码完成更换', color: 'green' })
+  } catch (e: any) {
+    useToast().add({ title: '错误', description: e.message || '更换失败', color: 'red' })
+  }
+}
+
+const confirmChangeEmail = async () => {
+  try {
+    const code = String(userForm.emailCode || '').trim()
+    if (!code) throw new Error('请输入新邮箱验证码')
+    const res = await postRequest<any>('user/email/verify', { code }, { credentials: 'include' })
+    if (!res || res.code !== 1) throw new Error(res?.msg || '确认失败')
+    awaitingNewEmailVerify.value = false
+    editUserInfo.emailChange = false
+    userForm.changeCode = ''
+    userForm.newEmail = ''
+    userForm.email = ''
+    userForm.emailCode = ''
+    await userStore.getUser()
+    useToast().add({ title: '成功', description: '邮箱已更换', color: 'green' })
+  } catch (e: any) {
+    useToast().add({ title: '错误', description: e.message || '确认失败', color: 'red' })
+  }
 }
 
 const chooseAvatar = () => {
@@ -2730,6 +2922,10 @@ const configLabels = {
 const frontendConfig = reactive({
     siteTitle: '',
     subtitleText: '',
+    welcomeName: '',
+    welcomeAvatarURL: '',
+    welcomeDescription: '',
+    welcomeUseAdmin: false,
     backgrounds: [] as string[],
     cardFooterTitle: '',
     cardFooterLink: '',
@@ -2833,6 +3029,10 @@ const defaultConfig = {
     siteTitle: '说说笔记',
     subtitleText: '欢迎访问，点击头像可更换封面背景！',
     avatarURL: '',
+    welcomeName: '',
+    welcomeAvatarURL: '',
+    welcomeDescription: '',
+    welcomeUseAdmin: false,
     
     backgrounds: [
         "https://s2.loli.net/2025/03/27/KJ1trnU2ksbFEYM.jpg",
@@ -2934,7 +3134,7 @@ const fetchConfig = async () => {
             const settings = data.data.frontendSettings;
             
             // 遍历配置项进行更新（布尔型键需强制转换）
-            const booleanKeys = ['enableGithubCard', 'pwaEnabled', 'announcementEnabled', 'hitokotoEnabled', 'musicEnabled', 'musicLyric', 'musicAutoplay', 'musicDefaultMinimized', 'musicEmbed', 'commentEnabled', 'commentEmailEnabled', 'commentLoginRequired', 'githubOAuthEnabled', 'notifyEnabled', 'calendarEnabled', 'timeEnabled', 'leftAdEnabled']
+            const booleanKeys = ['enableGithubCard', 'pwaEnabled', 'announcementEnabled', 'hitokotoEnabled', 'musicEnabled', 'musicLyric', 'musicAutoplay', 'musicDefaultMinimized', 'musicEmbed', 'commentEnabled', 'commentEmailEnabled', 'commentLoginRequired', 'githubOAuthEnabled', 'notifyEnabled', 'calendarEnabled', 'timeEnabled', 'leftAdEnabled', 'welcomeUseAdmin']
             Object.keys(frontendConfig).forEach(key => {
                 if (key === 'backgrounds') {
                     const serverBackgrounds = settings[key];
@@ -3035,6 +3235,15 @@ const saveConfigItem = async (key: string) => {
             const validBackgrounds = frontendConfig.backgrounds.filter(url => url && url.trim() !== '');
             frontendConfig.backgrounds = validBackgrounds;
         }
+        // 特殊处理广告位数组：过滤空条目并裁剪字段
+        if (key === 'leftAds') {
+            const cleaned = (frontendConfig.leftAds || []).map((ad: any) => ({
+                imageURL: String(ad?.imageURL || '').trim(),
+                linkURL: String(ad?.linkURL || '').trim(),
+                description: String(ad?.description || '').trim()
+            })).filter(ad => ad.imageURL !== '');
+            frontendConfig.leftAds = cleaned;
+        }
 
         const settingsToSave = {
             frontendSettings: frontendConfig  // 直接发送整个配置对象
@@ -3123,6 +3332,38 @@ const savePWAConfig = async () => {
     } catch (error: any) {
         useToast().add({ title: '错误', description: error.message || '保存失败', color: 'red' })
     }
+}
+
+const applyWelcomeAdmin = async () => {
+  try {
+    const resp = await fetch('/api/status', { credentials: 'include' })
+    const js = await resp.json().catch(() => ({}))
+    const list = ((js?.data?.users || js?.data?.Users) || []) as any[]
+    const admin = Array.isArray(list) ? list.find((it: any) => !!(it?.is_admin ?? it?.IsAdmin)) : null
+    const base = useRuntimeConfig().public.baseApi || '/api'
+    if (admin) {
+      const name = String(admin?.username || admin?.Username || '').trim()
+      const raw = String(admin?.avatar_url || admin?.AvatarURL || '').trim()
+      const desc = String(admin?.description || '').trim()
+      ;(frontendConfig as any).welcomeName = name || (frontendConfig as any).welcomeName || ''
+      ;(frontendConfig as any).welcomeAvatarURL = raw ? (raw.startsWith('http') ? raw : `${base}${raw}`) : ((frontendConfig as any).welcomeAvatarURL || '')
+      ;(frontendConfig as any).welcomeDescription = desc || (frontendConfig as any).welcomeDescription || ''
+      ;(frontendConfig as any).welcomeUseAdmin = true
+      useToast().add({ title: '已填充管理员信息', color: 'green' })
+    } else {
+      useToast().add({ title: '未找到管理员', color: 'orange' })
+    }
+  } catch (e: any) {
+    useToast().add({ title: '失败', description: e?.message || '获取失败', color: 'red' })
+  }
+}
+
+const resetWelcomeConfig = () => {
+  ;(frontendConfig as any).welcomeName = (defaultConfig as any).welcomeName || ''
+  ;(frontendConfig as any).welcomeAvatarURL = (defaultConfig as any).welcomeAvatarURL || ''
+  ;(frontendConfig as any).welcomeDescription = (defaultConfig as any).welcomeDescription || ''
+  ;(frontendConfig as any).welcomeUseAdmin = (defaultConfig as any).welcomeUseAdmin || false
+  useToast().add({ title: '已重置欢迎组件', color: 'gray' })
 }
 
 const handleSiteAvatarUpload = async (event: Event) => {
@@ -3413,6 +3654,18 @@ const resetMusicConfig = () => {
   ;(frontendConfig as any).musicJsCdnURL = defaultConfig.musicJsCdnURL
 }
 
+const resetAdsConfig = () => {
+  ;(frontendConfig as any).leftAdEnabled = true
+  const def = (defaultConfig as any)
+  const arr = Array.isArray(def.leftAds) ? def.leftAds : []
+  ;(frontendConfig as any).leftAds = arr.map((x: any) => ({
+    imageURL: String(x?.imageURL || ''),
+    linkURL: String(x?.linkURL || ''),
+    description: String(x?.description || '')
+  }))
+  ;(frontendConfig as any).leftAdsIntervalMs = Number(def.leftAdsIntervalMs || 4000)
+}
+
 const toggleMusic = async (enabled: boolean) => {
   ;(frontendConfig as any).musicEnabled = enabled
   if (enabled) {
@@ -3569,8 +3822,15 @@ onMounted(() => {
     window.addEventListener('frontend-config-updated', (event: any) => {
         const { key, value } = event.detail;
         if (key && value !== undefined) {
-            frontendConfig[key] = value;
+            ;(frontendConfig as any)[key] = value;
         }
+        try {
+          const html = document.documentElement
+          const wantDark = panelTheme.value !== 'light'
+          const hasDark = html.classList.contains('dark')
+          if (wantDark && !hasDark) html.classList.add('dark')
+          else if (!wantDark && hasDark) html.classList.remove('dark')
+        } catch {}
     });
 });
 // ... existing code ...

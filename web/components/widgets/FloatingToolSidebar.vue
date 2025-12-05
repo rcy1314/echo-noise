@@ -32,11 +32,12 @@ const layoutIconProp = computed(() => props.layoutIcon || 'i-mdi-view-grid')
 .floating-sidebar { position: fixed; right: 16px; top: 50%; transform: translateY(-50%); z-index: 50; display:flex; flex-direction:column; gap:10px; padding:8px; border-radius:12px; background: transparent; box-shadow: none; }
 .floating-sidebar.fs-dark { background: transparent !important; }
 .floating-sidebar.fs-light { background: transparent !important; box-shadow: none; }
-.tool-btn { display:flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:10px; transition: all .18s ease; }
+.tool-btn { display:flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:10px; transition: all .18s ease; box-sizing: border-box; flex-shrink: 0; aspect-ratio: 1 / 1; }
 .tool-btn.btn-dark { background: rgba(36,43,50,0.85); color:#ffffff; border: 1px solid rgba(255,255,255,0.20); box-shadow: 0 6px 16px rgba(0,0,0,0.35); backdrop-filter: blur(6px); }
 .tool-btn.btn-dark:hover { transform: translate3d(0,0,0) scale(1.06); background: rgba(36,43,50,0.95); border-color: rgba(255,255,255,0.28); }
 .tool-btn.btn-light { background: rgba(255,255,255,0.92); color:#1f2937; border: 1px solid rgba(0,0,0,0.18); box-shadow: 0 2px 8px rgba(0,0,0,.12); }
 .tool-btn.btn-light:hover { transform: translate3d(0,0,0) scale(1.06); background: #ffffff; border-color: rgba(0,0,0,0.24); box-shadow: 0 4px 12px rgba(0,0,0,.18); }
 .tool-btn.btn-light:hover { transform: translate3d(0,0,0) scale(1.06); background: rgba(255,255,255,0.70); }
-@media (max-width: 1024px) { .floating-sidebar { position: fixed; left: 50%; bottom: 20px; top: auto; transform: translateX(-50%); flex-direction:row; padding:8px; border-radius:14px; background: transparent; box-shadow: none; } .tool-btn { width:36px; height:36px; } .tool-btn.btn-layout { display: none; } }
+@media (max-width: 1024px) { .floating-sidebar { position: fixed; left: 50%; bottom: 18px; top: auto; transform: translateX(-50%); flex-direction:row; gap:12px; padding:10px 14px; border-radius:20px; background: transparent; box-shadow: none; max-width: min(560px, calc(100vw - 40px)); justify-content: center; } .tool-btn { width:48px; height:48px; border-radius:9999px; flex: 0 0 48px; flex-shrink: 0; } .tool-btn.btn-layout { display: none; } }
+@media (max-width: 640px) { .floating-sidebar { bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); } }
 </style>

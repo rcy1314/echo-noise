@@ -1,5 +1,5 @@
 server:
-  port: "1315"
+  port: "1314"
   host: "0.0.0.0"
   mode: "release" # "release" or "debug"
 

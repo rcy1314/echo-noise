@@ -39,11 +39,11 @@ export default defineNuxtConfig({
     server: {
       proxy: {
         '/api': {
-          target: 'http://localhost:1315',
+          target: 'http://localhost:1314',
           changeOrigin: true
         },
         '/rss': {
-          target: 'http://localhost:1315',
+          target: 'http://localhost:1314',
           changeOrigin: true
         }
       }
@@ -73,11 +73,11 @@ export default defineNuxtConfig({
     preset: process.env.NODE_ENV === 'production' ? 'static' : undefined,
     devProxy: {
       '/api': {
-        target: 'http://localhost:1315',
+        target: 'http://localhost:1314',
         changeOrigin: true
       },
       '/rss': {
-        target: 'http://localhost:1315',
+        target: 'http://localhost:1314',
         changeOrigin: true
       }
     },

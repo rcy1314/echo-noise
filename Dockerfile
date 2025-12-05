@@ -23,6 +23,7 @@ FROM public.ecr.aws/docker/library/golang:1.24.1-alpine AS backend-build
 
 # 设置环境变量
 ENV CGO_ENABLED=0
+ENV GOPROXY=https://goproxy.cn,direct
 
 # 设置工作目录
 WORKDIR /app

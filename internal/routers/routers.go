@@ -222,6 +222,10 @@ func SetupRouter() *gin.Engine {
 		// 添加 Token 相关路由
 		user.GET("/token", controllers.GetUserToken)
 		user.POST("/token/regenerate", controllers.RegenerateUserToken)
+		user.POST("/email/bind", controllers.BindEmail)
+		user.POST("/email/verify", controllers.VerifyEmail)
+		user.POST("/email/change/send_code", controllers.SendChangeEmailCode)
+		user.POST("/email/change", controllers.ChangeEmail)
 	}
 
 	// 设置路由

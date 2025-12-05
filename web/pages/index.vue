@@ -75,7 +75,7 @@
           <div>
             <template v-if="leftAds.length > 0">
               <div class="relative">
-                <a :href="(currentAd.linkURL || '#')" target="_blank" rel="noopener noreferrer" class="block ad-wrap group rounded-lg overflow-hidden">
+                <a :href="(currentAd.linkURL || '#')" target="_blank" rel="noopener noreferrer" class="block ad-wrap group rounded-lg overflow-hidden" :style="{ '--ad-bg': `url(${imgSrc(currentAd.imageURL)})` }">
                   <img :src="imgSrc(currentAd.imageURL)" alt="ad" class="ad-image w-full object-cover transition duration-200 rounded-lg" />
                   <div class="ad-overlay">
                     <div class="ad-overlay-box transition-colors duration-200" :class="[isDark ? '' : 'group-hover:text-orange-500']">{{ (currentAd.description || '').trim() || '广告' }}</div>
@@ -287,7 +287,7 @@
         <div class="mt-2">
           <template v-if="leftAds.length > 0">
             <div class="relative">
-              <a :href="(currentAd.linkURL || '#')" target="_blank" rel="noopener noreferrer" class="block ad-wrap">
+              <a :href="(currentAd.linkURL || '#')" target="_blank" rel="noopener noreferrer" class="block ad-wrap" :style="{ '--ad-bg': `url(${imgSrc(currentAd.imageURL)})` }">
                 <img :src="imgSrc(currentAd.imageURL)" alt="ad" class="ad-image w-full rounded-md object-cover transition duration-200" />
                 <div class="ad-overlay">
                   <div class="ad-overlay-box">{{ (currentAd.description || '').trim() || '广告' }}</div>
@@ -351,7 +351,12 @@
           <UForm @submit.prevent="onLoginSubmit">
             <div class="space-y-3">
               <UInput v-model="loginForm.username" placeholder="用户名或邮箱" />
-              <UInput v-model="loginForm.password" type="password" placeholder="密码" />
+              <UInput v-model="loginForm.password" :type="showLoginPassword ? 'text' : 'password'" placeholder="密码" autocomplete="current-password" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <template #trailing>
+                  <UButton icon="i-heroicons-eye" v-if="!showLoginPassword" variant="ghost" color="gray" @click="showLoginPassword = true" :ui="{ rounded: 'rounded-full' }" />
+                  <UButton icon="i-heroicons-eye-slash" v-else variant="ghost" color="gray" @click="showLoginPassword = false" :ui="{ rounded: 'rounded-full' }" />
+                </template>
+              </UInput>
               <UButton class="w-full" :loading="loginSubmitting" :disabled="loginSubmitting" type="submit" color="primary">登录</UButton>
             </div>
           </UForm>
@@ -372,7 +377,12 @@
           <UForm @submit.prevent="onRegisterSubmit">
             <div class="space-y-3">
               <UInput v-model="registerForm.username" placeholder="用户名" />
-              <UInput v-model="registerForm.password" type="password" placeholder="密码" />
+              <UInput v-model="registerForm.password" :type="showRegisterPassword ? 'text' : 'password'" placeholder="密码" autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <template #trailing>
+                  <UButton icon="i-heroicons-eye" v-if="!showRegisterPassword" variant="ghost" color="gray" @click="showRegisterPassword = true" :ui="{ rounded: 'rounded-full' }" />
+                  <UButton icon="i-heroicons-eye-slash" v-else variant="ghost" color="gray" @click="showRegisterPassword = false" :ui="{ rounded: 'rounded-full' }" />
+                </template>
+              </UInput>
               <div class="flex items-center gap-2">
                 <UInput v-model="registerForm.captcha" placeholder="验证码" />
                 <img :src="captchaSrc" @click="refreshCaptcha" class="h-10 w-24 rounded border cursor-pointer" alt="captcha" />
@@ -471,6 +481,8 @@ const showAuthModal = ref(false)
 const authMode = ref<'login'|'register'>('login')
 const loginForm = reactive({ username: '', password: '' })
 const registerForm = reactive({ username: '', password: '', captcha: '' })
+const showLoginPassword = ref(false)
+const showRegisterPassword = ref(false)
 const loginSubmitting = ref(false)
 const registerSubmitting = ref(false)
 const captchaSrc = ref('')
@@ -631,9 +643,8 @@ const profileName = computed(() => {
   const u = userStore.user as any
   const name = String(u?.username || u?.Username || '').trim()
   if (name) return name
-  const a = defaultAdmin.value as any
-  const aname = String(a?.username || a?.Username || '').trim()
-  return aname || '匿名'
+  const wname = String((frontendConfig.value as any)?.welcomeName || '').trim()
+  return wname || '匿名'
 })
 const fallbackAvatarURL = 'https://s2.loli.net/2025/03/24/HnSXKvibAQlosIW.png'
 const profileAvatar = computed(() => {
@@ -641,9 +652,8 @@ const profileAvatar = computed(() => {
   const raw = String(u?.avatar_url || u?.AvatarURL || '').trim()
   const base = useRuntimeConfig().public.baseApi || '/api'
   if (raw) return raw.startsWith('http') ? raw : `${base}${raw}`
-  const a = defaultAdmin.value as any
-  const araw = String(a?.avatar_url || a?.AvatarURL || '').trim()
-  if (araw) return araw.startsWith('http') ? araw : `${base}${araw}`
+  const wraw = String((frontendConfig.value as any)?.welcomeAvatarURL || '').trim()
+  if (wraw) return wraw.startsWith('http') ? wraw : `${base}${wraw}`
   return fallbackAvatarURL
 })
 const handleAvatarError = (e: Event) => {
@@ -654,9 +664,8 @@ const profileDesc = computed(() => {
   const u = userStore.user as any
   const d = String(u?.description || '').trim()
   if (d) return d
-  const a = defaultAdmin.value as any
-  const ad = String(a?.description || '').trim()
-  return ad || '执迷不悟'
+  const wd = String((frontendConfig.value as any)?.welcomeDescription || '').trim()
+  return wd || '执迷不悟'
 })
 // 注入从AddForm组件提供的showHeatmap变量
 const showHeatmap = ref(true);
@@ -994,6 +1003,11 @@ const headerImageStyle = computed(() => ({
     avatarURL: 'https://s2.loli.net/2025/03/24/HnSXKvibAQlosIW.png',
     username: 'Noise',
     description: '执迷不悟',
+    // 系统欢迎组件（未登录时显示）
+    welcomeAvatarURL: 'https://s2.loli.net/2025/03/24/HnSXKvibAQlosIW.png',
+    welcomeName: 'Noise',
+    welcomeDescription: '执迷不悟',
+    welcomeUseAdmin: true,
     backgrounds: [
                 'https://s2.loli.net/2025/03/27/KJ1trnU2ksbFEYM.jpg',
                 'https://s2.loli.net/2025/03/27/MZqaLczCvwjSmW7.jpg',
@@ -1074,7 +1088,7 @@ const fetchConfig = async () => {
         const res = await getRequest<any>('frontend/config', undefined, { credentials: 'include' })
         if (res && res.code === 1 && res.data && res.data.frontendSettings) {
             const settings = res.data.frontendSettings
-            const booleanKeys = ['enableGithubCard', 'pwaEnabled', 'announcementEnabled', 'hitokotoEnabled', 'commentEnabled', 'commentEmailEnabled', 'commentLoginRequired', 'musicEnabled', 'musicLyric', 'musicAutoplay', 'musicDefaultMinimized', 'musicEmbed', 'calendarEnabled', 'timeEnabled', 'leftAdEnabled']
+            const booleanKeys = ['enableGithubCard', 'pwaEnabled', 'announcementEnabled', 'hitokotoEnabled', 'commentEnabled', 'commentEmailEnabled', 'commentLoginRequired', 'musicEnabled', 'musicLyric', 'musicAutoplay', 'musicDefaultMinimized', 'musicEmbed', 'calendarEnabled', 'timeEnabled', 'leftAdEnabled', 'welcomeUseAdmin']
             Object.keys(frontendConfig.value).forEach(key => {
                 if (settings[key] !== null && settings[key] !== undefined) {
                     if (key === 'backgrounds' && Array.isArray(settings[key])) {
@@ -2283,16 +2297,18 @@ html.dark .sidebar-card :where(.border,.border-gray-200,.border-gray-300,.border
 }
 .scroll-list { height: 64px; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 2px 2px; scroll-behavior: smooth; }
 .recent-inline-img { display:inline-block; width:18px; height:18px; object-fit:cover; border-radius:4px; vertical-align:middle; margin: -2px 2px 0 2px; }
-.ad-wrap { position: relative; }
-.ad-image { transition: filter .12s ease, transform .12s ease; }
-.ad-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; opacity:0; transition: opacity .12s ease; pointer-events:none; }
+.ad-wrap { position: relative; aspect-ratio: var(--ad-aspect, 1 / 1); }
+.ad-image { width: 100%; height: 100%; object-fit: contain; transition: filter .12s ease, transform .12s ease; }
+.ad-wrap::before { content: ""; position: absolute; inset: 0; background-image: var(--ad-bg); background-size: cover; background-position: center; filter: blur(12px) brightness(0.95); transform: scale(1.05); }
+.ad-wrap > .ad-image { position: relative; z-index: 1; }
+.ad-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; opacity:0; transition: opacity .12s ease; pointer-events:none; z-index: 2; }
 .ad-overlay-box { max-width: 90%; max-height: 70%; overflow-y: auto; padding: 8px 10px; border-radius: 10px; font-size: 14px; line-height: 1.5; word-break: break-word; overflow-wrap: anywhere; }
 :global(html.dark) .ad-overlay-box { background: rgba(36,43,50,0.90); color:#f59e0b !important; border:1px solid rgba(255,255,255,0.12); box-shadow: 0 6px 18px rgba(0,0,0,0.28); }
 :global(html.dark) .ad-overlay-box a { color:#f59e0b !important; text-decoration:none; }
 :global(html:not(.dark)) .ad-overlay-box { background:#ffffff; color:#f59e0b !important; border:1px solid rgba(0,0,0,0.08); box-shadow: 0 6px 18px rgba(0,0,0,0.12); }
 :global(html:not(.dark)) .ad-overlay-box a { color:#f59e0b !important; text-decoration:none; }
 .ad-wrap:hover .ad-overlay { opacity:1; }
-.ad-wrap:hover .ad-image { filter: blur(2.5px) brightness(0.9); }
+.ad-wrap:hover .ad-image { filter: contrast(0.95) brightness(0.9); }
 .scroll-images { height: 240px; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-right: 2px; }
 /* 标签三栏栅格与滚动容器 */
 .scroll-tags { max-height: 160px; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-right: 2px; min-height: 0; overscroll-behavior: contain; }

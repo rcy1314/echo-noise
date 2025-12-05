@@ -53,12 +53,18 @@ type Comment struct {
 }
 
 type User struct {
-	ID        uint   `gorm:"primaryKey" json:"id"`
-	Username  string `gorm:"type:varchar(191);not null;uniqueIndex" json:"username"`
-	Password  string `gorm:"type:varchar(191);not null" json:"password"`
-	IsAdmin   bool   `json:"is_admin"`
-	Token     string `gorm:"type:varchar(191)" json:"token"`
-	AvatarURL string `gorm:"type:varchar(191)" json:"avatar_url"`
+	ID                 uint       `gorm:"primaryKey" json:"id"`
+	Username           string     `gorm:"type:varchar(191);not null;uniqueIndex" json:"username"`
+	Password           string     `gorm:"type:varchar(191);not null" json:"password"`
+	IsAdmin            bool       `json:"is_admin"`
+	Token              string     `gorm:"type:varchar(191)" json:"token"`
+	AvatarURL          string     `gorm:"type:varchar(191)" json:"avatar_url"`
+	Description        string     `gorm:"type:varchar(191)" json:"description"`
+	Email              string     `gorm:"type:varchar(191)" json:"email"`
+	EmailVerified      bool       `json:"email_verified"`
+	EmailPending       string     `gorm:"type:varchar(191)" json:"-"`
+	EmailVerifyCode    string     `gorm:"type:varchar(20)" json:"-"`
+	EmailVerifyExpires *time.Time `json:"-"`
 }
 
 // 生成 Token 的工具函数
@@ -172,6 +178,11 @@ type SiteConfig struct {
 	CalendarEnabled bool `gorm:"default:true"`
 	TimeEnabled     bool `gorm:"default:true"`
 	HitokotoEnabled bool `gorm:"default:true"`
+	// 系统欢迎组件（左栏头像卡片专用，脱离用户资料）
+	WelcomeAvatarURL   string `gorm:"type:varchar(255)"`
+	WelcomeName        string `gorm:"type:varchar(100)"`
+	WelcomeDescription string `gorm:"type:varchar(255)"`
+	WelcomeUseAdmin    bool   `gorm:"default:true"`
 	// 广告位配置（左侧）
 	LeftAdEnabled     bool   `gorm:"default:true"`
 	LeftAds           string `gorm:"type:text"`

@@ -5,6 +5,7 @@ export const useUserStore = defineStore("userStore", () => {
     const user = ref<User | null>(null);
     const status = ref<Status | null>(null);
     const isLogin = ref<boolean>(false);
+    const token = ref<string>("");
     const toast = useToast()
 
     // 设置用户状态
@@ -29,6 +30,7 @@ export const useUserStore = defineStore("userStore", () => {
         status.value = null;
         user.value = null;
         isLogin.value = false;
+        token.value = "";
     }
 
     // 注册
@@ -74,8 +76,10 @@ export const useUserStore = defineStore("userStore", () => {
                 userid: u.id ?? u.ID ?? u.user_id,
                 username: u.username ?? u.Username,
                 is_admin: u.is_admin ?? u.IsAdmin,
-                avatar_url: u.avatar_url ?? u.AvatarURL
+                avatar_url: u.avatar_url ?? u.AvatarURL,
+                description: u.description ?? u.Description
             } as any
+            token.value = u.token ?? u.Token ?? token.value
             isLogin.value = true;
             await getStatus();
             return true;
@@ -134,7 +138,8 @@ export const useUserStore = defineStore("userStore", () => {
                 userid: u.id ?? u.ID ?? u.user_id,
                 username: u.username ?? u.Username,
                 is_admin: u.is_admin ?? u.IsAdmin,
-                avatar_url: u.avatar_url ?? u.AvatarURL
+                avatar_url: u.avatar_url ?? u.AvatarURL,
+                description: u.description ?? u.Description
             } as any
             isLogin.value = true;
             await getStatus();
@@ -192,6 +197,7 @@ export const useUserStore = defineStore("userStore", () => {
         user,
         status,
         isLogin,
+        token,
         register,
         login,
         getStatus,

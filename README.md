@@ -33,6 +33,10 @@
 
 ## 2025更新状态
 
+- 统一端口为1314，前端开发、后端服务与 MCP 三者协同
+
+- 增强密码判定与兼容策略，用户首次登录成功并自动升级
+
 - 调整首页布局及组件效果
 
 - 增加点赞记数及单独的关于、友链、留言页面
@@ -172,16 +176,15 @@
 
 ## 🚀安装部署
 
-> 💡 部署完成后访问 ip:1314 即可使用
-> 
+> 💡 部署完成后访问 ip:1314 即可使用，已添加默认测试数据，登录后可删除修改
+>
+> ​    默认用户名：admin
+>
+> ​    默认用户密码：admin
 
 ## [docker部署](https://hub.docker.com/repository/docker/noise233/echo-noise)
 
 一键部署
-
-> 默认用户名：admin
->
-> 默认用户密码：admin
 
 无任何数据库挂载时默认：
 
@@ -1477,7 +1480,7 @@ docker buildx create --use --name mybuilder
 docker buildx build --platform linux/amd64,linux/arm64 --target final -t noise233/echo-noise:latest --push --no-cache .
 ```
 
-同时推送版本标签与 latest ：
+同时推送版本时间标签与 latest ：
 
 ```
 docker buildx build --platform linux/amd64,linux/arm64 --target final --build-arg VERSION=2025.12.04 -t noise233/echo-noise:2025.12.04 -t noise233/echo-noise:latest --push --no-cache .
@@ -1489,7 +1492,7 @@ docker buildx build --platform linux/amd64,linux/arm64 --target final --build-ar
 docker buildx build --platform linux/amd64,linux/arm64 --target final --build-arg USE_UPX=1 -t noise233/echo-noise:latest --push --no-cache .
 ```
 
-MCP 独立镜像：
+包含MCP镜像：
 
 ```
 docker buildx build --platform linux/amd64,linux/arm64 --target final-mcp -t noise233/echo-noise:latest-mcp --push --no-cache .
