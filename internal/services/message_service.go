@@ -323,6 +323,7 @@ func ToggleLike(messageID uint, userID *uint, sessionID string) (bool, int, erro
     if err := database.DB.Model(&models.MessageLike{}).Where("message_id = ?", messageID).Count(&cnt).Error; err != nil {
         return false, 0, err
     }
+    if err := database.DB.Model(&models.Message{}).Where("id = ?", messageID).Update("like_count", cnt).Error; err != nil {
         return false, int(cnt), err
     }
     // 再查一次是否点赞状态
