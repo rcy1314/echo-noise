@@ -207,49 +207,6 @@ docker run -d \
 noise233/echo-noise:latest
 ```
 
-### 选择镜像标签版本并展示到后台
-
-部署时显式指定镜像标签版本：
-
-```
-docker run -d \
-  --name Ech0-Noise \
-  -v /opt/data:/app/data \
-  -p 1314:1314 \
-  noise233/echo-noise:2025.12.04
-```
-
-说明：
-- 使用 `noise233/echo-noise:<标签>` 指定版本；后台“系统管理面板”会显示当前镜像版本。
-- 官方镜像已内置版本到变量，若你自行构建镜像，请在构建时加入：
-
-```
-docker build --target final \
-  --build-arg VERSION=2025.12.04 \
-  -t noise233/echo-noise:2025.12.04 .
-```
-
-或在运行时覆盖（仅当你使用第三方镜像或未设置构建参数时）：
-
-```
-docker run -d \
-  -e APP_VERSION=2025.12.04 \
-  -p 1314:1314 \
-  noise233/echo-noise:2025.12.04
-```
-
-docker-compose 固定镜像标签示例：
-
-```yaml
-services:
-  ech0-noise:
-    image: noise233/echo-noise:2025.12.04
-    ports:
-      - "1314:1314"
-    volumes:
-      - /opt/data:/app/data
-```
-
 > 使用 -v /opt/data:/app/data \ 可挂载你原有的数据，请确保/opt/data文件夹中包含原数据库文件，如有图片请一起放在data文件夹下images 文件夹中，如果没有原数据库文件还使用该命令，进入页面会无任何可用数据显示 使用 --platform linux/amd64 命令可选择不同架构运行部署
 >
 
