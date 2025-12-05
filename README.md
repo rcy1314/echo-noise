@@ -14,6 +14,7 @@
 
 - 统一的前端交互与内置组件体验，支持外部扩展、网页组件
 - 可自由切换多栏风格，支持三栏、双栏、单栏
+- 内置评论及smtp 发信，完善的后台控制系统
 - 前端优化宫格图片、长文折叠与灯箱，流畅 Markdown 预览与宫格图卡片渲染
 - 完整开放 API 与 Token 认证，便于第三方接入与自动化工作流
 - 支持 MCP 工具，在 AI 环境中一键发布/更新/删除/搜索
@@ -281,13 +282,13 @@ docker run -d \
 
 ## 🎉已发布Docker镜像版本
 
-- 稳定双架构镜像版：latest 镜像  同时支持linux/amd64,linux/arm64，拉取时会系统会自动选择 大小：单架构 36.06MB 双版本 65MB
+- 稳定双架构镜像版：latest 镜像  同时支持linux/amd64,linux/arm64，拉取时会系统会自动选择 
 
 
-- 带MCP双架构镜像版：latest-mcp 镜像  同时支持linux/amd64,linux/arm64 单架构 58.7MB 双版本165MB
+- 带MCP双架构镜像版：latest-mcp 镜像  同时支持linux/amd64,linux/arm64 
 
 
-- 精简单架构镜像版：last 镜像  支持linux/amd6，镜像包容量更小 36.06 MB
+- 精简单架构镜像版：last 镜像  支持linux/amd64
 
 
 ### docker-componse构建部署
@@ -1510,7 +1511,41 @@ podman build --manifest docker.io/noise233/echo-noise:latest --platform linux/am
 podman manifest push --all docker.io/noise233/echo-noise:latest docker://docker.io/noise233/echo-noise:latest
 ```
 
+- 增量构建与缓存推送（适合频繁迭代）：
+  - ```
+    docker buildx build --builder multi --platform linux/amd64,linux/arm64 --target final --pull --build-arg VERSION=$(date +%Y.%m.%d) -t noise233/echo-noise:$(date +%Y.%m.%d) -t noise233/echo-noise:latest --cache-from=type=registry,ref=noise233/echo-noise:buildcache --cache-to=type=registry,ref=noise233/echo-noise:buildcache,mode=max --provenance=false --sbom=false --push --progress=plain .
+    ```
+  
+    
+  
+- 固化版本（手动设定版本，不用日期）：
+  - ```
+    docker buildx build --builder multi --platform linux/amd64,linux/arm64 --target final --pull --build-arg VERSION=2025.12.04 -t noise233/echo-noise:2025.12.04 -t noise233/echo-noise:latest --cache-from=type=registry,ref=noise233/echo-noise:buildcache --cache-to=type=registry,ref=noise233/echo-noise:buildcache,mode=max --provenance=false --sbom=false --push --progress=plain .
+    ```
+  
+- --pull ：确保基础镜像最新，减少后续推送差异。
 
+- 双标签 -t ...:版本 -t ...:latest ：一次性产出版本与 latest ，避免额外重指向。
+
+- --cache-from/--cache-to ：利用远端缓存缩短后续构建时间；缓存存到注册表 noise233/echo-noise:buildcache 。
+
+- --provenance=false --sbom=false ：关闭证明与 SBOM 生成，缩短“导出镜像”阶段开销。
+
+- --progress=plain ：得到更清晰的输出，定位网络瓶颈更方便。
+
+- 移除 --no-cache ：允许复用 BuildKit 缓存（你在 Dockerfile 的 Node/Go 步骤已开启缓存挂载，效果显著）。
+前置准备
+
+- 使用支持多平台的构建器并初始化：
+  - ```
+    docker buildx create --name multi --driver docker-container --use
+    docker buildx inspect --bootstrap
+    ```
+  
+- 登录注册表减少限流与认证交互失败：
+  - ```
+    docker login
+    ```
 
 # Memos数据库迁移示例
 
@@ -1732,7 +1767,6 @@ exports.actions = [{
 - [x] 页面加载过渡优化
 - [x] 后台增加音乐板块配置并集成到前端
 - [x] 内置评论系统并可选远程评论系统
-- [ ] 增加好友系统，可在前端首页作为组件展示（方向为后台页申请后自动拉取信息并展示）
 - [x] 增加点赞组件（接入SMTP反馈）
 - [ ] 增加在线聊天组件（实时接收反馈、支持md写法）
 - [x] 增加友情链接组件（底部或侧栏）

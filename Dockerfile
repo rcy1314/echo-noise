@@ -6,9 +6,7 @@ WORKDIR /app/web
 
 # 复制前端依赖文件并安装依赖
 COPY ./web/package.json ./web/package-lock.json* ./
-# 使用稳定镜像源以避免 EAI_AGAIN
-RUN npm config set registry https://registry.npmmirror.com && \
-    npm ci --omit=dev --registry=https://registry.npmmirror.com
+RUN npm ci --omit=dev
 
 # 更新 Browserslist 数据，避免 caniuse-lite 过期警告
 RUN npx --yes update-browserslist-db@latest
@@ -24,24 +22,13 @@ RUN mkdir -p /app/public && cp -r .output/public/* /app/public/
 FROM public.ecr.aws/docker/library/golang:1.24.1-alpine AS backend-build
 
 # 设置环境变量
-ENV GOPROXY=https://goproxy.cn,direct
 ENV CGO_ENABLED=0
 
 # 设置工作目录
 WORKDIR /app
 
-# 配置 APK 镜像源并安装构建依赖
-RUN set -eux; \
-    printf '%s\n' \
-      "https://dl-cdn.alpinelinux.org/alpine/v3.21/main" \
-      "https://dl-cdn.alpinelinux.org/alpine/v3.21/community" \
-      "https://mirrors.aliyun.com/alpine/v3.21/main" \
-      "https://mirrors.aliyun.com/alpine/v3.21/community" \
-      "https://mirrors.tencent.com/alpine/v3.21/main" \
-      "https://mirrors.tencent.com/alpine/v3.21/community" \
-      > /etc/apk/repositories; \
-    for i in 1 2 3; do apk update && break || sleep 2; done; \
-    apk add --no-cache build-base
+# 安装构建依赖
+RUN apk add --no-cache build-base
 
 # 复制 Go 模块文件并下载依赖
 COPY ./go.mod ./go.sum ./
@@ -66,8 +53,7 @@ RUN go build -trimpath -ldflags "-s -w -buildid=" -o /app/noise ./cmd/server/mai
 FROM public.ecr.aws/docker/library/node:20-alpine AS mcp-build
 WORKDIR /app/mcp
 COPY ./mcp/package.json ./
-RUN npm config set registry https://registry.npmmirror.com && \
-    npm install --omit=dev --registry=https://registry.npmmirror.com
+RUN npm install --omit=dev
 COPY ./mcp/server.js ./server.js
 RUN npx --yes esbuild@0.23.0 server.js \
     --bundle \
@@ -120,21 +106,9 @@ RUN set -eux; \
     fi
 
 
-# 更换 Alpine 镜像源（包含官方与多镜像，提供回退）
-RUN set -eux; \
-    cat > /etc/apk/repositories <<'EOF'
-https://dl-cdn.alpinelinux.org/alpine/v3.21/main
-https://dl-cdn.alpinelinux.org/alpine/v3.21/community
-https://mirrors.aliyun.com/alpine/v3.21/main
-https://mirrors.aliyun.com/alpine/v3.21/community
-https://mirrors.tencent.com/alpine/v3.21/main
-https://mirrors.tencent.com/alpine/v3.21/community
-EOF
-
-# 安装运行时所需的工具（带重试）
-RUN set -eux; \
-    for i in 1 2 3; do apk update && break || sleep 2; done; \
-    apk add --no-cache ca-certificates; \
+# 安装运行时所需的工具
+RUN apk update && \
+    apk add --no-cache ca-certificates && \
     rm -rf /var/cache/apk/*
 
 # 创建数据和图片目录
@@ -158,17 +132,8 @@ EXPOSE 1315
 CMD ["/app/noise"]
 
 FROM final AS final-mcp
-RUN set -eux; \
-    printf '%s\n' \
-      "https://dl-cdn.alpinelinux.org/alpine/v3.21/main" \
-      "https://dl-cdn.alpinelinux.org/alpine/v3.21/community" \
-      "https://mirrors.aliyun.com/alpine/v3.21/main" \
-      "https://mirrors.aliyun.com/alpine/v3.21/community" \
-      "https://mirrors.tencent.com/alpine/v3.21/main" \
-      "https://mirrors.tencent.com/alpine/v3.21/community" \
-      > /etc/apk/repositories; \
-    for i in 1 2 3; do apk update && break || sleep 2; done; \
-    apk add --no-cache nodejs; \
+RUN apk update && \
+    apk add --no-cache nodejs && \
     rm -rf /var/cache/apk/*
 COPY --from=mcp-build /app/mcp/server.bundle.mjs /app/mcp/server.bundle.mjs
 ENV NOTE_HTTP_PORT=1315
