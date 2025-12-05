@@ -44,7 +44,7 @@
 
 👀快速查看简要
 
-[本地运行](#本地运行)🟢  [本地连接远程 MCP](#本地连接远程 MCP)🟢  [Docker 运行](#Docker 运行)🟢  [常用工具与入参](#常用工具与入参)🟢
+[本地运行](#本地运行)🟢  [本地连接远程MCP](#本地连接远程MCP)🟢  [Docker运行](#Docker运行)🟢  [常用工具与入参](#常用工具与入参)🟢
 
 ## 连接方式与配置建议
 
@@ -291,7 +291,7 @@
    # { "username": "admin", "password": "your_password" }
    ```
 
-## Docker 运行
+## Docker运行
 1. 构建镜像：
    ```bash
    cd mcp
@@ -393,7 +393,7 @@ curl -N -X POST http://localhost:1315/mcp/tool/搜索 -H 'Content-Type: applicat
   ```
 - 提示：`input` 为 URL 编码的 JSON；不建议在 URL 中使用反引号或空格。
 
-## 本地连接远程 MCP（多种方式）
+## 本地连接远程MCP
 
 - 方式 A：SSE URL 订阅（不运行本地进程）
   - 适合仅订阅事件与握手展示，不进行完整 MCP 调用
