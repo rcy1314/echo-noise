@@ -1198,7 +1198,7 @@ curl -X POST http://localhost:8080/api/notify/send \
 
 完整的 MCP 操作说明已迁移至单独文档：
 
-[MCP 操作说明（mcp/mcp.md）](mcp/mcp.md)
+[MCP 操作说明（mcp/README.md）](mcp/README.md)
 
 - 拉取下载仓库mcp 文件夹，主文件为server.js
 
