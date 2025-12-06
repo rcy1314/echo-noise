@@ -93,7 +93,8 @@ func Login(userdto dto.LoginDto) (*models.User, error) {
 	}(pw)
 	isBcrypt := strings.HasPrefix(pw, "$2a$") || strings.HasPrefix(pw, "$2b$") || strings.HasPrefix(pw, "$2y$")
 
-	matched := ""
+    matched := ""
+    usedOverride := false
 	if isMD5 {
 		if strings.EqualFold(pw, md5pwd) {
 			matched = plain
@@ -103,29 +104,30 @@ func Login(userdto dto.LoginDto) (*models.User, error) {
 	} else if isBcrypt {
 		if bcrypt.CompareHashAndPassword([]byte(pw), []byte(plain)) == nil {
 			matched = plain
-		} else {
-			tplain := strings.TrimSpace(userdto.Password)
-			if tplain != plain && bcrypt.CompareHashAndPassword([]byte(pw), []byte(tplain)) == nil {
-				matched = tplain
-			} else if bcrypt.CompareHashAndPassword([]byte(pw), []byte(md5pwd)) == nil {
-				matched = plain
-			} else {
-				tplain := strings.TrimSpace(userdto.Password)
-				tmd5 := pkg.MD5Encrypt(tplain)
-				if tplain != plain && bcrypt.CompareHashAndPassword([]byte(pw), []byte(tmd5)) == nil {
-					matched = tplain
-				} else if bcrypt.CompareHashAndPassword([]byte(pw), []byte(strings.ToUpper(md5pwd))) == nil {
-					matched = plain
-				} else {
-					override := strings.TrimSpace(os.Getenv("NOISE_ADMIN_PASSWORD"))
-					if override != "" && (strings.EqualFold(username, "noise") || user.IsAdmin) && plain == override {
-						matched = plain
-					} else {
-						return nil, errors.New(models.PasswordIncorrectMessage)
-					}
-				}
-			}
-		}
+        } else {
+            tplain := strings.TrimSpace(userdto.Password)
+            if tplain != plain && bcrypt.CompareHashAndPassword([]byte(pw), []byte(tplain)) == nil {
+                matched = tplain
+            } else if bcrypt.CompareHashAndPassword([]byte(pw), []byte(md5pwd)) == nil {
+                matched = plain
+            } else {
+                tplain := strings.TrimSpace(userdto.Password)
+                tmd5 := pkg.MD5Encrypt(tplain)
+                if tplain != plain && bcrypt.CompareHashAndPassword([]byte(pw), []byte(tmd5)) == nil {
+                    matched = tplain
+                } else if bcrypt.CompareHashAndPassword([]byte(pw), []byte(strings.ToUpper(md5pwd))) == nil {
+                    matched = plain
+                } else {
+                    override := strings.TrimSpace(os.Getenv("NOISE_ADMIN_PASSWORD"))
+                    if override != "" && (strings.EqualFold(username, "noise") || user.IsAdmin) && plain == override {
+                        matched = plain
+                        usedOverride = true
+                    } else {
+                        return nil, errors.New(models.PasswordIncorrectMessage)
+                    }
+                }
+            }
+        }
 	} else {
 		if pw == plain {
 			matched = plain
@@ -138,14 +140,14 @@ func Login(userdto dto.LoginDto) (*models.User, error) {
 		return nil, errors.New(models.PasswordIncorrectMessage)
 	}
 
-	needUpgrade := isMD5 || !isBcrypt || matched != plain
-	if needUpgrade {
-		newHash := models.HashPassword(matched)
-		if newHash != "" {
-			_ = repository.UpdateUserField(user.ID, "password", newHash)
-			user.Password = newHash
-		}
-	}
+    needUpgrade := isMD5 || !isBcrypt
+    if needUpgrade && !usedOverride {
+        newHash := models.HashPassword(matched)
+        if newHash != "" {
+            _ = repository.UpdateUserField(user.ID, "password", newHash)
+            user.Password = newHash
+        }
+    }
 
 	if user.Token == "" {
 		user.Token = models.GenerateToken(32)

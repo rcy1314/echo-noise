@@ -1447,8 +1447,8 @@ docker buildx create --use --name mybuilder
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
   --target final \
-  --build-arg VERSION=v2.0 \
-  -t noise233/echo-noise:v2.0 \
+  --build-arg VERSION=v2.1 \
+  -t noise233/echo-noise:v2.1 \
   -t noise233/echo-noise:latest \
   --push --no-cache .
 ```
@@ -1471,8 +1471,8 @@ docker buildx build --platform linux/amd64,linux/arm64 --target final --build-ar
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
   --target final-mcp \
-  --build-arg VERSION=v2.0 \
-  -t noise233/echo-noise:v2.0-mcp \
+  --build-arg VERSION=v2.1 \
+  -t noise233/echo-noise:v2.1-mcp \
   -t noise233/echo-noise:latest-mcp \
   --push --no-cache .
 ```
@@ -1483,9 +1483,9 @@ docker buildx build \
 docker buildx build \
   --platform linux/amd64 \
   --target final \
-  --build-arg VERSION=v2.0 \
+  --build-arg VERSION=v2.1 \
   --build-arg USE_UPX=1 \
-  -t noise233/echo-noise:v2.0-amd64 \
+  -t noise233/echo-noise:v2.1-amd64 \
   -t noise233/echo-noise:latest-amd64 \
   --push --no-cache .
 ```

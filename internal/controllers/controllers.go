@@ -2171,8 +2171,11 @@ func PasswordForgot(c *gin.Context) {
 	temp := models.GenerateToken(16)
 	if user != nil {
 		hashed := models.HashPassword(temp)
-		user.Password = hashed
-		if e := services.UpdateUser(user, dto.UserInfoDto{Username: user.Username}); e != nil {
+		if strings.TrimSpace(hashed) == "" {
+			c.JSON(http.StatusOK, dto.Fail[string]("生成临时密码失败"))
+			return
+		}
+		if e := repository.UpdateUserField(user.ID, "password", hashed); e != nil {
 			c.JSON(http.StatusOK, dto.Fail[string]("更新密码失败"))
 			return
 		}
